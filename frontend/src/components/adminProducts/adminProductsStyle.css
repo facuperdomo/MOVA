@@ -1,0 +1,261 @@
+/* ===============================
+   RESET / BASE
+=============================== */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: "Poppins", sans-serif;
+    background-color: #1a1a1a;
+    color: white;
+    box-sizing: border-box;
+  }
+  *, *::before, *::after {
+    box-sizing: inherit;
+  }
+  
+  /* ===============================
+     Layout Principal (Pantalla Completa)
+  =============================== */
+  .admin-page {
+    /* Ocupa toda la pantalla en altura */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100vh;       
+    overflow: hidden;
+    padding-top: 20px;  
+  }
+  
+  /* ===============================
+     Formulario (parte superior, sin scroll)
+  =============================== */
+  .form-container {
+    width: 80%;
+    max-width: 1000px;
+    padding: 20px;
+    background-color: #333;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+    /* Evitamos que se reduzca si el espacio es poco */
+    flex-shrink: 0;
+  }
+  .form-container h2 {
+    margin-top: 0;
+  }
+  .form-container input {
+    width: 90%;
+    padding: 15px;
+    margin: 5px 0;
+    border-radius: 8px;
+    border: none;
+    font-size: 16px;
+    background-color: #222;
+    color: white;
+  }
+  .file-input-label {
+    display: flex;
+    justify-content: center;
+    width: 90%;
+    padding: 12px;
+    background-color: #222;
+    color: white;
+    font-size: 18px;
+    text-align: center;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    margin: 5px auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .form-container input::placeholder {
+    color: #aaa;
+  }
+  .form-container input[type="file"] {
+    display: none;
+  }
+  .form-container button {
+    width: 90%;
+    padding: 20px;
+    margin-top: 20px;
+    background-color: green;
+    color: white;
+    font-size: 18px;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: transform 0.15s ease-in-out, background 0.2s ease-in-out;
+  }
+  .form-container button:active {
+    transform: scale(0.95);
+  }
+  
+  /* ===============================
+     Contenedor de Productos (Scroll Interno)
+  =============================== */
+  .products-container {
+    width: 80%;
+    background-color: #3a3a3a;
+    border-radius: 10px;
+  
+    /* Ocupa el resto de la pantalla disponible */
+    flex: 1;
+    overflow-y: auto;   /* scroll interno */
+    overflow-x: hidden;
+    position: relative;
+    padding: 0px 20px 20px 20px;  /* Ajusta si quieres más/menos espacio */
+    /* Elimina el padding-bottom grande que provocaba mucho espacio */
+    /* -ms-overflow-style y scrollbar-width para ocultar la barra en IE/Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .products-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  /* Título "Lista de Productos" */
+  .products-container h2 {
+    width: 100%;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: #3a3a3a;
+    padding: 10px 0;
+    z-index: 10;
+    margin: 0;
+  }
+  
+  /* ===============================
+     Grid de Productos (Responsive)
+  =============================== */
+  .products-grid-admin {
+    display: grid;
+    /* Cada tarjeta: ancho mínimo 250px, si no cabe pasa a la siguiente fila */
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    width: 100%;
+    padding: 10px 0; /* Espacio vertical */
+  }
+  
+  /* ===============================
+     Tarjeta de Producto
+  =============================== */
+  .product-item {
+    background-color: #444;
+    padding: 15px;
+    text-align: center;
+    border-radius: 10px;
+    width: 100%;
+    height: 360px; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Imagen */
+  .product-image {
+    width: 180px;
+    height: 180px;
+    object-fit: contain;
+    background: transparent;
+  }
+  
+  /* Nombre y precio */
+  .product-item h3 {
+    font-size: 16px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
+    margin: 10px 0 5px;
+  }
+  .product-item p {
+    font-size: 16px;
+    font-weight: bold;
+    color: yellow;
+    margin: 5px 0;
+  }
+  
+  /* Botones de Editar y Eliminar */
+  .product-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+  }
+  .edit-btn {
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    width: 80px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  .delete-btn {
+    background-color: red;
+    border: none;
+    color: white;
+    padding: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    width: 80px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  /* ===============================
+     Responsive (Opcional)
+  =============================== */
+  @media (max-width: 768px) {
+    /* Ajusta el minmax para pantallas pequeñas */
+    .products-grid-admin {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+    .product-item {
+      height: 300px;
+    }
+    .product-item h3, .product-item p {
+      font-size: 12px;
+    }
+  }
+  
+  /* 🔹 Botón de Volver */
+.dashboard-sidebar {
+  width: 100px;
+  height: 100vh;
+  background-color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  left: 0;
+  top: 0;
+  transition: background 0.2s ease, transform 0.1s ease;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  cursor: pointer;
+}
+
+.dashboard-sidebar:hover {
+  background-color: #444;
+}
+
+.back-icon {
+  transition: transform 0.1s ease;
+}
+
+.dashboard-sidebar:active .back-icon {
+  transform: scale(0.9);
+}

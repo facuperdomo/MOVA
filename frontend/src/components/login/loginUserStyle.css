@@ -1,0 +1,126 @@
+.login-form{
+    text-align: center;
+    background-color: #1e1e24;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 0;
+    position: fixed; /* Para fijar el formulario en la pantalla */
+    top: 50%; /* Centrar verticalmente */
+    left: 50%; /* Centrar horizontalmente */
+    transform: translate(-50%, -50%); /* Asegurarse de que esté en el centro exacto */
+    width: 100%; /* Para que ocupe todo el espacio en pantallas pequeñas */
+    height: 100%; /* Igual para que ocupe toda la altura */
+}
+
+#containerLoginForm{
+    background-color: #E0E0E033;
+    display: flex;
+    flex-flow: column;
+    width: 450px;
+    height: 400px;
+    align-items: center;
+    font-family: "Poppins", serif;
+    font-weight: 700;
+    font-style: normal;
+    color: #FFFF;
+    border-radius: 25px;
+}
+
+#login{
+    margin-top: 30px;
+    font-size: 25px;
+}
+
+#username{
+    width: 280px;
+    height: 40px;
+    border-radius: 20px;
+    border-style: none;
+    margin-top: 50px;
+    font-size: 18px;
+    padding-left: 20px;
+    font-family: "Poppins", serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+#password{
+    width: 280px;
+    height: 40px;
+    border-radius: 20px;
+    border-style: none;
+    margin-top: 20px;
+    font-size: 18px;
+    padding-left: 20px;
+    font-family: "Poppins", serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+#loginButton{
+    width: 200px;
+    background-color: #2A67D0;
+    color:white;
+    height: 40px;
+    border-radius: 20px;
+    margin-top: 50px;
+    border-style: none;
+    font-size: 18px;
+    font-family: "Poppins", serif;
+    font-weight: 400;
+    font-style: normal;
+    transition: background-color 0.3s ease; 
+}
+
+#loginButton.pressed {
+    background-color: #2C3E50; /* Azul más oscuro al presionar */
+    transform: scale(0.98); /* Efecto de "presión" cuando se presiona */
+  }
+
+#loginButton:active {
+    background-color: #2C3E50;
+    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+}
+
+#span-cuenta{
+    margin-top: 20px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: lighter;
+    font-size: 14px;
+}
+
+#msgValidateLogin {
+    height: 8rem;
+    margin-top: 10px;
+    width: 450px; /* Ancho de la alerta*/
+    background-color: rgba(254, 16, 16, 0.655);
+    color: white;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: bold;
+    border-radius: 25px;
+    display: none; /* Ocultamos el mensaje de error por defecto */
+}
+  
+#errorSpan {
+    font-size: 20px;
+    margin-bottom: 10px;
+    padding-top: 10px;
+    display: none;
+}
+  
+.errorValidateLogin #errorSpan {
+    display: block; /* Mostrar el span que dice "Error" si hay mensaje de error */
+}
+  
+#msgValidateLogin.errorValidateLogin {
+    display: block; /* Mostramos el mensaje de error si hay un error */
+}
+
+input:focus {
+    outline: none;
+    box-shadow: none; /* ✅ Elimina el resaltado */
+    border: 2px solid #aaa; /* ✅ Personaliza el borde */
+    background-color: #fff; /* Opcional: Evita cambios de color */
+}
