@@ -17,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
+/**
+ * Configuración de seguridad y CORS para la aplicación.
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -25,6 +28,9 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AuthenticationProvider authProvider;
 
+    /**
+     * Configura la cadena de filtros de seguridad.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
@@ -43,7 +49,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authRequest ->
                         authRequest
-                                .requestMatchers("/auth/**", "/error/**").permitAll()
+                                .requestMatchers("/auth/**", "/error/**", "/api/mercadopago/create-preference", "/api/webhooks/mercadopago").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .sessionManagement(sessionManager ->
@@ -53,10 +59,13 @@ public class SecurityConfig {
                 .build();
     }
 
+    /**
+     * Configura las reglas CORS para la aplicación.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000")); // Permitir frontend
+        configuration.setAllowedOriginPatterns(List.of("*")); // <- Más permisivo aún
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
@@ -64,5 +73,5 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
-    }
+    } 
 }

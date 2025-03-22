@@ -1,7 +1,6 @@
 package com.movauy.mova.Jwt;
 
 import java.io.IOException;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -11,7 +10,6 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.util.StringUtils;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,8 +17,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 /**
+ * Filtro de autenticación JWT que valida el token de la solicitud
+ * y establece la autenticación en el contexto de Spring Security.
  *
- * @author Facundo
+ * Se omiten rutas específicas y solicitudes OPTIONS.
  */
 @Component
 @RequiredArgsConstructor
@@ -29,29 +29,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
+    /**
+     * Valida el token JWT y establece la autenticación si es válido.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Log para verificar la URI de la petición
         String requestURI = request.getRequestURI();
         System.out.println("JwtAuthenticationFilter - Request URI: " + requestURI);
 
-        // Si la URI contiene "/auth/" o el método es OPTIONS, se omite la validación JWT.
-        if (requestURI.contains("/auth/") || "OPTIONS".equalsIgnoreCase(request.getMethod())) {
+        if (requestURI.contains("/auth/")
+                || requestURI.contains("/api/mercadopago/create-preference")
+                || requestURI.contains("/api/webhooks/mercadopago")
+                || "OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
-            System.out.println("Se omite la validación");
+            System.out.println("Se omite la validación JWT para: " + requestURI);
             return;
         }
 
-        // Extraer el token de la petición
         final String token = getTokenFromRequest(request);
         if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extraer el username del token
         final String username = jwtService.getUsernameFromToken(token);
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
@@ -60,8 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         = new UsernamePasswordAuthenticationToken(
                                 userDetails,
                                 null,
-                                userDetails.getAuthorities()
-                        );
+                                userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
@@ -70,13 +71,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Extrae el token JWT del encabezado "Authorization".
+     */
     private String getTokenFromRequest(HttpServletRequest request) {
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
         return null;
     }
-
 }

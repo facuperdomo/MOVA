@@ -9,5 +9,4 @@ public class MovaApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(MovaApplication.class, args);
 	}
-
 }

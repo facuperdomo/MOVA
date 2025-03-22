@@ -2,6 +2,7 @@ package com.movauy.mova.model.sale;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.movauy.mova.model.finance.CashRegister;
+import com.movauy.mova.model.user.User;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.persistence.*;
@@ -16,21 +17,32 @@ import java.util.List;
 @Setter
 @Entity
 public class Sale {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @OneToMany(mappedBy = "sale", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference // ✅ Controla la serialización de los items
+    @JsonManagedReference
     private List<SaleItem> items;
 
-    // ✅ Campos que faltaban
-    private double totalAmount;      // 💰 Total de la venta
-    private String paymentMethod;    // 💳 Método de pago ("CASH" o "QR")
-    private LocalDateTime dateTime;  // 🕒 Fecha y hora de la venta
+    private double totalAmount;
+    private String paymentMethod;
+    private LocalDateTime dateTime;
 
-    // ✅ Relación con la caja registradora
     @ManyToOne
     @JoinColumn(name = "cash_register_id", nullable = false)
     private CashRegister cashRegister;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private EstadoVenta estado = EstadoVenta.ACTIVA;
+
+    public enum EstadoVenta {
+        ACTIVA, CANCELADA
+    }
+    
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)  // Relaciona la venta con un usuario
+    private User user;  // Usuario dueño de la venta
 }

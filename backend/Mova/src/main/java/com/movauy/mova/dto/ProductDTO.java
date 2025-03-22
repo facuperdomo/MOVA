@@ -7,7 +7,7 @@ public class ProductDTO {
     private Long id;
     private String name;
     private double price;
-    private String image; // 🔹 Imagen en Base64
+    private String image;
 
     public ProductDTO(Long id, String name, double price, String image) {
         this.id = id;
@@ -16,5 +16,4 @@ public class ProductDTO {
         this.image = image;
     }
 
-    // Getters y Setters
 }

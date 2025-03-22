@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.movauy.mova.model.user.User; // Asegurar importar tu modelo de usuario
+import com.movauy.mova.model.user.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -16,13 +16,18 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
+/**
+ * Servicio para generar y validar tokens JWT.
+ */
 @Service
 public class JwtService {
 
     private static final String SECRET_KEY = "586E3272357538782F413F4428472B4B6250655368566B597033733676397924";
-    private static final long TOKEN_EXPIRATION_TIME = 1000 * 60 * 60; // 1 hora (en milisegundos)
+    private static final long TOKEN_EXPIRATION_TIME = 1000 * 60 * 60; // 1 hora
 
-    // ✅ Genera un nuevo token desde un User (para login)
+    /**
+     * Genera un token JWT usando la información del usuario.
+     */
     public String getToken(User user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
@@ -37,12 +42,16 @@ public class JwtService {
                 .compact();
     }
 
-    // ✅ Genera un nuevo token desde UserDetails (para renovar sesión)
+    /**
+     * Genera un token JWT sin claims adicionales.
+     */
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
     }
 
-    // ✅ Genera un nuevo token con claims adicionales (si se requieren)
+    /**
+     * Genera un token JWT usando claims adicionales.
+     */
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return Jwts.builder()
                 .setClaims(extraClaims)
@@ -53,24 +62,32 @@ public class JwtService {
                 .compact();
     }
 
-    // ✅ Devuelve la clave secreta para firmar los tokens
+    /**
+     * Retorna la clave secreta para firmar el token.
+     */
     private Key getKey() {
         byte[] keyBytes = Decoders.BASE64.decode(SECRET_KEY);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    // ✅ Extrae el nombre de usuario desde el token
+    /**
+     * Extrae el nombre de usuario del token JWT.
+     */
     public String getUsernameFromToken(String token) {
         return getClaim(token, Claims::getSubject);
     }
 
-    // ✅ Valida que el token pertenezca al usuario correcto y no haya expirado
+    /**
+     * Verifica que el token sea válido.
+     */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = getUsernameFromToken(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
-    // ✅ Extrae todos los claims del token
+    /**
+     * Obtiene todas las claims del token JWT.
+     */
     private Claims getAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
@@ -79,19 +96,26 @@ public class JwtService {
                 .getBody();
     }
 
-    // ✅ Extrae un claim específico
+    /**
+     * Extrae una claim específica del token JWT.
+     */
     public <T> T getClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = getAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
-    // ✅ Obtiene la fecha de expiración del token
+    /**
+     * Retorna la fecha de expiración del token JWT.
+     */
     private Date getExpiration(String token) {
         return getClaim(token, Claims::getExpiration);
     }
 
-    // ✅ Verifica si el token ha expirado
+    /**
+     * Determina si el token JWT ha expirado.
+     */
     private boolean isTokenExpired(String token) {
         return getExpiration(token).before(new Date());
     }
+    
 }

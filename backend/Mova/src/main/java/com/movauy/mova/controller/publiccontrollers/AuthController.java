@@ -7,7 +7,6 @@ import com.movauy.mova.dto.LoginRequest;
 import com.movauy.mova.dto.RegisterRequest;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +17,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * Controlador de autenticación y registro.
+ */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -31,12 +33,18 @@ public class AuthController {
     @Autowired
     private UserDetailsService userDetailsService;
 
-    @PostMapping(value = "loginCompany")
+    /**
+     * Login para empresas.
+     */
+    @PostMapping("loginCompany")
     public ResponseEntity<AuthResponse> loginCompany(@RequestBody LoginRequest request) {
         AuthResponse response = authService.loginCompany(request);
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Login para usuarios.
+     */
     @PostMapping("loginUser")
     public ResponseEntity<AuthResponse> loginUser(@RequestBody LoginRequest request) {
         System.out.println("Request companyId: " + request.getCompanyId());
@@ -45,13 +53,16 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping(value = "register")
+    /**
+     * Registro de nuevos usuarios.
+     */
+    @PostMapping("register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }
 
     /**
-     * ✅ Endpoint para refrescar el token cuando está a punto de expirar.
+     * Refresca el token JWT.
      */
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
@@ -60,17 +71,14 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token inválido o ausente.");
             }
 
-            String oldToken = authHeader.substring(7); // 🔹 Remover "Bearer "
+            String oldToken = authHeader.substring(7);
             String username = jwtService.getUsernameFromToken(oldToken);
-
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            
-            // 🔹 Si el token sigue siendo válido, no es necesario generar otro
+
             if (jwtService.isTokenValid(oldToken, userDetails)) {
                 return ResponseEntity.ok(Collections.singletonMap("newToken", oldToken));
             }
 
-            // 🔹 Si no es válido, se genera uno nuevo
             String newToken = jwtService.generateToken(userDetails);
             return ResponseEntity.ok(Collections.singletonMap("newToken", newToken));
 

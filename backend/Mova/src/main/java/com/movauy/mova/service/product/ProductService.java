@@ -17,11 +17,10 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     /**
-     * 🔹 Obtener todos los productos. ✅ Devuelve un DTO con la imagen en Base64
-     * para el frontend.
+     * Obtiene todos los productos de una empresa y devuelve un DTO con la imagen en Base64 para el frontend.
      */
-    public List<ProductDTO> getAllProducts() {
-        List<Product> products = productRepository.findAll();
+    public List<ProductDTO> getProductsByCompany(Integer companyId) {
+        List<Product> products = productRepository.getProductsByCompany(companyId);
         return products.stream().map(product -> {
             String base64Image = (product.getImage() != null)
                     ? Base64.getEncoder().encodeToString(product.getImage())
@@ -36,7 +35,7 @@ public class ProductService {
     }
 
     /**
-     * 🔹 Agregar un producto asegurando que la imagen se guarde como BLOB.
+     * Agrega un producto asegurando que se cumple la validación básica.
      */
     public Product addProduct(Product product) {
         if (product.getName() == null || product.getName().isEmpty()) {
@@ -48,27 +47,36 @@ public class ProductService {
         return productRepository.save(product);
     }
 
-    public Product updateProduct(Long id, String name, double price, byte[] image) {
+    /**
+     * Actualiza un producto verificando que pertenece a la empresa autenticada.
+     */
+    public Product updateProduct(Long id, String name, double price, byte[] image, Integer companyId) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
 
+        // Se compara el id del usuario asociado al producto con el companyId autenticado.
+        if (!product.getUser().getId().equals(companyId)) {
+            throw new SecurityException("No tienes permiso para modificar este producto.");
+        }
+
         product.setName(name);
         product.setPrice(price);
-
         if (image != null) {
             product.setImage(image);
         }
-
         return productRepository.save(product);
     }
 
     /**
-     * 🔹 Eliminar un producto verificando que exista antes de borrarlo.
+     * Elimina un producto verificando que pertenece a la empresa autenticada.
      */
     @Transactional
-    public void deleteProduct(Long id) {
-        if (!productRepository.existsById(id)) {
-            throw new IllegalArgumentException("Producto con ID " + id + " no encontrado.");
+    public void deleteProduct(Long id, Integer companyId) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Producto no encontrado"));
+
+        if (!product.getUser().getId().equals(companyId)) {
+            throw new SecurityException("No tienes permiso para eliminar este producto.");
         }
         productRepository.deleteById(id);
     }

@@ -1,10 +1,12 @@
 package com.movauy.mova.model.product;
 
+import com.movauy.mova.model.user.User;  // Importar la entidad Company
 import jakarta.persistence.*;
 import lombok.*;
 
 /**
- *
+ * Representa un producto que se vende en el sistema
+ * 
  * @author Facundo
  */
 @Entity
@@ -20,10 +22,17 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false, unique = true)
     private String name;
+
+    @Column(nullable = false)
     private double price;
-    
-    @Lob  // Indica que la imagen se almacena como BLOB
+
+    @Lob
     @Column(columnDefinition = "LONGBLOB")
     private byte[] image;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)  // Relaciona el producto con un usuario
+    private User user;  // Usuario que creó el producto
 }

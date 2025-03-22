@@ -1,56 +1,54 @@
 package com.movauy.mova.controller.admin;
 
-import com.movauy.mova.model.finance.CashRegister;
 import com.movauy.mova.service.finance.CashRegisterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
- *
- * @author Facundo
+ * Controlador para la administración de caja.
  */
 @RestController
 @RequestMapping("/api/cash-register")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000") // Allow React frontend requests
+@CrossOrigin(origins = "http://localhost:3000")
 public class CashRegisterController {
 
     private final CashRegisterService cashRegisterService;
 
+    // Se requiere el token para saber a qué empresa corresponde el estado de caja
     @GetMapping("/status")
-    public ResponseEntity<Boolean> isCashRegisterOpen() {
-        return ResponseEntity.ok(cashRegisterService.getOpenCashRegister().isPresent());
+    public ResponseEntity<Boolean> isCashRegisterOpen(@RequestHeader("Authorization") String token) {
+        return ResponseEntity.ok(cashRegisterService.getOpenCashRegister(token).isPresent());
     }
 
+    // Se utiliza el token para abrir la caja de la empresa autenticada
     @PostMapping("/open")
-    public ResponseEntity<String> openCashRegister(@RequestBody Map<String, Double> request) {
+    public ResponseEntity<String> openCashRegister(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, Double> request) {
+
         Double initialAmount = request.get("initialAmount");
         if (initialAmount == null || initialAmount <= 0) {
             return ResponseEntity.badRequest().body("Monto inicial debe ser mayor a 0.");
         }
 
-        if (cashRegisterService.getOpenCashRegister().isPresent()) {
-            return ResponseEntity.badRequest().body("Ya hay una caja abierta.");
+        // Verifica si ya hay una caja abierta para esta empresa
+        if (cashRegisterService.getOpenCashRegister(token).isPresent()) {
+            return ResponseEntity.badRequest().body("Ya hay una caja abierta para esta empresa.");
         }
 
-        return cashRegisterService.openCashRegister(initialAmount)
+        return cashRegisterService.openCashRegister(token, initialAmount)
                 ? ResponseEntity.ok("Caja abierta correctamente.")
                 : ResponseEntity.badRequest().body("Error al abrir caja.");
     }
 
-    /**
-     * ✅ Cierra la caja y devuelve: - Total vendido - Monto esperado
-     */
+    // Se incluye el token para cerrar la caja de la empresa autenticada
     @PostMapping("/close")
-    public ResponseEntity<?> closeCashRegister() {
-        Map<String, Object> result = cashRegisterService.closeCashRegister();
-
+    public ResponseEntity<?> closeCashRegister(@RequestHeader("Authorization") String token) {
+        Map<String, Object> result = cashRegisterService.closeCashRegister(token);
         if (result != null && !result.isEmpty()) {
             return ResponseEntity.ok(result);
         } else {

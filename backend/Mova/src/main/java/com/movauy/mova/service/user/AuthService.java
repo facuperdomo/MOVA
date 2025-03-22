@@ -65,12 +65,11 @@ public class AuthService {
             throw new BadCredentialsException("El usuario no pertenece a la empresa indicada");
         }
 
-        // Establecer autenticación en el contexto de seguridad
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
         );
 
-        String token = jwtService.getToken(user); // ✅ Usa `getToken` en lugar de `generateToken`
+        String token = jwtService.getToken(user);
 
         return AuthResponse.builder()
                 .token(token)
@@ -100,7 +99,7 @@ public class AuthService {
         userRepository.save(user);
 
         return AuthResponse.builder()
-                .token(jwtService.getToken(user)) // ✅ Usa `getToken` en lugar de `generateToken`
+                .token(jwtService.getToken(user))
                 .role(user.getRole().name())
                 .companyId(user.getCompanyId())
                 .build();
@@ -113,5 +112,32 @@ public class AuthService {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
         );
+    }
+
+    /**
+     * Método para extraer el companyId a partir del token JWT. Se asume que el
+     * token contiene el username (subject) y se usa para buscar el usuario.
+     */
+    public Long getCompanyIdFromToken(String token) {
+        // Si el token tiene el prefijo "Bearer ", se elimina.
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        // Usamos getUsernameFromToken del JwtService para obtener el username.
+        String username = jwtService.getUsernameFromToken(token);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+        // Se utiliza companyId si existe, de lo contrario se usa el id del usuario.
+        String companyIdStr = user.getCompanyId() != null ? user.getCompanyId() : user.getId().toString();
+        return Long.valueOf(companyIdStr);
+    }
+
+    /**
+     * Método para obtener un objeto User a partir del companyId. Se convierte
+     * el companyId a Integer para buscar el usuario.
+     */
+    public User getUserById(Long companyId) {
+        return userRepository.findById(companyId.intValue())
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
 }

@@ -41,6 +41,7 @@ public class User implements UserDetails {
     String password;
     @Enumerated(EnumType.STRING)
     Role role;
+    
     // Campo para relacionar a qué empresa pertenece un usuario normal.
     // Para el usuario con rol COMPANY, este campo podría ser nulo o contener su propio id.
     @Column(name = "company_id")
