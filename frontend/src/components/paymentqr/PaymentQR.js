@@ -1,6 +1,7 @@
 // src/components/paymentqr/PaymentQR.js
 import React, { useEffect, useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { API_URL } from '../../config/apiConfig';
 
 const PaymentQR = ({ amount }) => {
   const [qrUrl, setQrUrl] = useState('');
@@ -8,7 +9,7 @@ const PaymentQR = ({ amount }) => {
 
   useEffect(() => {
     console.log("PaymentQR: iniciando fetch para monto:", amount);
-    fetch('http://localhost:8080/api/mercadopago/create-preference', {
+    fetch(`${API_URL}/api/mercadopago/create-preference`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

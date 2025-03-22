@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { customFetch } from "../../utils/api";
 import { X } from "lucide-react";
 import "./adminOptionsStyle.css";
+import { API_URL } from '../../config/apiConfig';
 
 const AdminOptions = () => {
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const AdminOptions = () => {
 
   const checkCashRegisterStatus = async () => {
     try {
-      const response = await customFetch("http://localhost:8080/api/cash-register/status");
+      const response = await customFetch(`${API_URL}/api/cash-register/status`);
       if (typeof response === "string") return;
       setIsCashRegisterOpen(response);
     } catch (error) {
@@ -40,7 +41,7 @@ const AdminOptions = () => {
       return;
     }
     try {
-      await customFetch("http://localhost:8080/api/cash-register/open", {
+      await customFetch(`${API_URL}/api/cash-register/open`, {
         method: "POST",
         body: JSON.stringify({ initialAmount: initialCash }),
       });
@@ -53,7 +54,7 @@ const AdminOptions = () => {
   const closeCashRegister = async () => {
     setLoading(true);
     try {
-      const response = await customFetch("http://localhost:8080/api/cash-register/close", {
+      const response = await customFetch(`${API_URL}/api/cash-register/close`, {
         method: "POST",
       });
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './loginCompanyStyle.css';
+import { API_URL } from '../../config/apiConfig';
 
 export default function LoginCompany() {
   const [username, setUsername] = useState('');
@@ -33,7 +34,7 @@ export default function LoginCompany() {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/auth/loginCompany', {
+      const response = await fetch(`${API_URL}/auth/loginCompany`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

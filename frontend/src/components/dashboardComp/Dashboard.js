@@ -4,6 +4,7 @@ import "./dashboardStyle.css";
 import { ArrowLeft, Trash2, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
 import PaymentQR from "../paymentqr/PaymentQR";
+import { API_URL } from '../../config/apiConfig';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const Dashboard = () => {
   // Verificar si la caja está abierta (se espera que customFetch incluya el header Authorization)
   const checkCashRegisterStatus = async () => {
     try {
-      const response = await customFetch("http://localhost:8080/api/cash-register/status");
+      const response = await customFetch(`${API_URL}/api/cash-register/status`);
       setIsCashRegisterOpen(response);
     } catch (error) {
       console.error("Error al verificar la caja:", error);
@@ -72,7 +73,7 @@ const Dashboard = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await customFetch("http://localhost:8080/api/products");
+      const response = await customFetch(`${API_URL}/api/products`);
       if (!Array.isArray(response)) throw new Error("La respuesta no es un array");
       const productsWithFixedImages = response.map((product) => ({
         ...product,
@@ -158,7 +159,7 @@ const Dashboard = () => {
 
     try {
       // Se asume que customFetch incluye el header Authorization con el token
-      const response = await customFetch("http://localhost:8080/api/sales", {
+      const response = await customFetch(`${API_URL}/api/sales`, {
         method: "POST",
         body: JSON.stringify(saleData),
       });
@@ -183,7 +184,7 @@ const Dashboard = () => {
     }
     try {
       // Se asume un endpoint para cancelar la venta, por ejemplo:
-      await customFetch(`http://localhost:8080/api/statistics/cancel-sale/${lastSale.id}`, {
+      await customFetch(`${API_URL}/api/statistics/cancel-sale/${lastSale.id}`, {
         method: "PUT",
       });
       alert("La última venta ha sido deshecha.");
@@ -215,7 +216,7 @@ const Dashboard = () => {
       const updatedSales = [];
       for (let sale of offlineSales) {
         try {
-          await customFetch("http://localhost:8080/api/sales", {
+          await customFetch(`${API_URL}/api/sales`, {
             method: "POST",
             body: JSON.stringify(sale),
             // Asegúrate de que customFetch envíe el header Authorization con token

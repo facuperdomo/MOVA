@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './loginUserStyle.css';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../../config/apiConfig';
 
 export default function LoginUser() {
   const [username, setUsername] = useState('');
@@ -40,7 +41,7 @@ export default function LoginUser() {
         throw new Error('No se encontró el ID de la empresa. Por favor, inicie sesión en la empresa primero.');
       }
 
-      const response = await fetch('http://localhost:8080/auth/loginUser', {
+      const response = await fetch(`${API_URL}/auth/loginUser`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password, companyId }),

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react"; // Iconos para volver y cerrar popup
 import "./adminProductsStyle.css";
 import { customFetch } from "../../utils/api";
+import { API_URL } from '../../config/apiConfig';
 
 const AdminProducts = () => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const AdminProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await customFetch("http://localhost:8080/api/products");
+      const response = await customFetch(`${API_URL}/api/products`);
       if (!Array.isArray(response)) throw new Error("La respuesta no es un array");
 
       const productsWithImages = response.map((product) => ({
@@ -66,8 +67,8 @@ const AdminProducts = () => {
 
     const method = editingId ? "PUT" : "POST";
     const url = editingId
-      ? `http://localhost:8080/api/products/${editingId}`
-      : "http://localhost:8080/api/products";
+      ? `${API_URL}/api/products/${editingId}`
+      : `${API_URL}/api/products`;
 
     const token = localStorage.getItem("token");
 
@@ -106,7 +107,7 @@ const AdminProducts = () => {
 
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://localhost:8080/api/products/${productToDelete.id}`, {
+      await fetch(`${API_URL}/api/products/${productToDelete.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });

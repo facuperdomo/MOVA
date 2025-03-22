@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
 import "./statisticsStyle.css";
+import { API_URL } from '../../config/apiConfig';
 
 Chart.register(...registerables);
 
@@ -33,7 +34,7 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `http://localhost:8080/api/statistics/sales?filter=${selectedFilter}`;
+      const url = `${API_URL}/api/statistics/sales?filter=${selectedFilter}`;
       const response = await customFetch(url);
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
       setSalesData(response);
@@ -50,7 +51,7 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `http://localhost:8080/api/statistics/top-selling-drinks?filter=${selectedFilter}`;
+      const url = `${API_URL}/api/statistics/top-selling-drinks?filter=${selectedFilter}`;
       const response = await customFetch(url);
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
       setTopProducts(response);
@@ -67,7 +68,7 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `http://localhost:8080/api/statistics/cash-register-history?filter=${selectedFilter}`;
+      const url = `${API_URL}/api/statistics/cash-register-history?filter=${selectedFilter}`;
       const response = await customFetch(url);
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
       setCashRegisterHistory(response);
@@ -129,7 +130,7 @@ const Statistics = () => {
     if (!saleToCancel) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/api/statistics/cancel-sale/${saleToCancel.id}`, {
+      const response = await fetch(`${API_URL}/api/statistics/cancel-sale/${saleToCancel.id}`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`,
