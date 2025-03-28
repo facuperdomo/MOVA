@@ -5,9 +5,11 @@ import com.movauy.mova.dto.AuthResponse;
 import com.movauy.mova.service.user.AuthService;
 import com.movauy.mova.dto.LoginRequest;
 import com.movauy.mova.dto.RegisterRequest;
+import com.movauy.mova.model.user.User;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import java.util.Collections;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -88,6 +90,34 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Token mal formado.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Error al refrescar token.");
+        }
+    }
+
+    @PutMapping("/update-mercadopago-key/{companyId}")
+    public ResponseEntity<?> updateMercadoPagoKey(@PathVariable Long companyId, @RequestBody Map<String, String> payload) {
+        String newKey = payload.get("accessToken");
+        if (newKey == null || newKey.isBlank()) {
+            return ResponseEntity.badRequest().body("El Access Token es obligatorio");
+        }
+        try {
+            // Obtener la empresa utilizando el método del AuthService.
+            User company = authService.getUserById(companyId);
+            if (company == null || !company.getRole().name().equals("COMPANY")) {
+                return ResponseEntity.badRequest().body("Empresa no encontrada o no es de tipo COMPANY");
+            }
+            // Actualizar el Access Token de MercadoPago
+            company.setMercadoPagoAccessToken(newKey);
+
+            // Aquí asumimos que AuthService o UserRepository tiene un método para guardar el usuario actualizado.
+            // Si AuthService no tiene este método, podrías inyectar UserRepository y hacer:
+            // userRepository.save(company);
+            authService.updateUser(company);
+
+            return ResponseEntity.ok("Access Token actualizado correctamente");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar el Access Token: " + e.getMessage());
         }
     }
 }

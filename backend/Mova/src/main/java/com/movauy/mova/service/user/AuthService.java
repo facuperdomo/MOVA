@@ -94,6 +94,7 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(role)
                 .companyId(request.getCompanyId())
+                .mercadoPagoAccessToken(request.getMercadoPagoAccessToken())
                 .build();
 
         userRepository.save(user);
@@ -139,5 +140,9 @@ public class AuthService {
     public User getUserById(Long companyId) {
         return userRepository.findById(companyId.intValue())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+    }
+
+    public void updateUser(User user) {
+        userRepository.save(user);
     }
 }

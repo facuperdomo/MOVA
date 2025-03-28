@@ -1,307 +1,67 @@
-2025-03-21T00:13:24.533-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /auth/loginCompany
-2025-03-21T00:13:24.636-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing POST /auth/loginCompany
-2025-03-21T00:13:24.638-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T00:13:24.638-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured POST /auth/loginCompany
-2025-03-21T00:13:24.821-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.s.a.dao.DaoAuthenticationProvider    : Authenticated user
-2025-03-21T00:13:27.193-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /auth/loginUser
-2025-03-21T00:13:27.195-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing POST /auth/loginUser
-2025-03-21T00:13:27.195-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T00:13:27.195-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured POST /auth/loginUser
-2025-03-21T00:13:27.261-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.s.a.dao.DaoAuthenticationProvider    : Authenticated user
-2025-03-21T00:13:27.307-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:13:27.309-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:13:27.319-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:13:27.332-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:13:27.387-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:13:27.395-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:13:32.540-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T00:13:32.545-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:13:32.551-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T00:13:32.553-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T00:13:32.556-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:13:32.594-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:13:32.599-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:13:32.606-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:13:32.615-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:13:32.621-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T00:13:32.662-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T00:13:32.668-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T00:13:37.194-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/sales
-2025-03-21T00:13:37.197-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing POST /api/sales
-2025-03-21T00:13:37.202-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured POST /api/sales
-2025-03-21T00:13:45.136-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/sales/cancel/6
-2025-03-21T00:13:45.138-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing PUT /api/sales/cancel/6
-2025-03-21T00:13:45.144-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured PUT /api/sales/cancel/6
-2025-03-21T00:13:45.185-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing PUT /error
-2025-03-21T00:13:45.185-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured PUT /error
-2025-03-21T00:13:45.186-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T00:13:47.648-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:13:47.651-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:13:47.658-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:13:47.666-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:13:47.675-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:13:47.681-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:13:48.732-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T00:13:48.734-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T00:13:48.783-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T00:13:48.804-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T00:13:48.905-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T00:13:48.913-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T00:14:27.050-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:14:27.054-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:14:27.059-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:14:27.068-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:14:27.126-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:14:27.152-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:14:28.133-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T00:14:28.134-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:14:28.138-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T00:14:28.142-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T00:14:28.149-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T00:14:28.212-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:14:28.237-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T00:14:28.244-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:14:28.260-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T00:14:28.275-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:14:38.909-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/sales
-2025-03-21T00:14:38.911-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing POST /api/sales
-2025-03-21T00:14:38.916-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured POST /api/sales
-2025-03-21T00:14:45.988-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/sales/cancel/7
-2025-03-21T00:14:45.991-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing PUT /api/sales/cancel/7
-2025-03-21T00:14:45.996-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured PUT /api/sales/cancel/7
-2025-03-21T00:14:46.036-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing PUT /error
-2025-03-21T00:14:46.036-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured PUT /error
-2025-03-21T00:14:46.038-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T00:14:57.839-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:14:57.843-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:14:57.876-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:14:57.884-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:14:57.892-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:14:57.898-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:14:59.534-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T00:14:59.537-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T00:14:59.539-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T00:14:59.595-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T00:14:59.601-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T00:14:59.607-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T00:19:58.233-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:19:58.235-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:19:58.240-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:19:58.287-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:19:58.297-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:19:58.303-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:20:01.737-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T00:20:01.740-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:20:01.748-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T00:20:01.816-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T00:20:01.829-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T00:20:01.836-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:20:01.840-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T00:20:01.844-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:20:01.847-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T00:20:01.849-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:20:04.339-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/sales
-2025-03-21T00:20:04.342-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing POST /api/sales
-2025-03-21T00:20:04.347-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured POST /api/sales
-2025-03-21T00:20:06.251-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/cancel-sale/8
-2025-03-21T00:20:06.253-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing PUT /api/statistics/cancel-sale/8
-2025-03-21T00:20:06.259-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured PUT /api/statistics/cancel-sale/8
-2025-03-21T00:20:10.203-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:20:10.205-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T00:20:10.213-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:20:10.221-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:20:10.230-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T00:20:10.235-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T00:20:11.503-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T00:20:11.507-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T00:20:11.512-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T00:20:11.518-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T00:20:11.528-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T00:20:11.535-03:00 DEBUG 27280 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T01:00:40.201-03:00  INFO 34304 --- [mova] [main] com.movauy.mova.MovaApplication          : Starting MovaApplication using Java 21.0.6 with PID 34304 (C:\Users\facue\Desktop\MOVA\backend\Mova\target\classes started by facue in C:\Users\facue\Desktop\MOVA\backend\Mova)
-2025-03-21T01:00:40.202-03:00  INFO 34304 --- [mova] [main] com.movauy.mova.MovaApplication          : No active profile set, falling back to 1 default profile: "default"
-2025-03-21T01:00:40.719-03:00  INFO 34304 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2025-03-21T01:00:40.780-03:00  INFO 34304 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 54 ms. Found 5 JPA repository interfaces.
-2025-03-21T01:00:41.195-03:00  INFO 34304 --- [mova] [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
-2025-03-21T01:00:41.207-03:00  INFO 34304 --- [mova] [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2025-03-21T01:00:41.207-03:00  INFO 34304 --- [mova] [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.18]
-2025-03-21T01:00:41.269-03:00  INFO 34304 --- [mova] [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2025-03-21T01:00:41.269-03:00  INFO 34304 --- [mova] [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1032 ms
-2025-03-21T01:00:41.372-03:00  INFO 34304 --- [mova] [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2025-03-21T01:00:41.431-03:00  INFO 34304 --- [mova] [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
-2025-03-21T01:00:41.464-03:00  INFO 34304 --- [mova] [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2025-03-21T01:00:41.668-03:00  INFO 34304 --- [mova] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2025-03-21T01:00:41.691-03:00  INFO 34304 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2025-03-21T01:00:41.816-03:00  INFO 34304 --- [mova] [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@49e7e8f1
-2025-03-21T01:00:41.819-03:00  INFO 34304 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2025-03-21T01:00:41.851-03:00  WARN 34304 --- [mova] [main] org.hibernate.dialect.Dialect            : HHH000511: The 5.5.0 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
-2025-03-21T01:00:41.855-03:00  WARN 34304 --- [mova] [main] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2025-03-21T01:00:42.714-03:00  INFO 34304 --- [mova] [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2025-03-21T01:00:42.790-03:00  INFO 34304 --- [mova] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2025-03-21T01:00:43.083-03:00  INFO 34304 --- [mova] [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2025-03-21T01:00:43.565-03:00  WARN 34304 --- [mova] [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2025-03-21T01:00:43.740-03:00  INFO 34304 --- [mova] [main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@1da77a43, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@63604641, org.springframework.security.web.context.SecurityContextHolderFilter@5ed83e36, org.springframework.security.web.header.HeaderWriterFilter@1dc47df3, org.springframework.web.filter.CorsFilter@1313dea8, org.springframework.security.web.authentication.logout.LogoutFilter@40f49d72, com.movauy.mova.Jwt.JwtAuthenticationFilter@47e70f54, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@401e36ab, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@4ce66169, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@74bca236, org.springframework.security.web.session.SessionManagementFilter@60035f1e, org.springframework.security.web.access.ExceptionTranslationFilter@9c88323, org.springframework.security.web.access.intercept.AuthorizationFilter@2cbb9702]
-2025-03-21T01:00:43.910-03:00  INFO 34304 --- [mova] [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
-2025-03-21T01:00:43.915-03:00  INFO 34304 --- [mova] [main] com.movauy.mova.MovaApplication          : Started MovaApplication in 4.073 seconds (process running for 4.394)
-2025-03-21T01:01:14.437-03:00  INFO 34304 --- [mova] [http-nio-8080-exec-2] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2025-03-21T01:01:14.437-03:00  INFO 34304 --- [mova] [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2025-03-21T01:01:14.439-03:00  INFO 34304 --- [mova] [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
-2025-03-21T01:01:14.455-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T01:01:14.455-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T01:01:14.475-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T01:01:14.667-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T01:01:14.760-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T01:01:14.771-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T01:01:19.308-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T01:01:19.309-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T01:01:19.316-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T01:01:19.325-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T01:01:19.385-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T01:01:19.399-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T01:01:20.571-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T01:01:20.572-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T01:01:20.575-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T01:01:20.582-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T01:01:20.596-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T01:01:20.604-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T01:01:22.066-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T01:01:22.069-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T01:01:22.072-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T01:01:22.075-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T01:01:22.076-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T01:01:22.082-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T01:01:22.089-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T01:01:22.097-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T01:01:22.110-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T01:01:22.117-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T01:01:29.742-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/mercadopago/create-preference
-2025-03-21T01:01:29.742-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/mercadopago/create-preference
-2025-03-21T01:01:29.744-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing POST /api/mercadopago/create-preference
-2025-03-21T01:01:29.744-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing POST /api/mercadopago/create-preference
-2025-03-21T01:01:29.745-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T01:01:29.745-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T01:01:29.745-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured POST /api/mercadopago/create-preference
-2025-03-21T01:01:29.745-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured POST /api/mercadopago/create-preference
-2025-03-21T01:01:31.116-03:00  WARN 34304 --- [mova] [Thread-1] o.a.h.c.protocol.ResponseProcessCookies  : Invalid cookie header: "Set-Cookie: _d2id=e13efee1-275f-43c0-965c-fced2a1bdba1-n; SameSite=None; Secure; Path=/; Domain=.mercadopago.com; Expires=Sat, 21 Mar 2026 04:01:31 GMT". Invalid 'expires' attribute: Sat, 21 Mar 2026 04:01:31 GMT
-2025-03-21T10:30:20.236-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /auth/loginCompany
-2025-03-21T10:30:20.255-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing POST /auth/loginCompany
-2025-03-21T10:30:20.255-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T10:30:20.257-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured POST /auth/loginCompany
-2025-03-21T10:30:20.424-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.s.a.dao.DaoAuthenticationProvider    : Authenticated user
-2025-03-21T10:30:23.554-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /auth/loginUser
-2025-03-21T10:30:23.557-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing POST /auth/loginUser
-2025-03-21T10:30:23.558-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T10:30:23.558-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured POST /auth/loginUser
-2025-03-21T10:30:23.621-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.s.a.dao.DaoAuthenticationProvider    : Authenticated user
-2025-03-21T10:30:42.893-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T10:30:42.894-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:30:42.895-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T10:30:42.895-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:30:42.896-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:30:42.896-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T10:30:42.903-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T10:30:42.913-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T10:30:42.919-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T10:30:43.265-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:30:43.273-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:30:43.279-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:30:54.840-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/mercadopago/create-preference
-2025-03-21T10:30:54.840-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/mercadopago/create-preference
-2025-03-21T10:30:54.842-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing POST /api/mercadopago/create-preference
-2025-03-21T10:30:54.842-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing POST /api/mercadopago/create-preference
-2025-03-21T10:30:54.842-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T10:30:54.842-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T10:30:54.842-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured POST /api/mercadopago/create-preference
-2025-03-21T10:30:54.842-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured POST /api/mercadopago/create-preference
-2025-03-21T10:30:55.846-03:00  WARN 34304 --- [mova] [Thread-3] o.a.h.c.protocol.ResponseProcessCookies  : Invalid cookie header: "Set-Cookie: _d2id=fc61501e-4a5b-46f8-af10-a37c8b165c86-n; SameSite=None; Secure; Path=/; Domain=.mercadopago.com; Expires=Sat, 21 Mar 2026 13:30:56 GMT". Invalid 'expires' attribute: Sat, 21 Mar 2026 13:30:56 GMT
-2025-03-21T10:31:43.684-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:31:43.686-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:31:43.691-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:31:43.697-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:31:43.707-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:31:43.715-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:31:44.635-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T10:31:44.637-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=day
-2025-03-21T10:31:44.643-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T10:31:44.649-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T10:31:44.658-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=day
-2025-03-21T10:31:44.663-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=day
-2025-03-21T10:32:00.631-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=week
-2025-03-21T10:32:00.633-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=week
-2025-03-21T10:32:00.640-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=week
-2025-03-21T10:32:05.008-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=month
-2025-03-21T10:32:05.008-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=month
-2025-03-21T10:32:05.014-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=month
-2025-03-21T10:32:07.274-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=year
-2025-03-21T10:32:07.275-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=year
-2025-03-21T10:32:07.281-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=year
-2025-03-21T10:32:07.634-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/sales?filter=week
-2025-03-21T10:32:07.635-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=week
-2025-03-21T10:32:07.642-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=week
-2025-03-21T10:32:07.874-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=month
-2025-03-21T10:32:07.879-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=month
-2025-03-21T10:32:08.150-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=year
-2025-03-21T10:32:08.157-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=year
-2025-03-21T10:32:08.623-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=week
-2025-03-21T10:32:08.628-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=week
-2025-03-21T10:32:08.975-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=month
-2025-03-21T10:32:08.980-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=month
-2025-03-21T10:32:09.241-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/sales?filter=year
-2025-03-21T10:32:09.247-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/sales?filter=year
-2025-03-21T10:32:10.430-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/top-selling-drinks?filter=year
-2025-03-21T10:32:10.432-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/top-selling-drinks?filter=year
-2025-03-21T10:32:10.437-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/top-selling-drinks?filter=year
-2025-03-21T10:32:14.651-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/statistics/cash-register-history?filter=year
-2025-03-21T10:32:14.653-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/statistics/cash-register-history?filter=year
-2025-03-21T10:32:14.658-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/statistics/cash-register-history?filter=year
-2025-03-21T10:32:20.602-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:32:20.607-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:32:20.611-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:32:20.620-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:32:20.631-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:32:20.639-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:32:21.899-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/close
-2025-03-21T10:32:21.902-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing POST /api/cash-register/close
-2025-03-21T10:32:21.907-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured POST /api/cash-register/close
-2025-03-21T10:32:36.376-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T10:32:36.378-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T10:32:36.382-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T10:32:36.387-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T10:32:36.395-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T10:32:36.402-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T10:32:37.288-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:32:37.290-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:32:37.292-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:32:37.298-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:32:37.306-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:32:37.311-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:33:13.300-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T10:33:13.303-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:33:13.307-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-7] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/products
-2025-03-21T10:33:13.307-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:33:13.310-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T10:33:13.311-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:33:13.319-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:33:13.319-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T10:33:13.328-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Securing GET /api/products
-2025-03-21T10:33:13.329-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:33:13.334-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:33:13.334-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-8] o.s.security.web.FilterChainProxy        : Secured GET /api/products
-2025-03-21T10:33:25.863-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:33:25.865-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-3] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/cash-register/status
-2025-03-21T10:33:25.866-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:33:25.873-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T10:33:25.882-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/cash-register/status
-2025-03-21T10:33:25.888-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/cash-register/status
-2025-03-21T20:58:39.323-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /auth/loginUser
-2025-03-21T20:58:39.327-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T20:58:39.328-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /auth/loginUser
-2025-03-21T20:58:39.338-03:00  WARN 34304 --- [mova] [http-nio-8080-exec-10] .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.web.HttpRequestMethodNotSupportedException: Request method 'GET' is not supported]
-2025-03-21T20:58:39.357-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /error
-2025-03-21T20:58:39.358-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /error
-2025-03-21T20:58:39.461-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-10] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T20:58:40.285-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /favicon.ico
-2025-03-21T20:58:40.285-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
-2025-03-21T20:58:40.289-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Securing GET /error
-2025-03-21T20:58:40.289-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.security.web.FilterChainProxy        : Secured GET /error
-2025-03-21T20:58:40.302-03:00 DEBUG 34304 --- [mova] [http-nio-8080-exec-2] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2025-03-27T13:42:57.590-03:00  INFO 30808 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : Starting MovaApplicationTests using Java 21.0.6 with PID 30808 (started by facue in C:\Users\facue\Desktop\MOVA\backend\Mova)
+2025-03-27T13:42:57.598-03:00  INFO 30808 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : No active profile set, falling back to 1 default profile: "default"
+2025-03-27T13:42:58.258-03:00  INFO 30808 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-03-27T13:42:58.330-03:00  INFO 30808 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 63 ms. Found 5 JPA repository interfaces.
+2025-03-27T13:42:58.850-03:00  INFO 30808 --- [mova] [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-03-27T13:42:58.924-03:00  INFO 30808 --- [mova] [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
+2025-03-27T13:42:58.961-03:00  INFO 30808 --- [mova] [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-03-27T13:42:59.251-03:00  INFO 30808 --- [mova] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-03-27T13:42:59.289-03:00  INFO 30808 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-03-27T13:42:59.467-03:00  INFO 30808 --- [mova] [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@5c573229
+2025-03-27T13:42:59.471-03:00  INFO 30808 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-03-27T13:42:59.518-03:00  WARN 30808 --- [mova] [main] org.hibernate.dialect.Dialect            : HHH000511: The 5.5.0 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-03-27T13:42:59.524-03:00  WARN 30808 --- [mova] [main] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-03-27T13:43:00.446-03:00  INFO 30808 --- [mova] [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-03-27T13:43:00.540-03:00  INFO 30808 --- [mova] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-03-27T13:43:00.999-03:00  INFO 30808 --- [mova] [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-03-27T13:43:01.749-03:00  WARN 30808 --- [mova] [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-03-27T13:43:02.091-03:00  INFO 30808 --- [mova] [main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@2bf5f4, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@1a5e19fe, org.springframework.security.web.context.SecurityContextHolderFilter@418f3cde, org.springframework.security.web.header.HeaderWriterFilter@629bee3b, org.springframework.web.filter.CorsFilter@3e7ac200, org.springframework.security.web.authentication.logout.LogoutFilter@3d73f2a1, com.movauy.mova.Jwt.JwtAuthenticationFilter@28c00acd, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@720da195, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@4dbf902, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@222b4ab1, org.springframework.security.web.session.SessionManagementFilter@5074893, org.springframework.security.web.access.ExceptionTranslationFilter@442545ab, org.springframework.security.web.access.intercept.AuthorizationFilter@3983b06d]
+2025-03-27T13:43:02.424-03:00  INFO 30808 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2025-03-27T13:43:02.427-03:00  INFO 30808 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@7a6cab6f]]
+2025-03-27T13:43:02.430-03:00  INFO 30808 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2025-03-27T13:43:02.435-03:00  INFO 30808 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : Started MovaApplicationTests in 5.093 seconds (process running for 6.05)
+2025-03-27T13:43:02.877-03:00  INFO 30808 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
+2025-03-27T13:43:02.877-03:00  INFO 30808 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@7a6cab6f]]
+2025-03-27T13:43:02.877-03:00  INFO 30808 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
+2025-03-27T13:43:02.880-03:00  INFO 30808 --- [mova] [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-03-27T13:43:02.881-03:00  INFO 30808 --- [mova] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-03-27T13:43:02.886-03:00  INFO 30808 --- [mova] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2025-03-27T14:28:17.408-03:00  INFO 32720 --- [mova] [main] com.movauy.mova.MovaApplication          : Starting MovaApplication using Java 21.0.6 with PID 32720 (C:\Users\facue\Desktop\MOVA\backend\Mova\target\classes started by facue in C:\Users\facue\Desktop\MOVA\backend\Mova)
+2025-03-27T14:28:17.410-03:00  INFO 32720 --- [mova] [main] com.movauy.mova.MovaApplication          : No active profile set, falling back to 1 default profile: "default"
+2025-03-27T14:28:17.924-03:00  INFO 32720 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-03-27T14:28:17.984-03:00  INFO 32720 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 53 ms. Found 5 JPA repository interfaces.
+2025-03-27T14:28:18.411-03:00  INFO 32720 --- [mova] [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2025-03-27T14:28:18.421-03:00  INFO 32720 --- [mova] [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-03-27T14:28:18.421-03:00  INFO 32720 --- [mova] [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.18]
+2025-03-27T14:28:18.471-03:00  INFO 32720 --- [mova] [main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-03-27T14:28:18.472-03:00  INFO 32720 --- [mova] [main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1023 ms
+2025-03-27T14:28:18.571-03:00  INFO 32720 --- [mova] [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-03-27T14:28:18.616-03:00  INFO 32720 --- [mova] [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
+2025-03-27T14:28:18.642-03:00  INFO 32720 --- [mova] [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-03-27T14:28:18.817-03:00  INFO 32720 --- [mova] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-03-27T14:28:18.839-03:00  INFO 32720 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-03-27T14:28:18.956-03:00  INFO 32720 --- [mova] [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@2c34402
+2025-03-27T14:28:18.957-03:00  INFO 32720 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-03-27T14:28:18.986-03:00  WARN 32720 --- [mova] [main] org.hibernate.dialect.Dialect            : HHH000511: The 5.5.0 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-03-27T14:28:18.989-03:00  WARN 32720 --- [mova] [main] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-03-27T14:28:19.751-03:00  INFO 32720 --- [mova] [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-03-27T14:28:19.821-03:00  INFO 32720 --- [mova] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-03-27T14:28:20.096-03:00  INFO 32720 --- [mova] [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-03-27T14:28:20.648-03:00  WARN 32720 --- [mova] [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-03-27T14:28:20.810-03:00  INFO 32720 --- [mova] [main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@545bc8e1, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@5f3705e7, org.springframework.security.web.context.SecurityContextHolderFilter@5b628376, org.springframework.security.web.header.HeaderWriterFilter@3e4d197, org.springframework.web.filter.CorsFilter@8872669, org.springframework.security.web.authentication.logout.LogoutFilter@2cf073da, com.movauy.mova.Jwt.JwtAuthenticationFilter@451cef67, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@15363eba, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@6d6e8dfc, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@14b53f58, org.springframework.security.web.session.SessionManagementFilter@64b6d6dd, org.springframework.security.web.access.ExceptionTranslationFilter@1cfa5e46, org.springframework.security.web.access.intercept.AuthorizationFilter@5af7a7]
+2025-03-27T14:28:20.999-03:00  INFO 32720 --- [mova] [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path ''
+2025-03-27T14:28:21.000-03:00  INFO 32720 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2025-03-27T14:28:21.001-03:00  INFO 32720 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@1761383f]]
+2025-03-27T14:28:21.001-03:00  INFO 32720 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2025-03-27T14:28:21.006-03:00  INFO 32720 --- [mova] [main] com.movauy.mova.MovaApplication          : Started MovaApplication in 3.93 seconds (process running for 4.224)
+2025-03-27T14:29:20.995-03:00  INFO 32720 --- [mova] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 1, active threads = 1, queued tasks = 0, completed tasks = 0]
+2025-03-27T14:59:21.006-03:00  INFO 32720 --- [mova] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 2, active threads = 1, queued tasks = 0, completed tasks = 1]
+2025-03-27T15:29:21.018-03:00  INFO 32720 --- [mova] [MessageBroker-2] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 3, active threads = 1, queued tasks = 0, completed tasks = 2]
+2025-03-27T15:59:21.044-03:00  INFO 32720 --- [mova] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 4, active threads = 1, queued tasks = 0, completed tasks = 3]
+2025-03-27T16:29:21.049-03:00  INFO 32720 --- [mova] [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 5, active threads = 1, queued tasks = 0, completed tasks = 4]
+2025-03-27T16:59:21.063-03:00  INFO 32720 --- [mova] [MessageBroker-2] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 6, active threads = 1, queued tasks = 0, completed tasks = 5]
+2025-03-27T17:29:21.075-03:00  INFO 32720 --- [mova] [MessageBroker-4] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 7, active threads = 1, queued tasks = 0, completed tasks = 6]
+2025-03-27T17:59:21.090-03:00  INFO 32720 --- [mova] [MessageBroker-1] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 8, active threads = 1, queued tasks = 0, completed tasks = 7]
+2025-03-27T18:29:21.096-03:00  INFO 32720 --- [mova] [MessageBroker-5] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 9, active threads = 1, queued tasks = 0, completed tasks = 8]
+2025-03-27T18:59:21.100-03:00  INFO 32720 --- [mova] [MessageBroker-3] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 10, active threads = 1, queued tasks = 0, completed tasks = 9]
+2025-03-27T19:29:21.104-03:00  INFO 32720 --- [mova] [MessageBroker-6] o.s.w.s.c.WebSocketMessageBrokerStats    : WebSocketSession[0 current WS(0)-HttpStream(0)-HttpPoll(0), 0 total, 0 closed abnormally (0 connect failure, 0 send limit, 0 transport error)], stompSubProtocol[processed CONNECT(0)-CONNECTED(0)-DISCONNECT(0)], stompBrokerRelay[null], inboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], outboundChannel[pool size = 0, active threads = 0, queued tasks = 0, completed tasks = 0], sockJsScheduler[pool size = 11, active threads = 1, queued tasks = 0, completed tasks = 10]

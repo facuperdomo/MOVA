@@ -9,10 +9,28 @@ const PaymentQR = ({ amount }) => {
 
   useEffect(() => {
     console.log("PaymentQR: iniciando fetch para monto:", amount);
-    fetch(`${API_URL}/api/mercadopago/create-preference`, {
+
+    // Recupera el ID de la empresa y el token desde localStorage
+    const companyId = localStorage.getItem("companyId"); 
+    const token = localStorage.getItem("token"); 
+
+    // Si no tienes el companyId en localStorage, podrías recibirlo como prop
+    // o buscarlo de otra forma, pero aquí se asume que está en localStorage.
+    if (!companyId) {
+      console.error("No se encontró companyId en localStorage.");
+      setLoading(false);
+      return;
+    }
+
+    // Construye la URL con el ID de la empresa
+    const url = `${API_URL}/api/mercadopago/create-preference/${companyId}`;
+
+    fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        // Incluye el token JWT si tu backend exige autenticación
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ amount })
     })
@@ -39,7 +57,6 @@ const PaymentQR = ({ amount }) => {
         <p>Generando código QR...</p>
       ) : (
         <>
-          <p>Escanea el código QR para pagar:</p>
           {qrUrl ? (
             <QRCodeCanvas value={qrUrl} size={256} />
           ) : (

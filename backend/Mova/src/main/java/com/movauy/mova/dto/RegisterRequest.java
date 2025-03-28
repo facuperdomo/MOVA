@@ -18,4 +18,5 @@ public class RegisterRequest {
     String password;
     String role;
     String companyId;
+    String mercadoPagoAccessToken;
 }

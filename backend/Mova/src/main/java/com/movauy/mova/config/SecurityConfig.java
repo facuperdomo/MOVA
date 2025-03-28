@@ -49,7 +49,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authRequest ->
                         authRequest
-                                .requestMatchers("/auth/**", "/error/**", "/api/mercadopago/create-preference", "/api/webhooks/mercadopago").permitAll()
+                                .requestMatchers("/auth/**", "/error/**", "/api/mercadopago/**", "/api/webhooks/mercadopago").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .sessionManagement(sessionManager ->
