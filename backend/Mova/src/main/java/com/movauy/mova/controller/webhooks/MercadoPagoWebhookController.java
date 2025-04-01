@@ -39,6 +39,7 @@ public class MercadoPagoWebhookController {
         }
         
         // Envía el estado del pago a través de WebSocket a todos los clientes suscritos al canal "/topic/payment-status"
+        System.out.println("Enviando mensaje de estado de pago: " + paymentStatus);
         messagingTemplate.convertAndSend("/topic/payment-status", paymentStatus);
         
         return ResponseEntity.ok().build();
