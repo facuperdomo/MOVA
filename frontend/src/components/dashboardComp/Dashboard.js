@@ -32,6 +32,7 @@ const Dashboard = () => {
 
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
+    console.log("Iniciando conexión WS a:", `${API_URL}/ws`);
     const socket = new SockJS(`${API_URL}/ws`);
     const stompClient = new Client({
       webSocketFactory: () => socket,
@@ -41,7 +42,6 @@ const Dashboard = () => {
         stompClient.subscribe("/topic/payment-status", (message) => {
           console.log("Mensaje de pago recibido:", message.body);
           setPaymentStatus(message.body);
-          // Puedes mostrar un popup o banner según lo necesites
         });
       },
       onStompError: (frame) => {
@@ -49,11 +49,18 @@ const Dashboard = () => {
       },
     });
     stompClient.activate();
-
     return () => {
       stompClient.deactivate();
     };
   }, []);
+
+  // Si se recibe un estado de pago, se oculta automáticamente después de 5 segundos
+  useEffect(() => {
+    if (paymentStatus) {
+      const timer = setTimeout(() => setPaymentStatus(""), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentStatus]);
 
   // Verificar si la caja está abierta
   const checkCashRegisterStatus = async () => {
@@ -65,7 +72,7 @@ const Dashboard = () => {
     }
   };
 
-  // Actualizar ventas pendientes (offline)
+  // Actualizar el contador de ventas pendientes (offline)
   const updatePendingSalesCount = () => {
     const offlineSales = JSON.parse(localStorage.getItem("offlineSales")) || [];
     setPendingSalesCount(offlineSales.length);
@@ -275,12 +282,20 @@ const Dashboard = () => {
     }
   };
 
-  // Función para renderizar el estado del pago recibido por WebSocket
+  // Función para renderizar el estado del pago recibido vía WebSocket
   const renderPaymentStatus = () => {
     if (!paymentStatus) return null;
+    // Aplica estilos condicionales: verde si es "approved", rojo si es otro
+    const statusStyle = {
+      backgroundColor: paymentStatus.toLowerCase() === "approved" ? "#4caf50" : "#f44336",
+    };
     return (
-      <div className="payment-status-message">
-        <p>{paymentStatus}</p>
+      <div
+        className="payment-status-message"
+        style={statusStyle}
+        onClick={() => setPaymentStatus("")}
+      >
+        <p>Estado del pago: {paymentStatus}</p>
       </div>
     );
   };

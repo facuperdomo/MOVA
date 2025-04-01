@@ -498,3 +498,24 @@ body, html {
 .undo-sale-btn:active {
   transform: scale(0.98);
 }
+
+/* Banner para el estado del pago vía WebSocket */
+.payment-status-message {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 15px;
+  text-align: center;
+  font-size: 18px;
+  color: white;
+  z-index: 1100;
+  cursor: pointer;
+  /* Los colores de fondo se definen dinámicamente en línea desde React */
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
