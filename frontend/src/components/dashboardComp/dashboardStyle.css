@@ -90,23 +90,20 @@ body, html {
 ────────────────────────────── */
 .products-grid {
   display: grid;
-  /* Cada contenedor de producto tiene un ancho fijo de 250px.
-     Si no caben columnas completas, la tarjeta se pasa a la siguiente fila. */
   grid-template-columns: repeat(auto-fill, 250px);
-  justify-content: center; /* centra la grid en caso de espacio sobrante */
+  justify-content: center;
   gap: 20px;
   padding: 10px;
 }
 
-/* Tarjeta de Producto con fondo uniforme y altura mínima fija */
 .product-card {
-  background-color: #333; /* Fondo uniforme en toda la tarjeta */
+  background-color: #333;
   border-radius: 12px;
   cursor: pointer;
   transition: transform 0.2s ease;
   display: flex;
   flex-direction: column;
-  min-height: 350px; /* Altura mínima para imagen + info */
+  min-height: 350px;
   box-shadow: 0 5px 12px rgba(0,0,0,0.5);
   overflow: hidden;
   border: 2px solid transparent;
@@ -116,17 +113,15 @@ body, html {
   transform: scale(1.05);
 }
 
-/* Contenedor de Imagen: centra la imagen entre el tope y la info */
 .image-container {
   width: 100%;
   flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  /* No se define altura fija en el contenedor; la imagen se fija a 200px */
 }
 .product-card img {
-  height: 200px; /* Tamaño fijo para la imagen */
+  height: 200px;
   width: auto;
   object-fit: contain;
 }
@@ -136,16 +131,15 @@ body, html {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #555; /* Fondo para imágenes fallidas (opcional) */
+  background-color: #555;
   font-size: 14px;
   border-radius: 8px;
 }
 
-/* Contenedor de Información, forzado al fondo */
 .product-info {
   padding: 10px;
   text-align: center;
-  margin-top: auto; /* Empuja la info al final de la tarjeta */
+  margin-top: auto;
 }
 .product-info h3 {
   font-size: 18px;
@@ -272,7 +266,7 @@ body, html {
 }
 
 /* ───────────────────────────────
-   Popup Overlay
+   Popup Overlay y Contenido
 ────────────────────────────── */
 .popup-overlay {
   position: fixed;
@@ -287,6 +281,7 @@ body, html {
   z-index: 1002;
   animation: fadeIn 0.3s ease forwards;
 }
+
 .popup-content {
   background-color: #333;
   padding: 40px;
@@ -297,15 +292,18 @@ body, html {
   animation: scaleIn 0.3s ease forwards;
   box-shadow: 0 8px 20px rgba(0,0,0,0.7);
 }
+
 .popup-content h2 {
   font-size: 32px;
   margin-bottom: 30px;
 }
+
 .popup-buttons {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
+
 .popup-btn {
   padding: 18px;
   font-size: 22px;
@@ -349,6 +347,39 @@ body, html {
 }
 
 /* ───────────────────────────────
+   Estilos específicos para el popup QR
+────────────────────────────── */
+.qr-popup-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.qr-popup-title {
+  font-size: 28px;
+  margin-bottom: 20px;
+  color: #ffcc00;
+}
+
+/* Botón "Volver" para el popup QR */
+.back-button {
+  margin-top: 20px;
+  padding: 12px 20px;
+  font-size: 18px;
+  border: none;
+  border-radius: 8px;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.back-button:hover {
+  background-color: #0056b3;
+}
+.back-button:active {
+  transform: scale(0.95);
+}
+
+/* ───────────────────────────────
    Animaciones
 ────────────────────────────── */
 @keyframes fadeIn {
@@ -364,7 +395,6 @@ body, html {
    Responsive Ajustes
 ────────────────────────────── */
 @media (max-width: 1100px) {
-  
   .cart-panel h2 {
     font-size: 20px;
   }
@@ -434,7 +464,6 @@ body, html {
   transition: background 0.2s, transform 0.1s;
   margin-top: 10px;
 }
-
 .sync-sales-btn:disabled {
   background-color: #aaa;
   cursor: not-allowed;
@@ -463,53 +492,9 @@ body, html {
   margin-top: 10px;
   transition: background 0.2s, transform 0.1s;
 }
-
 .undo-sale-btn:hover {
   background-color: #c82333;
 }
-
 .undo-sale-btn:active {
   transform: scale(0.98);
-}
-
-/* Estilos específicos para el popup QR */
-.qr-popup-container {
-  text-align: center;
-  padding: 20px;
-}
-
-.qr-popup-title {
-  font-size: 28px;
-  margin-bottom: 20px;
-  color: #ffcc00;
-}
-
-/* Estilo para el QR, puedes ajustar si lo deseas; aquí se espera que PaymentQR.js (o su CSS) ya tenga sus estilos */
-.qr-canvas {
-  border: 5px solid #007bff;
-  border-radius: 12px;
-  padding: 10px;
-  background-color: #fff;
-  margin: 0 auto;
-}
-
-/* Botón "Volver" para el popup QR */
-.back-button {
-  margin-top: 20px;
-  padding: 12px 20px;
-  font-size: 18px;
-  border: none;
-  border-radius: 8px;
-  background-color: #007bff;
-  color: #fff;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.1s ease;
-}
-
-.back-button:hover {
-  background-color: #0056b3;
-}
-
-.back-button:active {
-  transform: scale(0.95);
 }

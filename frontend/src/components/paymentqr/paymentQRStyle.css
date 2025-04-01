@@ -1,0 +1,41 @@
+/* src/components/paymentqr/PaymentQR.css */
+.payment-qr-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-color: #222;
+    border-radius: 16px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    margin: 20px;
+  }
+  
+  .loading-message {
+    font-size: 20px;
+    color: #ccc;
+    margin: 20px;
+  }
+  
+  .qr-content {
+    text-align: center;
+  }
+  
+  .qr-instruction {
+    font-size: 22px;
+    margin-bottom: 20px;
+    color: #ffcc00;
+  }
+  
+  .qr-canvas {
+    border: 5px solid #007bff;
+    border-radius: 12px;
+    padding: 10px;
+    background-color: #fff;
+  }
+  
+  .error-message {
+    font-size: 18px;
+    color: red;
+  }
+  

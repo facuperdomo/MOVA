@@ -1,3 +1,4 @@
+// src/components/dashboard/Dashboard.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./dashboardStyle.css";
@@ -23,7 +24,7 @@ const Dashboard = () => {
   const [pendingSalesCount, setPendingSalesCount] = useState(0);
   const [offlineMessage, setOfflineMessage] = useState("");
 
-  // Nuevo estado para almacenar la última venta exitosa (online)
+  // Estado para almacenar la última venta exitosa (online)
   const [lastSale, setLastSale] = useState(null);
 
   // Verificar si la caja está abierta (se espera que customFetch incluya el header Authorization)
@@ -78,7 +79,7 @@ const Dashboard = () => {
         throw new Error("La respuesta no es un array");
       const productsWithFixedImages = response.map((product) => ({
         ...product,
-        image: product.image?.startsWith("data:image")
+        image: product.image && product.image.startsWith("data:image")
           ? product.image
           : `data:image/png;base64,${product.image}`,
         imageError: false,
@@ -160,20 +161,16 @@ const Dashboard = () => {
       setCart([]);
       setTotal(0);
       updatePendingSalesCount();
-      setOfflineMessage(
-        "Estás sin conexión. La venta se guardó localmente y se sincronizará al reconectarte."
-      );
+      setOfflineMessage("Estás sin conexión. La venta se guardó localmente y se sincronizará al reconectarte.");
       return;
     }
 
     try {
-      // Se asume que customFetch incluye el header Authorization con el token
       const response = await customFetch(`${API_URL}/api/sales`, {
         method: "POST",
         body: JSON.stringify(saleData),
       });
       console.log("Venta registrada exitosamente en la base de datos");
-      // Guardamos la última venta para poder deshacerla
       setLastSale(response);
       setShowPopup(false);
       setCart([]);
@@ -192,13 +189,9 @@ const Dashboard = () => {
       return;
     }
     try {
-      // Se asume un endpoint para cancelar la venta, por ejemplo:
-      await customFetch(
-        `${API_URL}/api/statistics/cancel-sale/${lastSale.id}`,
-        {
-          method: "PUT",
-        }
-      );
+      await customFetch(`${API_URL}/api/statistics/cancel-sale/${lastSale.id}`, {
+        method: "PUT",
+      });
       alert("La última venta ha sido deshecha.");
       setLastSale(null);
     } catch (error) {
@@ -210,8 +203,7 @@ const Dashboard = () => {
   // Almacenar venta offline en localStorage (para producción se recomienda IndexedDB)
   const storeOfflineSale = (saleData) => {
     try {
-      const offlineSales =
-        JSON.parse(localStorage.getItem("offlineSales")) || [];
+      const offlineSales = JSON.parse(localStorage.getItem("offlineSales")) || [];
       saleData.tempId = Date.now();
       offlineSales.push(saleData);
       localStorage.setItem("offlineSales", JSON.stringify(offlineSales));
@@ -232,27 +224,18 @@ const Dashboard = () => {
           await customFetch(`${API_URL}/api/sales`, {
             method: "POST",
             body: JSON.stringify(sale),
-            // Asegúrate de que customFetch envíe el header Authorization con token
           });
-          console.log(
-            `Venta tempId=${sale.tempId} sincronizada correctamente.`
-          );
+          console.log(`Venta tempId=${sale.tempId} sincronizada correctamente.`);
         } catch (err) {
-          // Si el error es 401, redirigir al login para reautenticación
           if (err.status === 401) {
-            alert(
-              "La sincronización automática falló porque tu sesión expiró. Por favor, inicia sesión nuevamente."
-            );
+            alert("La sincronización automática falló porque tu sesión expiró. Por favor, inicia sesión nuevamente.");
             localStorage.removeItem("token");
             localStorage.removeItem("role");
             localStorage.removeItem("isAdmin");
             navigate("/login");
             return;
           } else {
-            console.warn(
-              `Error al sincronizar venta tempId=${sale.tempId}`,
-              err
-            );
+            console.warn(`Error al sincronizar venta tempId=${sale.tempId}`, err);
             updatedSales.push(sale);
           }
         }
@@ -272,17 +255,12 @@ const Dashboard = () => {
 
   return (
     <div className="app-container">
-      {/* Sidebar (solo para admin) */}
       {isAdmin && (
-        <div
-          className="dashboard-sidebar"
-          onClick={() => navigate("/admin-options")}
-        >
+        <div className="dashboard-sidebar" onClick={() => navigate("/admin-options")}>
           <ArrowLeft size={40} className="back-icon" />
         </div>
       )}
 
-      {/* Contenedor para contenido y carrito */}
       <div className="content-wrapper">
         <div className="main-content">
           <h2>Selección de Productos</h2>
@@ -293,11 +271,7 @@ const Dashboard = () => {
           ) : (
             <div className="products-grid">
               {products.map((product, index) => (
-                <div
-                  key={product.id}
-                  className="product-card"
-                  onClick={() => addToCart(product)}
-                >
+                <div key={product.id} className="product-card" onClick={() => addToCart(product)}>
                   <div className="image-container">
                     {!product.imageError ? (
                       <img
@@ -306,18 +280,13 @@ const Dashboard = () => {
                         onError={() => {
                           setProducts((prevProducts) => {
                             const newProducts = [...prevProducts];
-                            newProducts[index] = {
-                              ...product,
-                              imageError: true,
-                            };
+                            newProducts[index] = { ...product, imageError: true };
                             return newProducts;
                           });
                         }}
                       />
                     ) : (
-                      <div className="image-placeholder">
-                        Imagen no disponible
-                      </div>
+                      <div className="image-placeholder">Imagen no disponible</div>
                     )}
                   </div>
                   <div className="product-info">
@@ -330,7 +299,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Panel del carrito */}
         <div className="cart-panel">
           <h2>Carrito</h2>
           <div className="cart-list">
@@ -339,10 +307,7 @@ const Dashboard = () => {
                 <div className="cart-item-text">
                   {item.name} x {item.quantity}
                 </div>
-                <button
-                  className="delete-button"
-                  onClick={() => removeFromCart(item.id)}
-                >
+                <button className="delete-button" onClick={() => removeFromCart(item.id)}>
                   <Trash2 size={18} />
                 </button>
               </div>
@@ -350,11 +315,7 @@ const Dashboard = () => {
           </div>
           <div className="cart-footer">
             <span className="total-amount">Total: ${total}</span>
-            <button
-              className="accept-sale"
-              onClick={handlePayment}
-              disabled={!isCashRegisterOpen}
-            >
+            <button className="accept-sale" onClick={handlePayment} disabled={!isCashRegisterOpen}>
               Aceptar Venta
             </button>
             {!isCashRegisterOpen && (
@@ -362,21 +323,12 @@ const Dashboard = () => {
                 ⚠️ La caja está cerrada. No se pueden realizar ventas.
               </p>
             )}
-            {/* Botón de sincronización manual, habilitado solo si hay conexión */}
             {pendingSalesCount > 0 && (
-              <button
-                className="sync-sales-btn"
-                onClick={syncOfflineSales}
-                disabled={offline}
-              >
+              <button className="sync-sales-btn" onClick={syncOfflineSales} disabled={offline}>
                 Sincronizar {pendingSalesCount} ventas pendientes
               </button>
             )}
-            {/* Mensaje informativo para ventas guardadas offline */}
-            {offlineMessage && (
-              <div className="offline-message">{offlineMessage}</div>
-            )}
-            {/* Botón para deshacer la última venta. Se habilita solo si existe lastSale */}
+            {offlineMessage && <div className="offline-message">{offlineMessage}</div>}
             {lastSale && (
               <button className="undo-sale-btn" onClick={undoLastSale}>
                 Deshacer Última Venta
@@ -386,7 +338,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Botón de logout para usuario no admin */}
       {!isAdmin && (
         <div className="logout-button-container">
           <div className="logout-button" onClick={handleLogout}>
@@ -401,14 +352,9 @@ const Dashboard = () => {
             <X className="popup-close" size={32} onClick={closePopup} />
             {showQR ? (
               <div className="qr-popup-container">
-                <h2 className="qr-popup-title">
-                  Escanea el código QR para pagar
-                </h2>
+                <h2 className="qr-popup-title">Escanea el código QR para pagar</h2>
                 <PaymentQR amount={total} />
-                <button
-                  className="back-button"
-                  onClick={() => setShowQR(false)}
-                >
+                <button className="back-button" onClick={() => setShowQR(false)}>
                   Volver
                 </button>
               </div>
@@ -416,19 +362,13 @@ const Dashboard = () => {
               <>
                 <h2>Selecciona el Método de Pago</h2>
                 <div className="popup-buttons">
-                  <button
-                    className="popup-btn popup-btn-cash"
-                    onClick={handleCashPayment}
-                  >
+                  <button className="popup-btn popup-btn-cash" onClick={handleCashPayment}>
                     💸 Pagar con Efectivo
                   </button>
-                  <button
-                    className="popup-btn popup-btn-qr"
-                    onClick={() => {
+                  <button className="popup-btn popup-btn-qr" onClick={() => {
                       console.log("Pago con QR seleccionado");
                       setShowQR(true);
-                    }}
-                  >
+                    }}>
                     📱 Pagar con QR
                   </button>
                 </div>
@@ -438,25 +378,15 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Popup para avisar modo offline */}
       {showOfflinePopup && (
         <div className="popup-overlay">
           <div className="popup-content">
-            <X
-              className="popup-close"
-              size={32}
-              onClick={() => setShowOfflinePopup(false)}
-            />
+            <X className="popup-close" size={32} onClick={() => setShowOfflinePopup(false)} />
             <h2>Sin conexión</h2>
             <p>
-              Te encuentras sin conexión a Internet. Las ventas que realices se
-              guardarán localmente y se sincronizarán cuando vuelvas a estar
-              online.
+              Te encuentras sin conexión a Internet. Las ventas que realices se guardarán localmente y se sincronizarán cuando vuelvas a estar online.
             </p>
-            <button
-              className="popup-btn popup-btn-qr"
-              onClick={() => setShowOfflinePopup(false)}
-            >
+            <button className="popup-btn popup-btn-qr" onClick={() => setShowOfflinePopup(false)}>
               Aceptar
             </button>
           </div>

@@ -48,6 +48,7 @@ public class MercadoPagoController {
                 return ResponseEntity.badRequest().body(error);
             }
 
+            System.out.println("AccessToken de la empresa (ID=" + company.getId() + "): " + accessToken);
             // Configurar el SDK con el Access Token de la empresa
             MercadoPago.SDK.setAccessToken(accessToken);
 
