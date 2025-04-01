@@ -1,6 +1,8 @@
 // src/components/dashboard/Dashboard.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import SockJS from "sockjs-client";
+import { Client } from "@stomp/stompjs";
 import "./dashboardStyle.css";
 import { ArrowLeft, Trash2, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
@@ -23,11 +25,37 @@ const Dashboard = () => {
   const [showOfflinePopup, setShowOfflinePopup] = useState(false);
   const [pendingSalesCount, setPendingSalesCount] = useState(0);
   const [offlineMessage, setOfflineMessage] = useState("");
-
   // Estado para almacenar la última venta exitosa (online)
   const [lastSale, setLastSale] = useState(null);
+  // Estado para recibir el estado del pago vía WebSocket
+  const [paymentStatus, setPaymentStatus] = useState("");
 
-  // Verificar si la caja está abierta (se espera que customFetch incluya el header Authorization)
+  // Suscripción a WebSocket para recibir notificaciones de pago
+  useEffect(() => {
+    const socket = new SockJS(`${API_URL}/ws`);
+    const stompClient = new Client({
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
+      onConnect: () => {
+        console.log("Conectado al WebSocket");
+        stompClient.subscribe("/topic/payment-status", (message) => {
+          console.log("Mensaje de pago recibido:", message.body);
+          setPaymentStatus(message.body);
+          // Puedes mostrar un popup o banner según lo necesites
+        });
+      },
+      onStompError: (frame) => {
+        console.error("Error en STOMP:", frame);
+      },
+    });
+    stompClient.activate();
+
+    return () => {
+      stompClient.deactivate();
+    };
+  }, []);
+
+  // Verificar si la caja está abierta
   const checkCashRegisterStatus = async () => {
     try {
       const response = await customFetch(`${API_URL}/api/cash-register/status`);
@@ -35,6 +63,12 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error al verificar la caja:", error);
     }
+  };
+
+  // Actualizar ventas pendientes (offline)
+  const updatePendingSalesCount = () => {
+    const offlineSales = JSON.parse(localStorage.getItem("offlineSales")) || [];
+    setPendingSalesCount(offlineSales.length);
   };
 
   useEffect(() => {
@@ -47,17 +81,17 @@ const Dashboard = () => {
 
   // Manejo de eventos online/offline
   useEffect(() => {
-    function handleOnline() {
+    const handleOnline = () => {
       console.log("Conexión recuperada.");
       setOffline(false);
       setShowOfflinePopup(false);
       syncOfflineSales();
-    }
-    function handleOffline() {
+    };
+    const handleOffline = () => {
       console.log("Sin conexión.");
       setOffline(true);
       setShowOfflinePopup(true);
-    }
+    };
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     return () => {
@@ -66,22 +100,16 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Actualizar el contador de ventas pendientes
-  const updatePendingSalesCount = () => {
-    const offlineSales = JSON.parse(localStorage.getItem("offlineSales")) || [];
-    setPendingSalesCount(offlineSales.length);
-  };
-
   const fetchProducts = async () => {
     try {
       const response = await customFetch(`${API_URL}/api/products`);
-      if (!Array.isArray(response))
-        throw new Error("La respuesta no es un array");
+      if (!Array.isArray(response)) throw new Error("La respuesta no es un array");
       const productsWithFixedImages = response.map((product) => ({
         ...product,
-        image: product.image && product.image.startsWith("data:image")
-          ? product.image
-          : `data:image/png;base64,${product.image}`,
+        image:
+          product.image && product.image.startsWith("data:image")
+            ? product.image
+            : `data:image/png;base64,${product.image}`,
         imageError: false,
       }));
       setProducts(productsWithFixedImages);
@@ -113,10 +141,7 @@ const Dashboard = () => {
   const removeFromCart = (productId) => {
     setCart((prevCart) => {
       const updatedCart = prevCart.filter((item) => item.id !== productId);
-      const newTotal = updatedCart.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      );
+      const newTotal = updatedCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
       setTotal(newTotal);
       return updatedCart;
     });
@@ -129,7 +154,7 @@ const Dashboard = () => {
     navigate("/login");
   };
 
-  // Lógica de pago: se abre el popup de selección de pago
+  // Lógica para abrir el popup de pago
   const handlePayment = () => {
     setShowPopup(true);
     setShowQR(false);
@@ -152,8 +177,6 @@ const Dashboard = () => {
         unitPrice: item.price,
       })),
     };
-
-    const token = localStorage.getItem("token");
 
     if (offline) {
       storeOfflineSale(saleData);
@@ -182,7 +205,7 @@ const Dashboard = () => {
     }
   };
 
-  // Función para deshacer la última venta registrada
+  // Función para deshacer la última venta
   const undoLastSale = async () => {
     if (!lastSale) {
       alert("No hay ventas para deshacer.");
@@ -200,7 +223,7 @@ const Dashboard = () => {
     }
   };
 
-  // Almacenar venta offline en localStorage (para producción se recomienda IndexedDB)
+  // Almacenar venta offline en localStorage
   const storeOfflineSale = (saleData) => {
     try {
       const offlineSales = JSON.parse(localStorage.getItem("offlineSales")) || [];
@@ -212,12 +235,11 @@ const Dashboard = () => {
     }
   };
 
-  // Sincronizar ventas pendientes
+  // Sincronizar ventas offline
   const syncOfflineSales = async () => {
     try {
       let offlineSales = JSON.parse(localStorage.getItem("offlineSales")) || [];
       if (offlineSales.length === 0) return;
-      const token = localStorage.getItem("token");
       const updatedSales = [];
       for (let sale of offlineSales) {
         try {
@@ -253,6 +275,16 @@ const Dashboard = () => {
     }
   };
 
+  // Función para renderizar el estado del pago recibido por WebSocket
+  const renderPaymentStatus = () => {
+    if (!paymentStatus) return null;
+    return (
+      <div className="payment-status-message">
+        <p>{paymentStatus}</p>
+      </div>
+    );
+  };
+
   return (
     <div className="app-container">
       {isAdmin && (
@@ -260,6 +292,8 @@ const Dashboard = () => {
           <ArrowLeft size={40} className="back-icon" />
         </div>
       )}
+
+      {renderPaymentStatus()}
 
       <div className="content-wrapper">
         <div className="main-content">
@@ -365,10 +399,13 @@ const Dashboard = () => {
                   <button className="popup-btn popup-btn-cash" onClick={handleCashPayment}>
                     💸 Pagar con Efectivo
                   </button>
-                  <button className="popup-btn popup-btn-qr" onClick={() => {
+                  <button
+                    className="popup-btn popup-btn-qr"
+                    onClick={() => {
                       console.log("Pago con QR seleccionado");
                       setShowQR(true);
-                    }}>
+                    }}
+                  >
                     📱 Pagar con QR
                   </button>
                 </div>
