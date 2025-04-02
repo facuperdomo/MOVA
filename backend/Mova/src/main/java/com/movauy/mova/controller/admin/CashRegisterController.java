@@ -13,7 +13,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/cash-register")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "https://movauy.top:8443")
 public class CashRegisterController {
 
     private final CashRegisterService cashRegisterService;

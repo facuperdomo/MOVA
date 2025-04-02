@@ -4,6 +4,7 @@ import com.movauy.mova.Jwt.JwtService;
 import com.movauy.mova.dto.AuthResponse;
 import com.movauy.mova.dto.LoginRequest;
 import com.movauy.mova.dto.RegisterRequest;
+import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.user.Role;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.repository.user.UserRepository;
@@ -144,5 +145,29 @@ public class AuthService {
 
     public void updateUser(User user) {
         userRepository.save(user);
+    }
+
+    /**
+     * Método para obtener un DTO con datos básicos del usuario a partir del
+     * token JWT, sin disparar el desencriptado del campo
+     * mercadoPagoAccessToken.
+     */
+    public UserBasicDTO getUserBasicFromToken(String token) {
+        // Eliminar el prefijo Bearer si existe
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        String username = jwtService.getUsernameFromToken(token);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+
+        return new UserBasicDTO(
+                user.getId().longValue(),
+                user.getUsername(),
+                user.getCompanyId() != null ? user.getCompanyId() : user.getId().toString(),
+                user.getRole().name()
+        );
     }
 }

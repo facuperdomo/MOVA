@@ -17,7 +17,7 @@ public interface CashRegisterRepository extends JpaRepository<CashRegister, Long
     Optional<CashRegister> findByCloseDateIsNull();
 
     // NUEVO: Buscar caja abierta para un usuario específico
-    Optional<CashRegister> findByCloseDateIsNullAndUser_Id(Integer userId);
+    Optional<CashRegister> findByCloseDateIsNullAndUser_Id(Long userId);
 
     @Query("SELECT c FROM CashRegister c ORDER BY c.openDate DESC")
     List<CashRegister> findAllCashRegisters();

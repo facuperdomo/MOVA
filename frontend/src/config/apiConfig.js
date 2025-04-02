@@ -1,1 +1,1 @@
-export const API_URL = "http://54.173.35.11:8080";
+export const API_URL = "https://movauy.top:8443";
