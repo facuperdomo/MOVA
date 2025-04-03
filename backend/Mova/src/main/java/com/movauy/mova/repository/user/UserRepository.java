@@ -16,6 +16,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     Optional<User> findByUsername(String username);
 
-    @Query("SELECT new com.movauy.mova.dto.UserBasicDto(u.id, u.username, u.role, u.companyId) FROM User u WHERE u.id = :id")
+    @Query("SELECT new com.movauy.mova.dto.UserBasicDTO(u.id, u.username, u.role, u.companyId) FROM User u WHERE u.id = :id")
     Optional<UserBasicDTO> findUserBasicById(@Param("id") Long id);
 }
