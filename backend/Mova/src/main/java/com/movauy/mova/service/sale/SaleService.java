@@ -44,9 +44,9 @@ public class SaleService {
         CashRegister currentCashRegister = cashRegisterRepository.findByCloseDateIsNull()
                 .orElseThrow(() -> new RuntimeException("No se puede realizar la venta porque la caja está cerrada."));
 
-        // Obtener el usuario autenticado a partir del token
+        // Obtener el usuario autenticado a partir del token, sin datos sensibles
         Long companyId = authService.getCompanyIdFromToken(token);
-        User currentUser = authService.getUserById(companyId);
+        User currentUser = authService.getSafeUserById(companyId); // ← cambio acá
 
         Sale sale = new Sale();
         sale.setTotalAmount(saleDTO.getTotalAmount());

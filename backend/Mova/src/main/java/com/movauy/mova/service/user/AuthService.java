@@ -142,6 +142,14 @@ public class AuthService {
         return userRepository.findById(companyId.intValue())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
+    
+    /**
+     * Método para obtener un objeto User a partir del Id SIN TOKEN DE MERCADO PAGO.
+     */
+    public User getSafeUserById(Long id) {
+        return userRepository.findUserWithoutSensitiveData(id)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+    }
 
     public void updateUser(User user) {
         userRepository.save(user);
