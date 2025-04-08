@@ -1,3 +1,4 @@
+
 package com.movauy.mova.service.sale;
 
 import com.movauy.mova.dto.SaleDTO;
@@ -10,17 +11,14 @@ import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.product.ProductRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
 import com.movauy.mova.service.user.AuthService;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- *
- * @author Facundo
- */
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 public class SaleService {
 
@@ -30,8 +28,10 @@ public class SaleService {
     private final AuthService authService;
 
     @Autowired
-    public SaleService(ProductRepository productRepository, SaleRepository saleRepository,
-            CashRegisterRepository cashRegisterRepository, AuthService authService) {
+    public SaleService(ProductRepository productRepository,
+                       SaleRepository saleRepository,
+                       CashRegisterRepository cashRegisterRepository,
+                       AuthService authService) {
         this.productRepository = productRepository;
         this.saleRepository = saleRepository;
         this.cashRegisterRepository = cashRegisterRepository;
@@ -40,27 +40,29 @@ public class SaleService {
 
     @Transactional
     public Sale registerSale(SaleDTO saleDTO, String token) {
-        // Verificar si hay una caja abierta
+        // Verifica si hay una caja abierta
         CashRegister currentCashRegister = cashRegisterRepository.findByCloseDateIsNull()
                 .orElseThrow(() -> new RuntimeException("No se puede realizar la venta porque la caja está cerrada."));
 
-        // Obtener el usuario autenticado a partir del token, sin datos sensibles
+        // Obtiene el usuario sin campos sensibles
         Long companyId = authService.getCompanyIdFromToken(token);
-        User currentUser = authService.getSafeUserById(companyId); // ← cambio acá
+        User currentUser = authService.getSafeUserById(companyId);
 
+        // Crea la venta
         Sale sale = new Sale();
         sale.setTotalAmount(saleDTO.getTotalAmount());
         sale.setPaymentMethod(saleDTO.getPaymentMethod());
         sale.setDateTime(LocalDateTime.now());
         sale.setCashRegister(currentCashRegister);
-        sale.setUser(currentUser); // Asignamos el usuario (empresa) a la venta
+        sale.setUser(currentUser);
 
+        // Crea los ítems de la venta
         List<SaleItem> saleItems = saleDTO.getItems().stream().map(itemDTO -> {
             SaleItem item = new SaleItem();
             Product product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + itemDTO.getProductId()));
 
-            // Validar que el producto pertenezca a la misma empresa del usuario autenticado
+            // Validación de pertenencia
             if (!product.getUser().getId().equals(currentUser.getId())) {
                 throw new RuntimeException("El producto con ID " + itemDTO.getProductId() + " no pertenece a esta empresa.");
             }
@@ -75,5 +77,4 @@ public class SaleService {
         sale.setItems(saleItems);
         return saleRepository.save(sale);
     }
-
 }
