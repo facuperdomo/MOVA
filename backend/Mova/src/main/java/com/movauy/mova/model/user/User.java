@@ -6,7 +6,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +13,6 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "user", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"username"})
@@ -42,14 +40,14 @@ public class User implements UserDetails {
     @Convert(converter = com.movauy.mova.util.AttributeEncryptor.class)
     private String mercadoPagoAccessToken;
 
-    // Constructor manual para evitar usar AttributeConverter en consultas personalizadas
+    // Constructor manual para usar en consultas que eviten el AttributeConverter
     public User(Long id, String username, String password, Role role, String companyId, String ignoredToken) {
         this.id = id;
         this.username = username;
         this.password = password;
         this.role = role;
         this.companyId = companyId;
-        this.mercadoPagoAccessToken = null; // ignorado a propósito para no aplicar decrypt
+        this.mercadoPagoAccessToken = null; // No se carga
     }
 
     @Override
