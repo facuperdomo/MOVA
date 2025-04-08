@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Data
 @Builder
@@ -38,6 +39,7 @@ public class User implements UserDetails {
 
     @Column(name = "mercadopago_access_token")
     @Convert(converter = com.movauy.mova.util.AttributeEncryptor.class)
+    @JsonIgnore 
     private String mercadoPagoAccessToken;
 
     // Constructor manual para usar en consultas que eviten el AttributeConverter

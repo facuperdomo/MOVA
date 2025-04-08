@@ -1,14 +1,10 @@
 package com.movauy.mova.model.product;
 
-import com.movauy.mova.model.user.User;  // Importar la entidad Company
+import com.movauy.mova.model.user.User;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * Representa un producto que se vende en el sistema
- * 
- * @author Facundo
- */
 @Entity
 @Table(name = "products")
 @Getter
@@ -32,7 +28,8 @@ public class Product {
     @Column(columnDefinition = "LONGBLOB")
     private byte[] image;
 
-    @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)  // Relaciona el producto con un usuario
-    private User user;  // Usuario que creó el producto
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    @JsonIgnoreProperties({"mercadoPagoAccessToken", "password", "authorities"})
+    private User user;
 }

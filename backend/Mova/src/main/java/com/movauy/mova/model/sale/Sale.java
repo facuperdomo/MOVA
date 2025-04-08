@@ -8,6 +8,7 @@ import lombok.Setter;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  *
@@ -44,5 +45,6 @@ public class Sale {
     
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)  // Relaciona la venta con un usuario
+    @JsonIgnore
     private User user;  // Usuario dueño de la venta
 }
