@@ -1,4 +1,3 @@
-
 package com.movauy.mova.service.sale;
 
 import com.movauy.mova.dto.SaleDTO;
@@ -44,9 +43,10 @@ public class SaleService {
         CashRegister currentCashRegister = cashRegisterRepository.findByCloseDateIsNull()
                 .orElseThrow(() -> new RuntimeException("No se puede realizar la venta porque la caja está cerrada."));
 
-        // Obtiene el usuario sin campos sensibles
+        // Solo se setea el ID del usuario para evitar problemas con AttributeConverter
         Long companyId = authService.getCompanyIdFromToken(token);
-        User currentUser = authService.getSafeUserById(companyId);
+        User currentUser = new User();
+        currentUser.setId(companyId);
 
         // Crea la venta
         Sale sale = new Sale();
@@ -63,7 +63,7 @@ public class SaleService {
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + itemDTO.getProductId()));
 
             // Validación de pertenencia
-            if (!product.getUser().getId().equals(currentUser.getId())) {
+            if (product.getUser() == null || !product.getUser().getId().equals(currentUser.getId())) {
                 throw new RuntimeException("El producto con ID " + itemDTO.getProductId() + " no pertenece a esta empresa.");
             }
 
