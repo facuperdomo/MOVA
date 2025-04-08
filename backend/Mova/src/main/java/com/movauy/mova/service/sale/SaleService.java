@@ -10,13 +10,12 @@ import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.product.ProductRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
 import com.movauy.mova.service.user.AuthService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SaleService {
@@ -39,16 +38,22 @@ public class SaleService {
 
     @Transactional
     public Sale registerSale(SaleDTO saleDTO, String token) {
-        // Verifica si hay una caja abierta
-        CashRegister currentCashRegister = cashRegisterRepository.findByCloseDateIsNull()
+        // Primero: obtener el companyId a partir del token
+        Long companyId = authService.getCompanyIdFromToken(token);
+
+        // Obtiene la caja abierta filtrando por usuario (companyId)
+        // Asegúrate que en CashRegisterRepository exista el método:
+        // Optional<CashRegister> findByCloseDateIsNullAndUser_Id(Long userId);
+        CashRegister currentCashRegister = cashRegisterRepository
+                .findByCloseDateIsNullAndUser_Id(companyId)
                 .orElseThrow(() -> new RuntimeException("No se puede realizar la venta porque la caja está cerrada."));
 
-        // Solo se setea el ID del usuario para evitar problemas con AttributeConverter
-        Long companyId = authService.getCompanyIdFromToken(token);
+        // Para evitar que se active el AttributeConverter en la carga completa del usuario,
+        // se instancia un objeto User con solo el ID.
         User currentUser = new User();
         currentUser.setId(companyId);
 
-        // Crea la venta
+        // Crea la venta con la información
         Sale sale = new Sale();
         sale.setTotalAmount(saleDTO.getTotalAmount());
         sale.setPaymentMethod(saleDTO.getPaymentMethod());
@@ -56,13 +61,15 @@ public class SaleService {
         sale.setCashRegister(currentCashRegister);
         sale.setUser(currentUser);
 
-        // Crea los ítems de la venta
+        // Procesa cada ítem de la venta
         List<SaleItem> saleItems = saleDTO.getItems().stream().map(itemDTO -> {
             SaleItem item = new SaleItem();
+
+            // Busca el producto según su ID
             Product product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + itemDTO.getProductId()));
 
-            // Validación de pertenencia
+            // Valida que el producto pertenezca a la empresa del usuario (currentUser)
             if (product.getUser() == null || !product.getUser().getId().equals(currentUser.getId())) {
                 throw new RuntimeException("El producto con ID " + itemDTO.getProductId() + " no pertenece a esta empresa.");
             }
@@ -75,6 +82,8 @@ public class SaleService {
         }).collect(Collectors.toList());
 
         sale.setItems(saleItems);
+
+        // Guarda y retorna la venta
         return saleRepository.save(sale);
     }
 }

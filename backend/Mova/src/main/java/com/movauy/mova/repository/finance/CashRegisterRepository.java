@@ -13,19 +13,21 @@ import java.util.Optional;
 @Repository
 public interface CashRegisterRepository extends JpaRepository<CashRegister, Long> {
 
-    // Método global (si se necesitara)
+    // Método global: obtiene la caja que aún no se cerró
     Optional<CashRegister> findByCloseDateIsNull();
 
-    // NUEVO: Buscar caja abierta para un usuario específico
+    // Buscar la caja abierta para un usuario específico (filtrado por user.id)
     Optional<CashRegister> findByCloseDateIsNullAndUser_Id(Long userId);
 
+    // Obtiene todas las cajas ordenadas por fecha de apertura descendente
     @Query("SELECT c FROM CashRegister c ORDER BY c.openDate DESC")
     List<CashRegister> findAllCashRegisters();
 
+    // Obtiene las cajas cuyo cierre es posterior a una fecha dada
     @Query("SELECT c FROM CashRegister c WHERE c.closeDate >= :date ORDER BY c.openDate DESC")
     List<CashRegister> findCashRegisterAfter(@Param("date") LocalDateTime date);
     
-    // Filtrado por empresa usando c.user.id
+    // Filtrado por empresa: obtiene las cajas con cierre posterior a una fecha dada para un usuario específico
     @Query("SELECT c FROM CashRegister c WHERE c.user.id = :companyId AND c.closeDate >= :date ORDER BY c.openDate DESC")
     List<CashRegister> findCashRegisterAfterByCompany(@Param("companyId") Integer companyId, @Param("date") LocalDateTime date);
 }
