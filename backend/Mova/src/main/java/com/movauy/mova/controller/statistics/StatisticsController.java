@@ -12,7 +12,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/statistics")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "https://movauy.top:8443")
 public class StatisticsController {
 
     private final StatisticsService statisticsService;
