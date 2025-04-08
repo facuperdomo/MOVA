@@ -21,7 +21,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class User implements UserDetails {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Basic
@@ -37,19 +37,20 @@ public class User implements UserDetails {
     @Column(name = "company_id")
     private String companyId;
 
+    // Se elimina @Convert para que no se aplique el AttributeConverter
     @Column(name = "mercadopago_access_token")
-    @Convert(converter = com.movauy.mova.util.AttributeEncryptor.class)
     @JsonIgnore 
     private String mercadoPagoAccessToken;
 
-    // Constructor manual para usar en consultas que eviten el AttributeConverter
+    // Constructor manual para usar en consultas que no requieran aplicar conversión en el campo
+    // Nota: Si usas @Builder o el constructor generado por Lombok, asegúrate de que no intente forzar la conversión
     public User(Long id, String username, String password, Role role, String companyId, String ignoredToken) {
         this.id = id;
         this.username = username;
         this.password = password;
         this.role = role;
         this.companyId = companyId;
-        this.mercadoPagoAccessToken = null; // No se carga
+        this.mercadoPagoAccessToken = null; // Valor "no convertido"
     }
 
     @Override
