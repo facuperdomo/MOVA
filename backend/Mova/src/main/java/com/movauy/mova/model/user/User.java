@@ -39,7 +39,6 @@ public class User implements UserDetails {
 
     // Se elimina @Convert para que no se aplique el AttributeConverter
     @Column(name = "mercadopago_access_token")
-    @JsonIgnore 
     private String mercadoPagoAccessToken;
 
     // Constructor manual para usar en consultas que no requieran aplicar conversión en el campo
