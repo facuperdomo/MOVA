@@ -6,8 +6,12 @@ import org.jasypt.util.text.BasicTextEncryptor;
 
 @Converter
 public class AttributeEncryptor implements AttributeConverter<String, String> {
+    
     private final BasicTextEncryptor textEncryptor;
-
+    // Prefijo y sufijo para identificar los valores encriptados
+    private static final String PREFIX = "ENC(";
+    private static final String SUFFIX = ")";
+    
     public AttributeEncryptor() {
         textEncryptor = new BasicTextEncryptor();
         // Se obtiene la clave de encriptación desde la variable de entorno MY_ENCRYPTION_KEY
@@ -23,7 +27,9 @@ public class AttributeEncryptor implements AttributeConverter<String, String> {
         if (attribute == null) {
             return null;
         }
-        return textEncryptor.encrypt(attribute);
+        // Encripta el atributo y le añade el prefijo y sufijo para marcarlo
+        String encrypted = textEncryptor.encrypt(attribute);
+        return PREFIX + encrypted + SUFFIX;
     }
 
     @Override
@@ -31,6 +37,13 @@ public class AttributeEncryptor implements AttributeConverter<String, String> {
         if (dbData == null) {
             return null;
         }
-        return textEncryptor.decrypt(dbData);
+        // Solo se intenta desencriptar si el valor está marcado con el prefijo y sufijo
+        if (dbData.startsWith(PREFIX) && dbData.endsWith(SUFFIX)) {
+            String encrypted = dbData.substring(PREFIX.length(), dbData.length() - SUFFIX.length());
+            return textEncryptor.decrypt(encrypted);
+        } else {
+            // Si no tiene el formato marcado, se devuelve tal cual (por ejemplo, para ventas en efectivo)
+            return dbData;
+        }
     }
 }
