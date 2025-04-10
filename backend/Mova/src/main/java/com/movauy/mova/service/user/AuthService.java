@@ -142,9 +142,10 @@ public class AuthService {
         return userRepository.findById(companyId.intValue())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
-    
+
     /**
-     * Método para obtener un objeto User a partir del Id SIN TOKEN DE MERCADO PAGO.
+     * Método para obtener un objeto User a partir del Id SIN TOKEN DE MERCADO
+     * PAGO.
      */
     public User getSafeUserById(Long id) {
         return userRepository.findUserWithoutSensitiveData(id)
@@ -178,4 +179,21 @@ public class AuthService {
                 user.getRole().name()
         );
     }
+
+    /**
+     * Método para obtener un DTO con datos básicos del usuario a partir del ID,
+     * evitando disparar la conversión o desencriptación del token de
+     * MercadoPago.
+     */
+    public UserBasicDTO getUserBasicById(Long id) {
+        // Se puede usar el método getSafeUserById() que ya tienes
+        User user = getSafeUserById(id);
+        return new UserBasicDTO(
+                user.getId(),
+                user.getUsername(),
+                user.getCompanyId() != null ? user.getCompanyId() : user.getId().toString(),
+                user.getRole().name()
+        );
+    }
+
 }

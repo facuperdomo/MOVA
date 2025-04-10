@@ -1,6 +1,8 @@
 package com.movauy.mova.service.sale;
 
 import com.movauy.mova.dto.SaleDTO;
+import com.movauy.mova.dto.UserBasicDTO;
+import com.movauy.mova.mapper.UserMapper;
 import com.movauy.mova.model.finance.CashRegister;
 import com.movauy.mova.model.product.Product;
 import com.movauy.mova.model.sale.Sale;
@@ -13,6 +15,7 @@ import com.movauy.mova.service.user.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,16 +50,17 @@ public class SaleService {
                 .orElseThrow(() -> new RuntimeException("No se puede realizar la venta porque la caja está cerrada."));
 
         // 3. Seleccionar el objeto User a utilizar según el método de pago:
-        // Si el pago es por QR, se obtiene el usuario completo con el campo de MercadoPago.
-        // De lo contrario, se crea un objeto User con solo el ID para evitar usar la conversión.
+        // Si el método de pago es "QR", se recupera el usuario completo,
+        // de lo contrario se obtiene una versión básica sin el token.
         User currentUser;
         if ("QR".equalsIgnoreCase(saleDTO.getPaymentMethod())) {
-            // Se usa el método que recupera el usuario completo (incluyendo el acceso a MercadoPago)
+            // Recupera el usuario completo (incluye el token)
             currentUser = authService.getUserById(companyId);
         } else {
-            // Se crea un objeto User "seguro" que solo contiene el ID.
-            currentUser = new User();
-            currentUser.setId(companyId);
+            // Recupera los datos básicos del usuario (sin token)
+            UserBasicDTO userBasicDTO = authService.getUserBasicById(companyId);
+            // Conviértelo a entidad, utilizando el mapper. Aquí solo actualizamos los campos básicos.
+            currentUser = UserMapper.toUser(userBasicDTO, new User());
         }
 
         // 4. Crear la venta
@@ -72,7 +76,7 @@ public class SaleService {
             SaleItem item = new SaleItem();
             Product product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + itemDTO.getProductId()));
-            // Validar que el producto pertenezca a la empresa (compara el ID)
+            // Validar que el producto pertenezca a la empresa
             if (product.getUser() == null || !product.getUser().getId().equals(companyId)) {
                 throw new RuntimeException("El producto con ID " + itemDTO.getProductId() + " no pertenece a esta empresa.");
             }

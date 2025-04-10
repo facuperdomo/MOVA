@@ -1,18 +1,18 @@
-2025-04-09T00:44:44.169-03:00  INFO 14492 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : Starting MovaApplicationTests using Java 21.0.6 with PID 14492 (started by facue in C:\Users\facue\Desktop\MOVA\backend\Mova)
-2025-04-09T00:44:44.179-03:00  INFO 14492 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : No active profile set, falling back to 1 default profile: "default"
-2025-04-09T00:44:45.048-03:00  INFO 14492 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2025-04-09T00:44:45.132-03:00  INFO 14492 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 74 ms. Found 5 JPA repository interfaces.
-2025-04-09T00:44:45.770-03:00  INFO 14492 --- [mova] [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2025-04-09T00:44:45.854-03:00  INFO 14492 --- [mova] [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
-2025-04-09T00:44:45.899-03:00  INFO 14492 --- [mova] [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2025-04-09T00:44:46.260-03:00  INFO 14492 --- [mova] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2025-04-09T00:44:46.298-03:00  INFO 14492 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2025-04-09T00:44:46.507-03:00  INFO 14492 --- [mova] [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@c11332b
-2025-04-09T00:44:46.510-03:00  INFO 14492 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2025-04-09T00:44:46.557-03:00  WARN 14492 --- [mova] [main] org.hibernate.dialect.Dialect            : HHH000511: The 5.5.0 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
-2025-04-09T00:44:46.563-03:00  WARN 14492 --- [mova] [main] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2025-04-09T00:44:47.927-03:00  INFO 14492 --- [mova] [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2025-04-09T00:44:48.153-03:00  WARN 14492 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
+2025-04-10T00:01:27.162-03:00  INFO 32728 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : Starting MovaApplicationTests using Java 21.0.6 with PID 32728 (started by facue in C:\Users\facue\Desktop\MOVA\backend\Mova)
+2025-04-10T00:01:27.172-03:00  INFO 32728 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : No active profile set, falling back to 1 default profile: "default"
+2025-04-10T00:01:27.899-03:00  INFO 32728 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-04-10T00:01:27.983-03:00  INFO 32728 --- [mova] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 73 ms. Found 5 JPA repository interfaces.
+2025-04-10T00:01:28.581-03:00  INFO 32728 --- [mova] [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-04-10T00:01:28.655-03:00  INFO 32728 --- [mova] [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.4.1.Final
+2025-04-10T00:01:28.693-03:00  INFO 32728 --- [mova] [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2025-04-10T00:01:29.000-03:00  INFO 32728 --- [mova] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-04-10T00:01:29.045-03:00  INFO 32728 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-04-10T00:01:29.252-03:00  INFO 32728 --- [mova] [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@3005623b
+2025-04-10T00:01:29.256-03:00  INFO 32728 --- [mova] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-04-10T00:01:29.305-03:00  WARN 32728 --- [mova] [main] org.hibernate.dialect.Dialect            : HHH000511: The 5.5.0 version for [org.hibernate.dialect.MySQLDialect] is no longer supported, hence certain features may not work properly. The minimum supported version is 8.0.0. Check the community dialects project for available legacy versions.
+2025-04-10T00:01:29.311-03:00  WARN 32728 --- [mova] [main] org.hibernate.orm.deprecation            : HHH90000025: MySQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-04-10T00:01:30.212-03:00  INFO 32728 --- [mova] [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-04-10T00:01:30.386-03:00  WARN 32728 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
     alter table cash_register 
        modify column user_id bigint not null" via JDBC [Cannot change column 'user_id': used in a foreign key constraint 'FKdv6da1nxa2xkrlk3rkf807s6a']
 
@@ -146,7 +146,7 @@ Caused by: java.sql.SQLException: Cannot change column 'user_id': used in a fore
 	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:80) ~[hibernate-core-6.4.1.Final.jar:6.4.1.Final]
 	... 116 common frames omitted
 
-2025-04-09T00:44:48.191-03:00  WARN 14492 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
+2025-04-10T00:01:30.422-03:00  WARN 32728 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
     alter table products 
        modify column user_id bigint not null" via JDBC [Cannot change column 'user_id': used in a foreign key constraint 'FKhqw0i9tv44oekhnpggx9lbix2']
 
@@ -280,7 +280,7 @@ Caused by: java.sql.SQLException: Cannot change column 'user_id': used in a fore
 	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:80) ~[hibernate-core-6.4.1.Final.jar:6.4.1.Final]
 	... 116 common frames omitted
 
-2025-04-09T00:44:48.218-03:00  WARN 14492 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
+2025-04-10T00:01:30.452-03:00  WARN 32728 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
     alter table sale 
        modify column user_id bigint not null" via JDBC [Cannot change column 'user_id': used in a foreign key constraint 'FKck1t4noryw58a6jcju0pmj38']
 
@@ -414,7 +414,7 @@ Caused by: java.sql.SQLException: Cannot change column 'user_id': used in a fore
 	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:80) ~[hibernate-core-6.4.1.Final.jar:6.4.1.Final]
 	... 116 common frames omitted
 
-2025-04-09T00:44:48.253-03:00  WARN 14492 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
+2025-04-10T00:01:30.488-03:00  WARN 32728 --- [mova] [main] o.h.t.s.i.ExceptionHandlerLoggedImpl     : GenerationTarget encountered exception accepting command : Error executing DDL "
     alter table user 
        modify column id bigint not null auto_increment" via JDBC [Cannot change column 'id': used in a foreign key constraint 'FKck1t4noryw58a6jcju0pmj38' of table 'movadb.sale']
 
@@ -548,17 +548,17 @@ Caused by: java.sql.SQLException: Cannot change column 'id': used in a foreign k
 	at org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase.accept(GenerationTargetToDatabase.java:80) ~[hibernate-core-6.4.1.Final.jar:6.4.1.Final]
 	... 116 common frames omitted
 
-2025-04-09T00:44:48.310-03:00  INFO 14492 --- [mova] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2025-04-09T00:44:48.819-03:00  INFO 14492 --- [mova] [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2025-04-09T00:44:50.415-03:00  WARN 14492 --- [mova] [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2025-04-09T00:44:50.794-03:00  INFO 14492 --- [mova] [main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@794a3410, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@62a9c857, org.springframework.security.web.context.SecurityContextHolderFilter@9c7699e, org.springframework.security.web.header.HeaderWriterFilter@76c6b12c, org.springframework.web.filter.CorsFilter@4dc9de0e, org.springframework.security.web.authentication.logout.LogoutFilter@776eedad, com.movauy.mova.Jwt.JwtAuthenticationFilter@1368ed98, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@5bbda8aa, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@36d02719, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@6375af2a, org.springframework.security.web.session.SessionManagementFilter@463a0302, org.springframework.security.web.access.ExceptionTranslationFilter@70a9f6c, org.springframework.security.web.access.intercept.AuthorizationFilter@27211dd9]
-2025-04-09T00:44:51.310-03:00  INFO 14492 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
-2025-04-09T00:44:51.313-03:00  INFO 14492 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@12f12982]]
-2025-04-09T00:44:51.314-03:00  INFO 14492 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
-2025-04-09T00:44:51.328-03:00  INFO 14492 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : Started MovaApplicationTests in 7.465 seconds (process running for 8.644)
-2025-04-09T00:44:52.251-03:00  INFO 14492 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
-2025-04-09T00:44:52.252-03:00  INFO 14492 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@12f12982]]
-2025-04-09T00:44:52.252-03:00  INFO 14492 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
-2025-04-09T00:44:52.255-03:00  INFO 14492 --- [mova] [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
-2025-04-09T00:44:52.257-03:00  INFO 14492 --- [mova] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
-2025-04-09T00:44:52.266-03:00  INFO 14492 --- [mova] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+2025-04-10T00:01:30.515-03:00  INFO 32728 --- [mova] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-04-10T00:01:30.826-03:00  INFO 32728 --- [mova] [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-04-10T00:01:31.946-03:00  WARN 32728 --- [mova] [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2025-04-10T00:01:32.248-03:00  INFO 32728 --- [mova] [main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@794a3410, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@62a9c857, org.springframework.security.web.context.SecurityContextHolderFilter@9c7699e, org.springframework.security.web.header.HeaderWriterFilter@76c6b12c, org.springframework.web.filter.CorsFilter@4dc9de0e, org.springframework.security.web.authentication.logout.LogoutFilter@776eedad, com.movauy.mova.Jwt.JwtAuthenticationFilter@227ae4e4, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@5bbda8aa, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@36d02719, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@6375af2a, org.springframework.security.web.session.SessionManagementFilter@463a0302, org.springframework.security.web.access.ExceptionTranslationFilter@70a9f6c, org.springframework.security.web.access.intercept.AuthorizationFilter@27211dd9]
+2025-04-10T00:01:32.588-03:00  INFO 32728 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2025-04-10T00:01:32.589-03:00  INFO 32728 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@4f7bc46e]]
+2025-04-10T00:01:32.590-03:00  INFO 32728 --- [mova] [main] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2025-04-10T00:01:32.596-03:00  INFO 32728 --- [mova] [main] com.movauy.mova.MovaApplicationTests     : Started MovaApplicationTests in 5.706 seconds (process running for 6.689)
+2025-04-10T00:01:33.045-03:00  INFO 32728 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopping...
+2025-04-10T00:01:33.046-03:00  INFO 32728 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@4f7bc46e]]
+2025-04-10T00:01:33.046-03:00  INFO 32728 --- [mova] [SpringApplicationShutdownHook] o.s.m.s.b.SimpleBrokerMessageHandler     : Stopped.
+2025-04-10T00:01:33.048-03:00  INFO 32728 --- [mova] [SpringApplicationShutdownHook] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-04-10T00:01:33.050-03:00  INFO 32728 --- [mova] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-04-10T00:01:33.059-03:00  INFO 32728 --- [mova] [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
