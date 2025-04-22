@@ -35,6 +35,7 @@ const Statistics = () => {
     setError(null);
     try {
       const url = `${API_URL}/api/statistics/sales?filter=${selectedFilter}`;
+      console.log("📡 Llamando a:", url);
       const response = await customFetch(url);
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
       setSalesData(response);
@@ -51,7 +52,7 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_URL}/api/statistics/top-selling-drinks?filter=${selectedFilter}`;
+      const url = `${API_URL}/api/statistics/top-selling-products?filter=${selectedFilter}`;
       const response = await customFetch(url);
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
       setTopProducts(response);

@@ -20,6 +20,10 @@ const Dashboard = () => {
   const [showQR, setShowQR] = useState(false);
   const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false);
 
+  // Estados para el popUp de deshacer
+  const [showUndoPopup, setShowUndoPopup] = useState(false);
+  const [saleToUndo, setSaleToUndo] = useState(null);
+
   // Estados para modo offline
   const [offline, setOffline] = useState(!navigator.onLine);
   const [showOfflinePopup, setShowOfflinePopup] = useState(false);
@@ -29,6 +33,9 @@ const Dashboard = () => {
   const [lastSale, setLastSale] = useState(null);
   // Estado para recibir el estado del pago vía WebSocket
   const [paymentStatus, setPaymentStatus] = useState("");
+
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
@@ -82,9 +89,19 @@ const Dashboard = () => {
     const role = localStorage.getItem("role");
     setIsAdmin(role === "ADMIN");
     fetchProducts();
+    fetchCategories();
     checkCashRegisterStatus();
     updatePendingSalesCount();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await customFetch(`${API_URL}/api/categories`);
+      setCategories(Array.isArray(response) ? response : []);
+    } catch (error) {
+      console.error("Error al obtener categorías:", error);
+    }
+  };
 
   // Manejo de eventos online/offline
   useEffect(() => {
@@ -212,21 +229,27 @@ const Dashboard = () => {
     }
   };
 
-  // Función para deshacer la última venta
-  const undoLastSale = async () => {
+  const undoLastSale = () => {
     if (!lastSale) {
       alert("No hay ventas para deshacer.");
       return;
     }
+    setSaleToUndo(lastSale);      // Guardás qué venta querés cancelar
+    setShowUndoPopup(true);       // Mostrás el popup de confirmación
+  };
+
+  // Paso 2: Confirmar la cancelación solo si el usuario acepta
+  const confirmUndoSale = async () => {
     try {
-      await customFetch(`${API_URL}/api/statistics/cancel-sale/${lastSale.id}`, {
+      await customFetch(`${API_URL}/api/statistics/cancel-sale/${saleToUndo.id}`, {
         method: "PUT",
       });
-      alert("La última venta ha sido deshecha.");
       setLastSale(null);
+      setSaleToUndo(null);
+      setShowUndoPopup(false);
     } catch (error) {
       console.error("Error al deshacer la venta:", error);
-      alert("No se pudo deshacer la última venta. Inténtelo de nuevo.");
+      alert("No se pudo deshacer la última venta.");
     }
   };
 
@@ -313,37 +336,62 @@ const Dashboard = () => {
       <div className="content-wrapper">
         <div className="main-content">
           <h2>Selección de Productos</h2>
+
+          <div className="category-tabs-dashboard">
+            <button
+              className={!selectedCategory ? "active-tab-dashboard" : ""}
+              onClick={() => setSelectedCategory(null)}
+            >
+              Todos
+            </button>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                className={selectedCategory === cat.id ? "active-tab-dashboard" : ""}
+                onClick={() => setSelectedCategory(cat.id)}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+
           {loading ? (
             <p>Cargando productos...</p>
           ) : products.length === 0 ? (
             <p>No hay productos disponibles.</p>
           ) : (
             <div className="products-grid">
-              {products.map((product, index) => (
-                <div key={product.id} className="product-card" onClick={() => addToCart(product)}>
-                  <div className="image-container">
-                    {!product.imageError ? (
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        onError={() => {
-                          setProducts((prevProducts) => {
-                            const newProducts = [...prevProducts];
-                            newProducts[index] = { ...product, imageError: true };
-                            return newProducts;
-                          });
-                        }}
-                      />
-                    ) : (
-                      <div className="image-placeholder">Imagen no disponible</div>
-                    )}
+              {products
+                .filter((product) => !selectedCategory || product.categoryId === selectedCategory)
+                .map((product, index) => (
+                  <div
+                    key={product.id}
+                    className="product-card"
+                    onClick={() => addToCart(product)}
+                  >
+                    <div className="image-container">
+                      {!product.imageError ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          onError={() => {
+                            setProducts((prevProducts) => {
+                              const newProducts = [...prevProducts];
+                              newProducts[index] = { ...product, imageError: true };
+                              return newProducts;
+                            });
+                          }}
+                        />
+                      ) : (
+                        <div className="image-placeholder">Imagen no disponible</div>
+                      )}
+                    </div>
+                    <div className="product-info">
+                      <h3>{product.name}</h3>
+                      <p>${product.price}</p>
+                    </div>
                   </div>
-                  <div className="product-info">
-                    <h3>{product.name}</h3>
-                    <p>${product.price}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
@@ -441,6 +489,24 @@ const Dashboard = () => {
             <button className="popup-btn popup-btn-qr" onClick={() => setShowOfflinePopup(false)}>
               Aceptar
             </button>
+          </div>
+        </div>
+      )}
+      {showUndoPopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X className="popup-close" size={32} onClick={() => setShowUndoPopup(false)} />
+            <h2>¿Seguro que quieres cancelar esta venta?</h2>
+            <p>Monto: ${saleToUndo?.totalAmount}</p>
+            <p>Fecha: {new Date(saleToUndo?.dateTime).toLocaleString()}</p>
+            <div className="popup-buttons">
+              <button className="popup-btn popup-btn-cash" onClick={confirmUndoSale}>
+                ✅ Confirmar
+              </button>
+              <button className="popup-btn popup-btn-qr" onClick={() => setShowUndoPopup(false)}>
+                ❌ Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -3,13 +3,14 @@ package com.movauy.mova.repository.sale;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.model.sale.Sale.EstadoVenta;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface SaleRepository extends JpaRepository<Sale, Long> {
@@ -21,14 +22,15 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
 
     List<Sale> findByDateTimeAfter(LocalDateTime dateTime);
 
-    @Transactional
-    @Modifying
-    @Query("UPDATE Sale s SET s.estado = 'cancelada' WHERE s.id = :id AND s.user.id = :companyId")
-    void cancelarVenta(@Param("id") Long id, @Param("companyId") Integer companyId);
-
     List<Sale> findByDateTimeAfterAndEstado(LocalDateTime dateTime, EstadoVenta estado);
 
-    // Método para filtrar ventas por empresa y fecha
-    @Query("SELECT s FROM Sale s WHERE s.user.id = :companyId AND s.dateTime >= :date")
-    List<Sale> findByCompanyIdAndDateTimeAfter(@Param("companyId") Integer companyId, @Param("date") LocalDateTime date);
+    // ✅ Actualiza estado de una venta a CANCELADA si pertenece a la empresa
+    @Transactional
+    @Modifying
+    @Query("UPDATE Sale s SET s.estado = 'CANCELADA' WHERE s.id = :id AND s.user.companyId = :companyId")
+    void cancelSaleByCompany(@Param("id") Long id, @Param("companyId") String companyId);
+
+    // ✅ Filtra ventas por empresa (companyId como String) y fecha
+    @Query("SELECT s FROM Sale s WHERE s.user.companyId = :companyId AND s.dateTime >= :date")
+    List<Sale> findByUserCompanyIdAndDateTimeAfter(@Param("companyId") String companyId, @Param("date") LocalDateTime date);
 }

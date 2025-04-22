@@ -43,6 +43,7 @@ export default function LoginCompany() {
       if (!response.ok) throw new Error('Usuario o contraseña incorrectos.');
       
       const data = await response.json();
+      console.log("📦 LoginCompany respuesta:", data);
       localStorage.setItem('token', data.token); // Guarda el token del usuario
       localStorage.setItem("companyId", data.companyId); // Guarda el ID de la Empresa
       

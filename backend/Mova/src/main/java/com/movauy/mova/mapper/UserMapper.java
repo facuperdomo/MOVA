@@ -1,37 +1,42 @@
 package com.movauy.mova.mapper;
 
+import com.movauy.mova.model.user.Role;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.dto.UserBasicDTO;
 
-// Esta clase es responsable de mapear la entidad a DTO y viceversa
 public class UserMapper {
 
-    // Método para convertir de entidad User a UserBasicDTO
+    // Convierte de entidad a DTO
     public static UserBasicDTO toUserBasicDTO(User user) {
         if (user == null) {
             return null;
         }
-        // Se mapea el id, username, companyId y role (como String)
         return new UserBasicDTO(
                 user.getId(),
                 user.getUsername(),
                 user.getCompanyId(),
-                user.getRole().name()
+                user.getRole() != null ? user.getRole().name() : null
         );
     }
 
-    // Si requieres convertir el DTO a la entidad, define otro método
-    // Esto es útil, por ejemplo, en actualizaciones que no modifiquen el token
+    // Convierte de DTO a entidad User (creando o actualizando uno existente)
     public static User toUser(UserBasicDTO dto, User existingUser) {
-        if (dto == null) {
-            return null;
-        }
-        // Con esta estrategia, se actualizan solo los campos básicos,
-        // dejando intacto el token (o se puede actualizar según la lógica)
+        if (dto == null) return null;
+
+        existingUser.setId(dto.getId()); // <- opcional si querés conservar la ID
         existingUser.setUsername(dto.getUsername());
         existingUser.setCompanyId(dto.getCompanyId());
-        // Para el role, se asume que tienes un método para transformar la cadena en enum
-        existingUser.setRole(Enum.valueOf(existingUser.getRole().getDeclaringClass(), dto.getRole()));
+
+        if (dto.getRole() != null) {
+            try {
+                existingUser.setRole(Role.valueOf(dto.getRole()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Rol inválido: " + dto.getRole());
+            }
+        } else {
+            throw new RuntimeException("El rol del usuario es null y es requerido.");
+        }
+
         return existingUser;
     }
 }

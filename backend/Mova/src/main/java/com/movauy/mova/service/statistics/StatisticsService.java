@@ -5,16 +5,13 @@ import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.sale.SaleItemRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,45 +24,41 @@ public class StatisticsService {
 
     public List<Map<String, Object>> getSalesStatistics(String filter, Integer companyId) {
         LocalDateTime startDate = getStartDate(filter);
-        // Se filtran las ventas por empresa y fecha
-        List<Sale> sales = saleRepository.findByCompanyIdAndDateTimeAfter(companyId, startDate);
-        System.out.println("📊 Ventas obtenidas desde " + startDate + " para empresa " + companyId + ": " + sales);
-        if (sales.isEmpty()) {
-            return List.of();
-        }
-        return sales.stream()
-                .map(sale -> {
-                    Map<String, Object> result = new HashMap<>();
-                    result.put("id", sale.getId());
-                    result.put("date", sale.getDateTime().toLocalDate().toString().replace("-", "/"));
-                    result.put("total", sale.getTotalAmount());
-                    result.put("estado", sale.getEstado().name());
-                    return result;
-                })
-                .collect(Collectors.toList());
+
+        // Usamos el nuevo método que compara con user.companyId (como string)
+        List<Sale> sales = saleRepository.findByUserCompanyIdAndDateTimeAfter(companyId.toString(), startDate);
+
+        System.out.println("📊 Ventas desde " + startDate + " para empresa (companyId) " + companyId + ": " + sales.size());
+
+        return sales.stream().map(sale -> {
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", sale.getId());
+            result.put("date", sale.getDateTime().toLocalDate().toString().replace("-", "/"));
+            result.put("total", sale.getTotalAmount());
+            result.put("estado", sale.getEstado().name());
+            return result;
+        }).collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> getTopSellingDrinks(String filter, Integer companyId) {
+    public List<Map<String, Object>> getTopSellingProducts(String filter, Integer companyId) {
         LocalDateTime startDate = getStartDate(filter);
-        // Se asume que el repositorio tiene un método para obtener tragos vendidos filtrado por empresa
-        List<Map<String, Object>> drinks = saleItemRepository.findTopSellingDrinksByCompany(startDate, companyId);
-        if (drinks == null) {
-            return Collections.emptyList();
-        }
-        System.out.println("🍹 Datos de tragos vendidos (" + filter + ") para empresa " + companyId + ": " + drinks);
-        return drinks;
+        List<Map<String, Object>> products = saleItemRepository.findTopSellingProductsByCompany(startDate, companyId.toString());
+        System.out.println("📦 Productos más vendidos (" + filter + ") para empresa " + companyId + ": " + products.size());
+        return products != null ? products : Collections.emptyList();
     }
 
     public List<Map<String, Object>> getCashRegisterHistory(String filter, Integer companyId) {
         LocalDateTime startDate = getStartDate(filter);
-        // Se asume que el repositorio filtra las cajas por empresa y fecha
-        List<CashRegister> registers = cashRegisterRepository.findCashRegisterAfterByCompany(companyId, startDate);
-        System.out.println("💰 Historial de cajas obtenidas para empresa " + companyId + ": " + registers);
+        List<CashRegister> registers = cashRegisterRepository.findCashRegisterAfterByCompany(companyId.toString(), startDate);
+        System.out.println("💰 Cajas desde " + startDate + " para empresa " + companyId + ": " + registers.size());
+
         return registers.stream().map(register -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", register.getId());
             map.put("openDate", register.getOpenDate().toString().replace("T", " ").replace("-", "/"));
-            map.put("closeDate", register.getCloseDate() != null ? register.getCloseDate().toString().replace("T", " ").replace("-", "/") : "No cerrada");
+            map.put("closeDate", register.getCloseDate() != null
+                    ? register.getCloseDate().toString().replace("T", " ").replace("-", "/")
+                    : "No cerrada");
             map.put("initialAmount", register.getInitialAmount() != 0.0 ? String.valueOf(register.getInitialAmount()) : "Sin datos");
             map.put("totalSales", register.getTotalSales() != 0.0 ? String.valueOf(register.getTotalSales()) : "Sin datos");
             map.put("isOpen", register.isOpen());
@@ -74,7 +67,6 @@ public class StatisticsService {
     }
 
     public int countSaleItems(Integer companyId) {
-        // Se asume que el repositorio cuenta los items de venta filtrando por empresa
         return saleItemRepository.countTotalSaleItemsByCompany(companyId);
     }
 
@@ -95,18 +87,20 @@ public class StatisticsService {
     }
 
     @Transactional
-    public void cancelarVenta(Long ventaId, Integer companyId) {
-        if (ventaId == null) {
+    public void cancelSale(Long saleId, String companyId) {
+        if (saleId == null) {
             throw new IllegalArgumentException("El ID de la venta no puede ser null.");
         }
-        // Se verifica que la venta pertenezca a la empresa autenticada.
-        Sale sale = saleRepository.findById(ventaId)
+
+        Sale sale = saleRepository.findById(saleId)
                 .orElseThrow(() -> new IllegalArgumentException("Venta no encontrada"));
-        // Suposición: la entidad Sale posee una propiedad 'company' (o similar) que identifica a la empresa.
-        if (!sale.getUser().getId().equals(companyId)) {
+
+        if (!companyId.equals(sale.getUser().getCompanyId())) {
             throw new SecurityException("No tienes permiso para cancelar esta venta.");
         }
-        System.out.println("❌ Cancelando venta con ID: " + ventaId + " para empresa " + companyId);
-        saleRepository.cancelarVenta(ventaId, companyId);
+
+        System.out.println("❌ Cancelando venta con ID: " + saleId + " para empresa con companyId: " + companyId);
+        saleRepository.cancelSaleByCompany(saleId, companyId);
     }
+
 }

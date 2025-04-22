@@ -28,8 +28,12 @@ public class Product {
     @Column(columnDefinition = "LONGBLOB")
     private byte[] image;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnoreProperties({"mercadoPagoAccessToken", "password", "authorities"})
     private User user;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "category_id", nullable = false)
+    private ProductCategory category;
 }

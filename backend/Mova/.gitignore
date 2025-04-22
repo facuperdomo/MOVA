@@ -1,10 +1,47 @@
+# Archivos de ayuda y docs
 HELP.md
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
 
-### STS ###
+# Compilación Java
+target/
+build/
+*.class
+
+# Maven wrapper
+!.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+logs/
+*.log
+
+# Archivos temporales del sistema
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Archivos de configuración local
+application-local.properties
+certificados/
+*.p12
+
+# IDEs
+## IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+## NetBeans
+nb-configuration.xml
+nb-*.xml
+/nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+## STS (Spring Tool Suite)
 .apt_generated
 .classpath
 .factorypath
@@ -13,21 +50,14 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
+## VSCode
+.vscode/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
+# Backups / caché
+*.bak
+
+# Evitar accidentalmente agregar sub-builds dentro de src
+!**/src/main/**/target/
+!**/src/test/**/target/
 !**/src/main/**/build/
 !**/src/test/**/build/
-
-### VS Code ###
-.vscode/

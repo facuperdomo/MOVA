@@ -1,0 +1,33 @@
+# Directorios que genera Maven
+/target/
+
+# Logs de la app
+logs/
+*.log
+
+# Archivos temporales del sistema
+*.class
+*.swp
+*.DS_Store
+*.tmp
+
+# Archivos de NetBeans (si usás)
+/nbproject/private/
+/nbactions*.xml
+nb-configuration.xml
+
+# Archivos de configuración local
+application-local.properties
+certificados/
+*.p12
+
+# Archivos generados por IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+*.bak
+
+# Sistema operativo
+Thumbs.db
+Desktop.ini

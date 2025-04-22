@@ -41,26 +41,22 @@ public class SaleService {
 
     @Transactional
     public Sale registerSale(SaleDTO saleDTO, String token) {
-        // 1. Obtener el companyId a partir del token
-        Long companyId = authService.getCompanyIdFromToken(token);
+        // 1. Obtener información del usuario autenticado
+        UserBasicDTO userBasic = authService.getUserBasicFromToken(token);
+        Long userId = userBasic.getId();               // ID del cajero
+        String companyIdFromToken = userBasic.getCompanyId(); // ID de la empresa autenticada
 
         // 2. Verificar que exista una caja abierta para este usuario
         CashRegister currentCashRegister = cashRegisterRepository
-                .findByCloseDateIsNullAndUser_Id(companyId)
+                .findByCloseDateIsNullAndUser_Id(userId)
                 .orElseThrow(() -> new RuntimeException("No se puede realizar la venta porque la caja está cerrada."));
 
         // 3. Seleccionar el objeto User a utilizar según el método de pago:
-        // Si el método de pago es "QR", se recupera el usuario completo,
-        // de lo contrario se obtiene una versión básica sin el token.
         User currentUser;
         if ("QR".equalsIgnoreCase(saleDTO.getPaymentMethod())) {
-            // Recupera el usuario completo (incluye el token)
-            currentUser = authService.getUserById(companyId);
+            currentUser = authService.getUserById(userId);
         } else {
-            // Recupera los datos básicos del usuario (sin token)
-            UserBasicDTO userBasicDTO = authService.getUserBasicById(companyId);
-            // Conviértelo a entidad, utilizando el mapper. Aquí solo actualizamos los campos básicos.
-            currentUser = UserMapper.toUser(userBasicDTO, new User());
+            currentUser = UserMapper.toUser(userBasic, new User());
         }
 
         // 4. Crear la venta
@@ -76,10 +72,18 @@ public class SaleService {
             SaleItem item = new SaleItem();
             Product product = productRepository.findById(itemDTO.getProductId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + itemDTO.getProductId()));
+
+            System.out.println("🧾 Verificando producto...");
+            System.out.println("🧾 Producto ID: " + product.getId());
+            System.out.println("👤 Usuario dueño del producto: " + (product.getUser() != null ? product.getUser().getId() : "null"));
+            System.out.println("🏢 companyId desde token: " + companyIdFromToken);
+            System.out.println("🏢 companyId real del dueño del producto: " + (product.getUser() != null ? product.getUser().getCompanyId() : "null"));
+
             // Validar que el producto pertenezca a la empresa
-            if (product.getUser() == null || !product.getUser().getId().equals(companyId)) {
+            if (product.getUser() == null || !product.getUser().getCompanyId().equals(companyIdFromToken)) {
                 throw new RuntimeException("El producto con ID " + itemDTO.getProductId() + " no pertenece a esta empresa.");
             }
+
             item.setProduct(product);
             item.setQuantity(itemDTO.getQuantity());
             item.setUnitPrice(itemDTO.getUnitPrice());

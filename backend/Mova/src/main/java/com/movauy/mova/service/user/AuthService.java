@@ -40,12 +40,12 @@ public class AuthService {
         }
 
         String token = jwtService.getToken(user);
-        String companyId = user.getCompanyId() != null ? user.getCompanyId() : user.getId().toString();
 
+        // ✅ En lugar de devolver "" como companyId, devolvemos el ID real de la empresa
         return AuthResponse.builder()
                 .token(token)
                 .role(user.getRole().name())
-                .companyId(companyId)
+                .companyId(user.getId().toString()) // <- Este ID se usará para asociar usuarios
                 .build();
     }
 
@@ -83,70 +83,66 @@ public class AuthService {
      * Registro de nuevos usuarios
      */
     public AuthResponse register(RegisterRequest request) {
-        Role role;
-        try {
-            role = Role.valueOf(request.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("El rol enviado no es válido. Use COMPANY, USER o ADMIN.", e);
-        }
-
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(role)
-                .companyId(request.getCompanyId())
-                .mercadoPagoAccessToken(request.getMercadoPagoAccessToken())
-                .build();
-
-        userRepository.save(user);
-
-        return AuthResponse.builder()
-                .token(jwtService.getToken(user))
-                .role(user.getRole().name())
-                .companyId(user.getCompanyId())
-                .build();
+    Role role;
+    try {
+        role = Role.valueOf(request.getRole().toUpperCase());
+    } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("El rol enviado no es válido. Use COMPANY, USER o ADMIN.", e);
     }
 
-    /**
-     * Método privado para autenticar usuarios
-     */
+    User user = User.builder()
+            .username(request.getUsername())
+            .password(passwordEncoder.encode(request.getPassword()))
+            .role(role)
+            .companyId(request.getCompanyId()) // Puede ser null o ""
+            .mercadoPagoAccessToken(request.getMercadoPagoAccessToken())
+            .build();
+
+    userRepository.save(user);
+
+    // ✅ Si es empresa y no tiene companyId, lo igualamos a su propio ID
+    if (role == Role.COMPANY && (user.getCompanyId() == null || user.getCompanyId().isBlank())) {
+        user.setCompanyId(user.getId().toString());
+        userRepository.save(user); // guardamos con el companyId seteado
+    }
+
+    String effectiveCompanyId = user.getCompanyId() != null && !user.getCompanyId().isEmpty()
+            ? user.getCompanyId()
+            : user.getId().toString();
+
+    return AuthResponse.builder()
+            .token(jwtService.getToken(user))
+            .role(user.getRole().name())
+            .companyId(effectiveCompanyId)
+            .build();
+}
+
+
     private void authenticateUser(String username, String password) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(username, password)
         );
     }
 
-    /**
-     * Método para extraer el companyId a partir del token JWT. Se asume que el
-     * token contiene el username (subject) y se usa para buscar el usuario.
-     */
     public Long getCompanyIdFromToken(String token) {
-        // Si el token tiene el prefijo "Bearer ", se elimina.
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
-        // Usamos getUsernameFromToken del JwtService para obtener el username.
         String username = jwtService.getUsernameFromToken(token);
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-        // Se utiliza companyId si existe, de lo contrario se usa el id del usuario.
-        String companyIdStr = user.getCompanyId() != null ? user.getCompanyId() : user.getId().toString();
+
+        String companyIdStr = user.getCompanyId() != null && !user.getCompanyId().isEmpty()
+                ? user.getCompanyId()
+                : user.getId().toString();
         return Long.valueOf(companyIdStr);
     }
 
-    /**
-     * Método para obtener un objeto User a partir del companyId. Se convierte
-     * el companyId a Integer para buscar el usuario.
-     */
     public User getUserById(Long companyId) {
         return userRepository.findById(companyId.intValue())
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
 
-    /**
-     * Método para obtener un objeto User a partir del Id SIN TOKEN DE MERCADO
-     * PAGO.
-     */
     public User getSafeUserById(Long id) {
         return userRepository.findUserWithoutSensitiveData(id)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
@@ -156,44 +152,34 @@ public class AuthService {
         userRepository.save(user);
     }
 
-    /**
-     * Método para obtener un DTO con datos básicos del usuario a partir del
-     * token JWT, sin disparar el desencriptado del campo
-     * mercadoPagoAccessToken.
-     */
     public UserBasicDTO getUserBasicFromToken(String token) {
-        // Eliminar el prefijo Bearer si existe
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
 
         String username = jwtService.getUsernameFromToken(token);
-
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
         return new UserBasicDTO(
                 user.getId().longValue(),
                 user.getUsername(),
-                user.getCompanyId() != null ? user.getCompanyId() : user.getId().toString(),
+                user.getCompanyId() != null && !user.getCompanyId().isEmpty()
+                        ? user.getCompanyId()
+                        : user.getId().toString(),
                 user.getRole().name()
         );
     }
 
-    /**
-     * Método para obtener un DTO con datos básicos del usuario a partir del ID,
-     * evitando disparar la conversión o desencriptación del token de
-     * MercadoPago.
-     */
     public UserBasicDTO getUserBasicById(Long id) {
-        // Se puede usar el método getSafeUserById() que ya tienes
         User user = getSafeUserById(id);
         return new UserBasicDTO(
                 user.getId(),
                 user.getUsername(),
-                user.getCompanyId() != null ? user.getCompanyId() : user.getId().toString(),
+                user.getCompanyId() != null && !user.getCompanyId().isEmpty()
+                        ? user.getCompanyId()
+                        : user.getId().toString(),
                 user.getRole().name()
         );
     }
-
 }

@@ -26,8 +26,8 @@ public interface CashRegisterRepository extends JpaRepository<CashRegister, Long
     // Obtiene las cajas cuyo cierre es posterior a una fecha dada
     @Query("SELECT c FROM CashRegister c WHERE c.closeDate >= :date ORDER BY c.openDate DESC")
     List<CashRegister> findCashRegisterAfter(@Param("date") LocalDateTime date);
-    
+
     // Filtrado por empresa: obtiene las cajas con cierre posterior a una fecha dada para un usuario específico
-    @Query("SELECT c FROM CashRegister c WHERE c.user.id = :companyId AND c.closeDate >= :date ORDER BY c.openDate DESC")
-    List<CashRegister> findCashRegisterAfterByCompany(@Param("companyId") Integer companyId, @Param("date") LocalDateTime date);
+    @Query("SELECT c FROM CashRegister c WHERE c.user.companyId = :companyId AND c.openDate >= :date ORDER BY c.openDate DESC")
+    List<CashRegister> findCashRegisterAfterByCompany(@Param("companyId") String companyId, @Param("date") LocalDateTime date);
 }

@@ -10,4 +10,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     @Query("SELECT p FROM Product p WHERE p.user.id = :companyId")
     List<Product> getProductsByCompany(@Param("companyId") Integer companyId);
+    
+    List<Product> findByCategoryId(Long categoryId);
+    
+    boolean existsByCategoryId(Long categoryId);
 }
