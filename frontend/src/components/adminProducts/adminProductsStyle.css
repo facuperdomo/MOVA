@@ -8,11 +8,15 @@ body, html {
   background-color: #181818;
   color: #f1f1f1;
   box-sizing: border-box;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE y Edge */
 }
 *, *::before, *::after {
   box-sizing: inherit;
 }
-
+body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
 /* ==============================
    Página de administración
 ============================== */
@@ -151,9 +155,18 @@ input[type="file"] {
    Productos
 ============================== */
 .products-container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 40px auto 0;
+  max-height: calc(100vh - 100px); /* o lo que sea necesario */
+  overflow-y: auto;
+  padding-bottom: 50px;
+  position: relative;
+  overflow-x: hidden;
+  /* Ocultar scrollbar en todos los navegadores */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+.products-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari y Edge */
 }
 .products-container h2 {
   text-align: center;
@@ -164,6 +177,9 @@ input[type="file"] {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 20px;
+  padding: 10px;
+  box-sizing: border-box;
+  width: 100%;
 }
 .product-item {
   background-color: #2a2a2a;
@@ -187,7 +203,7 @@ input[type="file"] {
 }
 .product-item h3 {
   font-size: 16px;
-  margin: 8px 0;
+  margin: 6px 0 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -196,7 +212,7 @@ input[type="file"] {
   font-size: 16px;
   color: #f1c40f;
   font-weight: bold;
-  margin-bottom: 12px;
+  margin: 4px 0;
 }
 .product-actions {
   display: flex;
@@ -302,9 +318,13 @@ input[type="file"] {
 
 
 .category-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  background-color: #181818;
+  padding: 15px 10px 10px;
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
   flex-wrap: wrap;
   justify-content: center;
 }
