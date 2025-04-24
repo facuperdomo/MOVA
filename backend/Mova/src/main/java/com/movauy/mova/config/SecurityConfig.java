@@ -28,10 +28,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-            // habilitamos CORS con nuestra configuración personalizada
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .exceptionHandling(ex -> ex
+                // habilitamos CORS con nuestra configuración personalizada
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, authEx) -> {
                     System.out.println("AuthenticationEntryPoint invocado: " + authEx.getMessage());
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, authEx.getMessage());
@@ -40,24 +40,24 @@ public class SecurityConfig {
                     System.out.println("AccessDeniedHandler invocado: " + deniedEx.getMessage());
                     res.sendError(HttpServletResponse.SC_FORBIDDEN, deniedEx.getMessage());
                 })
-            )
-            .authorizeHttpRequests(auth -> auth
+                )
+                .authorizeHttpRequests(auth -> auth
                 // endpoints públicos
                 .requestMatchers(
-                    "/auth/**",
-                    "/error/**",
-                    "/api/mercadopago/**",
-                    "/api/webhooks/mercadopago",
-                    "/ws/**"
+                        "/auth/**",
+                        "/error/**",
+                        "/api/mercadopago/**",
+                        "/api/webhooks/mercadopago",
+                        "/ws/**"
                 ).permitAll()
                 .anyRequest().authenticated()
-            )
-            .sessionManagement(sess -> sess
+                )
+                .sessionManagement(sess -> sess
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authProvider)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .build();
+                )
+                .authenticationProvider(authProvider)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
     @Bean
@@ -66,8 +66,9 @@ public class SecurityConfig {
 
         // en lugar de "*", los orígenes explícitos que usarán tu frontend o ngrok:
         configuration.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "https://7fdc-2800-a4-11bc-8800-d561-166e-d771-2a27.ngrok-free.app"
+                "http://localhost:3000",
+                "https://movauy.top",
+                "https://7fdc-2800-a4-11bc-8800-d561-166e-d771-2a27.ngrok-free.app"
         ));
 
         // métodos y cabeceras permitidas
