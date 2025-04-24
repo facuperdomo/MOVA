@@ -21,7 +21,6 @@ import java.util.Map;
 @Slf4j
 @CrossOrigin(origins = {
     "http://localhost:3000",
-    "https://7fdc-2800-a4-11bc-8800-d561-166e-d771-2a27.ngrok-free.app",
     "https://movauy.top",
     "https://movauy.top:8443"
 })
@@ -31,7 +30,6 @@ public class MercadoPagoController {
 
     private final AuthService authService;
 
-    /** Dominio público de tu backend, p.ej. https://movauy.top:8443 */
     @Value("${app.base-url}")
     private String baseUrl;
 
@@ -46,7 +44,6 @@ public class MercadoPagoController {
     ) {
         log.info("🔔 createPreference invoked for companyId={} amount={}", companyId, request.getAmount());
 
-        // 1) Validar empresa
         User company = authService.getUserById(companyId);
         if (company == null || !"COMPANY".equals(company.getRole().name())) {
             log.warn("🛑 Empresa inválida o no encontrada: id={}", companyId);
@@ -55,7 +52,6 @@ public class MercadoPagoController {
                     .body(Map.of("error", "Empresa no encontrada o no es de tipo COMPANY"));
         }
 
-        // 2) Token de MP
         String accessToken = company.getMercadoPagoAccessToken();
         if (accessToken == null || accessToken.isBlank()) {
             log.warn("🛑 AccessToken no configurado para empresa id={}", companyId);
@@ -65,7 +61,6 @@ public class MercadoPagoController {
         }
 
         try {
-            // 3) Configurar SDK y crear preferencia
             MercadoPago.SDK.setAccessToken(accessToken);
             log.debug("🔑 SDK MP configurado para companyId={}", companyId);
 
@@ -75,14 +70,14 @@ public class MercadoPagoController {
                     .setQuantity(1)
                     .setCurrencyId("UYU")
                     .setUnitPrice(request.getAmount())
-                );
-            pref.setBackUrls(new BackUrls()
+                )
+                .setBackUrls(new BackUrls()
                     .setSuccess(baseUrl + "/success")
                     .setPending(baseUrl + "/pending")
                     .setFailure(baseUrl + "/failure")
-            );
-            pref.setAutoReturn(AutoReturn.approved);
-            pref.setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
+                )
+                .setAutoReturn(AutoReturn.approved)
+                .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
 
             pref.save();
             String initPoint = pref.getInitPoint();
