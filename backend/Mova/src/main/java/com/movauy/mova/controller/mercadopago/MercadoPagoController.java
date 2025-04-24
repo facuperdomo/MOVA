@@ -7,6 +7,7 @@ import com.mercadopago.resources.Preference;
 import com.mercadopago.resources.Preference.AutoReturn;
 import com.mercadopago.resources.datastructures.preference.BackUrls;
 import com.mercadopago.resources.datastructures.preference.Item;
+import com.mercadopago.resources.datastructures.preference.Payer;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.service.user.AuthService;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class MercadoPagoController {
     ) {
         log.info("🔔 createPreference invoked for companyId={} amount={}", companyId, request.getAmount());
 
+        // 1) Validar empresa
         User company = authService.getUserById(companyId);
         if (company == null || !"COMPANY".equals(company.getRole().name())) {
             log.warn("🛑 Empresa inválida o no encontrada: id={}", companyId);
@@ -52,6 +54,7 @@ public class MercadoPagoController {
                     .body(Map.of("error", "Empresa no encontrada o no es de tipo COMPANY"));
         }
 
+        // 2) Obtener token de MP
         String accessToken = company.getMercadoPagoAccessToken();
         if (accessToken == null || accessToken.isBlank()) {
             log.warn("🛑 AccessToken no configurado para empresa id={}", companyId);
@@ -61,22 +64,28 @@ public class MercadoPagoController {
         }
 
         try {
+            // 3) Configurar SDK y crear la preferencia
             MercadoPago.SDK.setAccessToken(accessToken);
             log.debug("🔑 SDK MP configurado para companyId={}", companyId);
 
             Preference pref = new Preference()
+                // Payer genérico para pasar validación
+                .setPayer(new Payer().setEmail("anonymous@movauy.com"))
+                // Item de ejemplo
                 .appendItem(new Item()
                     .setTitle("Servicio en el bar")
                     .setQuantity(1)
                     .setCurrencyId("UYU")
                     .setUnitPrice(request.getAmount())
                 )
+                // URLs de retorno
                 .setBackUrls(new BackUrls()
                     .setSuccess(baseUrl + "/success")
                     .setPending(baseUrl + "/pending")
                     .setFailure(baseUrl + "/failure")
                 )
                 .setAutoReturn(AutoReturn.approved)
+                // Webhook de notificaciones
                 .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
 
             pref.save();
