@@ -1,5 +1,5 @@
 // src/components/dashboard/Dashboard.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
@@ -40,75 +40,77 @@ const Dashboard = () => {
 
   const [showEmptyCartPopup, setShowEmptyCartPopup] = useState(false);
 
+  const cartRef = useRef(cart);
+  const totalRef = useRef(total);
+
+  useEffect(() => {
+    cartRef.current = cart;
+    totalRef.current = total;
+  }, [cart, total]);
+
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
-    if (offline) {
-      console.log("Offline: no inicializo STOMP/WebSocket");
-      return;  
-    }
-    console.log("Iniciando STOMP sobre WebSocket a:", WS_URL);
-    const brokerURL = WS_URL.replace(/^http/, "ws") + "/ws";
-    const stompClient = new Client({
-      brokerURL,
-      reconnectDelay: 5000,
-      debug: (str) => console.log("STOMP DEBUG:", str),
-      onConnect: () => {
-        stompClient.subscribe(
-          "/topic/payment-status",
-          async (msg) => { const raw = msg.body.toLowerCase();
-              console.log("🔔 payment-status recibido:", raw);
-  
-              if (!["approved", "rejected"].includes(raw)) return;
-  
-              const translated = raw === "approved" ? "Aprobado" : "Rechazado";
-              setPaymentStatus(translated);
-  
-              if (raw === "approved") {
-                // 1) generar payload igual que en handleCashPayment
-                const saleData = {
-                  totalAmount: total,
-                  paymentMethod: "QR",
-                  dateTime: new Date().toISOString(),
-                  items: cart.map(item => ({
-                    productId: item.id,
-                    quantity: item.quantity,
-                    unitPrice: item.price
-                  }))
-                };
-  
-                try {
-                  // 2) llamar a tu API para registrar la venta
-                  const response = await customFetch(
-                    `${API_URL}/api/sales`,
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(saleData)
-                    }
-                  );
-                  console.log("Venta QR registrada:", response);
-                  setLastSale(response);      // para poder deshacerla luego
-                  // 3) limpiar carrito y cerrar el popup
-                  setCart([]);
-                  setTotal(0);
-                  setShowPopup(false);
-                  setShowQR(false);
-                } catch (err) {
-                  console.error("Error al guardar venta QR:", err);
-                  alert("Ocurrió un error guardando la venta QR.");
-                }
-              } },
-          { id: "payment-status-sub" }
-        );
+  if (offline) {
+    console.log("Offline: no inicializo STOMP/WebSocket");
+    return;
+  }
+  console.log("Iniciando STOMP sobre WebSocket a:", WS_URL);
+  const brokerURL = WS_URL.replace(/^http/, "ws") + "/ws";
+  const client = new Client({
+    brokerURL,
+    reconnectDelay: 5000,
+    debug: (str) => console.log("STOMP DEBUG:", str),
+  });
+
+  client.onConnect = () => {
+    client.subscribe(
+      "/topic/payment-status",
+      async (msg) => {
+        const raw = msg.body.toLowerCase();
+        if (!["approved", "rejected"].includes(raw)) return;
+        const translated = raw === "approved" ? "Aprobado" : "Rechazado";
+        setPaymentStatus(translated);
+
+        if (raw === "approved") {
+          const saleData = {
+            totalAmount: totalRef.current,
+            paymentMethod: "QR",
+            dateTime: new Date().toISOString(),
+            items: cartRef.current.map(item => ({
+              productId: item.id,
+              quantity: item.quantity,
+              unitPrice: item.price,
+            }))
+          };
+
+          try {
+            const response = await customFetch(
+              `${API_URL}/api/sales`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(saleData)
+              }
+            );
+            setLastSale(response);
+            setCart([]);
+            setTotal(0);
+            setShowPopup(false);
+            setShowQR(false);
+          } catch (err) {
+            console.error("Error al guardar venta QR:", err);
+            alert("Ocurrió un error guardando la venta QR.");
+          }
+        }
       },
-      onStompError: (frame) => console.error("Error STOMP:", frame.body),
-    });
-  
-    stompClient.activate();
-    return () => {
-      stompClient.deactivate();
-    };
-  }, [offline, cart, total]);
+      { id: "payment-status-sub" }
+    );
+  };
+
+  client.onStompError = frame => console.error("Error STOMP:", frame.body);
+  client.activate();
+  return () => client.deactivate();
+}, [offline]);
   
 
   // Si se recibe un estado de pago, se oculta automáticamente después de 5 segundos

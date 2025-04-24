@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { API_URL } from "../../config/apiConfig";
-import "./paymentQRStyle.css";
 import { customFetch } from "../../utils/api";
+import "./paymentQRStyle.css";
 
 const PaymentQR = ({ amount }) => {
   const [qrUrl, setQrUrl] = useState("");
@@ -10,64 +10,43 @@ const PaymentQR = ({ amount }) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    console.log("PaymentQR: iniciando fetch para monto:", amount);
     const companyId = localStorage.getItem("companyId");
-    console.log("CompanyID:", companyId);
     if (!companyId) {
-      console.error("No se encontró companyId en localStorage.");
       setErrorMessage("No se encontró la identificación de la empresa.");
       setLoading(false);
       return;
     }
 
-    // Construir la URL incluyendo el companyId
-    const url = `${API_URL}/api/mercadopago/create-preference/${companyId}`;
-
-    customFetch(url, {
-      method: "POST",
-      body: JSON.stringify({ amount }),
-    })
+    customFetch(
+      `${API_URL}/api/mercadopago/create-preference/${companyId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount }),
+      }
+    )
       .then((data) => {
-        // Si data es un string, intentar parsearlo
-        if (typeof data === "string") {
-          try {
-            data = JSON.parse(data);
-          } catch (e) {
-            throw new Error("Error al parsear la respuesta del servidor.");
-          }
-        }
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        console.log("PaymentQR: datos recibidos:", data);
+        if (typeof data === "string") data = JSON.parse(data);
+        if (data.error) throw new Error(data.error);
         setQrUrl(data.init_point);
-        setLoading(false);
       })
-      .catch((error) => {
-        console.error("PaymentQR: Error creando la preferencia:", error);
-        setErrorMessage(error.message);
+      .catch((err) => {
+        setErrorMessage(err.message || "Error al generar el QR.");
+      })
+      .finally(() => {
         setLoading(false);
       });
   }, [amount]);
 
-  return (
-    <div className="payment-qr-container">
-      {loading ? (
-        <p className="loading-message">Generando código QR...</p>
-      ) : errorMessage ? (
-        <p className="error-message">{errorMessage}</p>
-      ) : (
-        <div className="qr-content">
-          {qrUrl ? (
-            <QRCodeCanvas className="qr-canvas" value={qrUrl} size={256} />
-          ) : (
-            <p className="error-message">
-              Ocurrió un error al generar el código QR.
-            </p>
-          )}
-        </div>
-      )}
+  if (loading) return <p className="loading-message">Generando código QR…</p>;
+  if (errorMessage) return <p className="error-message">{errorMessage}</p>;
+
+  return qrUrl ? (
+    <div className="qr-content">
+      <QRCodeCanvas value={qrUrl} size={256} />
     </div>
+  ) : (
+    <p className="error-message">Ocurrió un error al generar el código QR.</p>
   );
 };
 

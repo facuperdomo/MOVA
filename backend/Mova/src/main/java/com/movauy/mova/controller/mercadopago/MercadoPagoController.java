@@ -7,14 +7,12 @@ import com.mercadopago.resources.Preference;
 import com.mercadopago.resources.Preference.AutoReturn;
 import com.mercadopago.resources.datastructures.preference.BackUrls;
 import com.mercadopago.resources.datastructures.preference.Item;
-import com.mercadopago.resources.datastructures.preference.Payer;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.service.user.AuthService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -35,7 +33,7 @@ public class MercadoPagoController {
     public ResponseEntity<?> createPreference(
             @PathVariable Long companyId,
             @RequestBody PaymentRequest request
-    ) throws MPConfException {
+    ) {
         // 1) Validar empresa
         User company = authService.getUserById(companyId);
         if (company == null || !"COMPANY".equals(company.getRole().name())) {
@@ -51,9 +49,11 @@ public class MercadoPagoController {
                     .badRequest()
                     .body(Map.of("error", "La empresa no tiene configurado un Access Token de MercadoPago"));
         }
-        MercadoPago.SDK.setAccessToken(accessToken);
 
         try {
+            // Configurar SDK
+            MercadoPago.SDK.setAccessToken(accessToken);
+
             // 3) Crear preferencia
             Preference pref = new Preference();
 
@@ -73,19 +73,30 @@ public class MercadoPagoController {
             );
             pref.setAutoReturn(AutoReturn.approved);
 
-            // <-- Crucial: a dónde envía MP el webhook
+            // Webhook de notificaciones
             pref.setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
 
             // Guardar y obtener link
             pref.save();
 
             return ResponseEntity.ok(Map.of("init_point", pref.getInitPoint()));
+
+        } catch (MPConfException e) {
+            // Error de configuración (por ejemplo credenciales mal cargadas)
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(500)
+                    .body(Map.of("error", "Error de configuración de MercadoPago: " + e.getMessage()));
+
         } catch (MPException e) {
+            // Cualquier otro error de la SDK de MercadoPago
             e.printStackTrace();
             String msg = e.getMessage() == null
                          ? "Error desconocido al crear la preferencia"
                          : e.getMessage();
-            return ResponseEntity.status(500).body(Map.of("error", msg));
+            return ResponseEntity
+                    .status(500)
+                    .body(Map.of("error", msg));
         }
     }
 
