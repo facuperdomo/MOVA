@@ -3,11 +3,12 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
+import { StompSubscription } from '@stomp/stompjs';
 import "./dashboardStyle.css";
 import { ArrowLeft, Trash2, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
 import PaymentQR from "../paymentqr/PaymentQR";
-import { API_URL } from "../../config/apiConfig";
+import { API_URL, WS_URL } from "../../config/apiConfig";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -37,29 +38,78 @@ const Dashboard = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
+  const [showEmptyCartPopup, setShowEmptyCartPopup] = useState(false);
+
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
-    console.log("Iniciando conexión WS a:", `${API_URL}/ws`);
-    const socket = new SockJS(`${API_URL}/ws`);
+    if (offline) {
+      console.log("Offline: no inicializo STOMP/WebSocket");
+      return;  
+    }
+    console.log("Iniciando STOMP sobre WebSocket a:", WS_URL);
+    const brokerURL = WS_URL.replace(/^http/, "ws") + "/ws";
     const stompClient = new Client({
-      webSocketFactory: () => socket,
+      brokerURL,
       reconnectDelay: 5000,
+      debug: (str) => console.log("STOMP DEBUG:", str),
       onConnect: () => {
-        console.log("Conectado al WebSocket");
-        stompClient.subscribe("/topic/payment-status", (message) => {
-          console.log("Mensaje de pago recibido:", message.body);
-          setPaymentStatus(message.body);
-        });
+        stompClient.subscribe(
+          "/topic/payment-status",
+          async (msg) => { const raw = msg.body.toLowerCase();
+              console.log("🔔 payment-status recibido:", raw);
+  
+              if (!["approved", "rejected"].includes(raw)) return;
+  
+              const translated = raw === "approved" ? "Aprobado" : "Rechazado";
+              setPaymentStatus(translated);
+  
+              if (raw === "approved") {
+                // 1) generar payload igual que en handleCashPayment
+                const saleData = {
+                  totalAmount: total,
+                  paymentMethod: "QR",
+                  dateTime: new Date().toISOString(),
+                  items: cart.map(item => ({
+                    productId: item.id,
+                    quantity: item.quantity,
+                    unitPrice: item.price
+                  }))
+                };
+  
+                try {
+                  // 2) llamar a tu API para registrar la venta
+                  const response = await customFetch(
+                    `${API_URL}/api/sales`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(saleData)
+                    }
+                  );
+                  console.log("Venta QR registrada:", response);
+                  setLastSale(response);      // para poder deshacerla luego
+                  // 3) limpiar carrito y cerrar el popup
+                  setCart([]);
+                  setTotal(0);
+                  setShowPopup(false);
+                  setShowQR(false);
+                } catch (err) {
+                  console.error("Error al guardar venta QR:", err);
+                  alert("Ocurrió un error guardando la venta QR.");
+                }
+              } },
+          { id: "payment-status-sub" }
+        );
       },
-      onStompError: (frame) => {
-        console.error("Error en STOMP:", frame);
-      },
+      onStompError: (frame) => console.error("Error STOMP:", frame.body),
     });
+  
     stompClient.activate();
     return () => {
       stompClient.deactivate();
     };
-  }, []);
+  }, [offline, cart, total]);
+  
 
   // Si se recibe un estado de pago, se oculta automáticamente después de 5 segundos
   useEffect(() => {
@@ -107,15 +157,17 @@ const Dashboard = () => {
   useEffect(() => {
     const handleOnline = () => {
       console.log("Conexión recuperada.");
-      setOffline(false);
+      setOffline(false);             // reactivará el hook anterior
       setShowOfflinePopup(false);
-      syncOfflineSales();
+      setOfflineMessage("");
+      syncOfflineSales();            // sincroniza ventas pendientes
     };
     const handleOffline = () => {
       console.log("Sin conexión.");
       setOffline(true);
       setShowOfflinePopup(true);
     };
+  
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     return () => {
@@ -180,6 +232,10 @@ const Dashboard = () => {
 
   // Lógica para abrir el popup de pago
   const handlePayment = () => {
+    if (cart.length === 0) {
+      setShowEmptyCartPopup(true);
+      return;
+    }
     setShowPopup(true);
     setShowQR(false);
   };
@@ -306,22 +362,19 @@ const Dashboard = () => {
   };
 
   // Función para renderizar el estado del pago recibido vía WebSocket
-  const renderPaymentStatus = () => {
-    if (!paymentStatus) return null;
-    // Aplica estilos condicionales: verde si es "approved", rojo si es otro
-    const statusStyle = {
-      backgroundColor: paymentStatus.toLowerCase() === "approved" ? "#4caf50" : "#f44336",
-    };
-    return (
+  const renderPaymentStatus = () =>
+    paymentStatus && (
       <div
         className="payment-status-message"
-        style={statusStyle}
+        style={{
+          backgroundColor:
+            paymentStatus.toLowerCase() === "aprobado" ? "#4caf50" : "#f44336",
+        }}
         onClick={() => setPaymentStatus("")}
       >
         <p>Estado del pago: {paymentStatus}</p>
       </div>
     );
-  };
 
   return (
     <div className="app-container">
@@ -459,15 +512,18 @@ const Dashboard = () => {
               <>
                 <h2>Selecciona el Método de Pago</h2>
                 <div className="popup-buttons">
-                  <button className="popup-btn popup-btn-cash" onClick={handleCashPayment}>
+                  <button className="popup-btn" onClick={handleCashPayment}>
                     💸 Pagar con Efectivo
                   </button>
                   <button
                     className="popup-btn popup-btn-qr"
+                   
                     onClick={() => {
                       console.log("Pago con QR seleccionado");
                       setShowQR(true);
                     }}
+                    disabled={offline}
+                    title={offline ? "Necesitas conexión para QR" : ""}
                   >
                     📱 Pagar con QR
                   </button>
@@ -510,7 +566,27 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      {showEmptyCartPopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={32}
+              onClick={() => setShowEmptyCartPopup(false)}
+            />
+            <h2>Carrito vacío</h2>
+            <p>Debes agregar al menos un producto al carrito antes de realizar la venta.</p>
+            <button
+              className="popup-btn popup-btn-empty"
+              onClick={() => setShowEmptyCartPopup(false)}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 };
 

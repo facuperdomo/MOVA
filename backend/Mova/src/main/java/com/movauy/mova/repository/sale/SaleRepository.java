@@ -33,4 +33,5 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     // ✅ Filtra ventas por empresa (companyId como String) y fecha
     @Query("SELECT s FROM Sale s WHERE s.user.companyId = :companyId AND s.dateTime >= :date")
     List<Sale> findByUserCompanyIdAndDateTimeAfter(@Param("companyId") String companyId, @Param("date") LocalDateTime date);
+
 }

@@ -3,6 +3,7 @@ package com.movauy.mova.service.finance;
 import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.finance.CashRegister;
 import com.movauy.mova.model.sale.Sale;
+import com.movauy.mova.model.sale.Sale.EstadoVenta;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
@@ -83,7 +84,7 @@ public class CashRegisterService {
         sales.forEach(sale -> System.out.println("Venta: " + sale.getTotalAmount() + " - Método: " + sale.getPaymentMethod()));
 
         return sales.stream()
-                .filter(sale -> "CASH".equalsIgnoreCase(sale.getPaymentMethod()))
+                .filter(sale -> sale.getEstado() == EstadoVenta.ACTIVA)
                 .mapToDouble(Sale::getTotalAmount)
                 .sum();
     }

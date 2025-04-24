@@ -1,43 +1,63 @@
+// src/components/admin/AdminOptions.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { customFetch } from "../../utils/api";
 import { X } from "lucide-react";
 import "./adminOptionsStyle.css";
-import { API_URL } from '../../config/apiConfig';
+import { API_URL } from "../../config/apiConfig";
 
 const AdminOptions = () => {
   const navigate = useNavigate();
-  const [initialCash, setInitialCash] = useState("");
-  const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  // Estado de menú lateral
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cashSummary, setCashSummary] = useState(null);
+  // Estado de la caja y conexión
+  const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false);
+  const [offline, setOffline] = useState(!navigator.onLine);
+
+  // Popups
+  const [showInvalidInitialPopup, setShowInvalidInitialPopup] = useState(false);
+  const [showNoConnPopup, setShowNoConnPopup] = useState(false);
   const [showClosePopup, setShowClosePopup] = useState(false);
   const [showSummaryPopup, setShowSummaryPopup] = useState(false);
 
-  // ✅ Calculadora
+  // Monto inicial y resumen
+  const [initialCash, setInitialCash] = useState("");
+  const [cashSummary, setCashSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // Calculadora
   const [showCalculatorPopup, setShowCalculatorPopup] = useState(false);
   const [calculatorInput, setCalculatorInput] = useState("");
   const [realAmount, setRealAmount] = useState("");
   const [difference, setDifference] = useState(null);
 
-  const checkCashRegisterStatus = async () => {
-    try {
-      const response = await customFetch(`${API_URL}/api/cash-register/status`);
-      if (typeof response === "string") return;
-      setIsCashRegisterOpen(response);
-    } catch (error) {
-      console.error("❌ Error al obtener estado de caja:", error);
-    }
-  };
-
+  // 1) Chequear estado de caja al montar
   useEffect(() => {
-    checkCashRegisterStatus();
+    customFetch(`${API_URL}/api/cash-register/status`)
+      .then(resp => {
+        if (typeof resp !== "string") setIsCashRegisterOpen(resp);
+      })
+      .catch(err => console.error("Error al obtener estado de caja:", err));
   }, []);
 
+  // 2) Detectar cambios de conexión
+  useEffect(() => {
+    const goOnline = () => setOffline(false);
+    const goOffline = () => setOffline(true);
+
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  // 3) Abrir caja con validación
   const openCashRegister = async () => {
     if (!initialCash || initialCash <= 0) {
-      alert("❌ El monto inicial debe ser mayor a 0.");
+      setShowInvalidInitialPopup(true);
       return;
     }
     try {
@@ -46,95 +66,106 @@ const AdminOptions = () => {
         body: JSON.stringify({ initialAmount: initialCash }),
       });
       setIsCashRegisterOpen(true);
-    } catch (error) {
-      console.error("❌ Error al abrir caja:", error);
+    } catch (err) {
+      console.error("Error al abrir caja:", err);
     }
   };
 
+  // 4) Cerrar caja (requiere conexión)
   const closeCashRegister = async () => {
     setLoading(true);
     try {
-      const response = await customFetch(`${API_URL}/api/cash-register/close`, {
+      const resp = await customFetch(`${API_URL}/api/cash-register/close`, {
         method: "POST",
       });
-
-      if (response && response.totalSold !== undefined) {
-        setCashSummary(response);
+      if (resp?.totalSold != null) {
+        setCashSummary(resp);
         setShowSummaryPopup(true);
       }
       setIsCashRegisterOpen(false);
-    } catch (error) {
-      console.error("❌ Error al cerrar caja:", error);
-      alert(`❌ No se pudo cerrar la caja. Motivo: ${error.message}`);
+    } catch (err) {
+      console.error("Error al cerrar caja:", err);
+      alert(`No se pudo cerrar la caja: ${err.message}`);
     } finally {
       setLoading(false);
       setShowClosePopup(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("isAdmin");
-    window.location.href = "/login";
-  };
-
-  // ✅ Calcular diferencia automáticamente
+  // 5) Diferencia calculadora
   useEffect(() => {
     if (cashSummary && realAmount !== "") {
-      const diff = parseFloat(realAmount) - cashSummary.expectedAmount;
-      setDifference(diff);
+      setDifference(parseFloat(realAmount) - cashSummary.expectedAmount);
     } else {
       setDifference(null);
     }
   }, [realAmount, cashSummary]);
 
-  // ✅ Calcular resultado de la calculadora
   const calculateResult = () => {
     try {
-      const result = eval(calculatorInput);
-      setRealAmount(result.toFixed(2));
+      const r = eval(calculatorInput);
+      setRealAmount(r.toFixed(2));
       setShowCalculatorPopup(false);
     } catch {
-      alert("❌ Expresión inválida");
+      alert("Expresión inválida");
     }
+  };
+
+  const logout = () => {
+    localStorage.clear();
+    window.location.href = "/login";
   };
 
   return (
     <div className="admin-options">
-      {/* ✅ Menú Lateral */}
+      {/* Sidebar */}
       <nav className={`sidebar ${isMenuOpen ? "open" : ""}`}>
-        <div className="menu-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        <div className="menu-toggle" onClick={() => setIsMenuOpen(v => !v)}>
           ☰
         </div>
         <ul>
-          <li onClick={() => navigate("/dashboard")}>🛒 {isMenuOpen && <span>Venta</span>}</li>
-          <li onClick={() => navigate("/statistics")}>📊 {isMenuOpen && <span>Estadísticas</span>}</li>
-          <li onClick={() => navigate("/adminProducts")}>📦 {isMenuOpen && <span>Productos</span>}</li>
-          <li onClick={logout}>🚪 {isMenuOpen && <span>Cerrar Sesión</span>}</li>
+          <li onClick={() => navigate("/dashboard")}>
+            🛒 {isMenuOpen && <span>Venta</span>}
+          </li>
+          <li onClick={() => navigate("/statistics")}>
+            📊 {isMenuOpen && <span>Estadísticas</span>}
+          </li>
+          <li onClick={() => navigate("/adminProducts")}>
+            📦 {isMenuOpen && <span>Productos</span>}
+          </li>
+          <li onClick={logout}>
+            🚪 {isMenuOpen && <span>Cerrar Sesión</span>}
+          </li>
         </ul>
       </nav>
 
-      {/* ✅ Contenido principal */}
+      {/* Contenido principal */}
       <div className="admin-container">
         <h2>Bienvenido, Administrador</h2>
 
-        {isCashRegisterOpen === null ? (
+        {isCashRegisterOpen == null ? (
           <p>⌛ Cargando estado de la caja...</p>
         ) : isCashRegisterOpen ? (
           <>
-            <p>✅ La caja ya está abierta.</p>
-            <button className="close-cash-btn" onClick={() => setShowClosePopup(true)}>
+            <p>✅ La caja está abierta.</p>
+            <button
+              className="close-cash-btn"
+              disabled={offline}
+              onClick={() =>
+                offline ? setShowNoConnPopup(true) : setShowClosePopup(true)
+              }
+            >
               {loading ? "Cerrando..." : "Cerrar Caja"}
             </button>
           </>
         ) : (
           <>
-            <label>Ingrese el monto inicial en caja:</label>
+            <label>Ingrese monto inicial:</label>
             <input
               type="text"
               value={initialCash === "" ? "" : `$${initialCash}`}
-              onChange={(e) => setInitialCash(e.target.value.replace(/\D/g, ""))}
-              placeholder="$ Ingrese monto"
+              onChange={e => setInitialCash(e.target.value.replace(/\D/g, ""))}
+              placeholder="$0"
             />
             <button className="open-cash-btn" onClick={openCashRegister}>
               Abrir Caja
@@ -143,18 +174,64 @@ const AdminOptions = () => {
         )}
       </div>
 
-      {/* ✅ Popup de Confirmación */}
+      {/* Popup: monto inicial inválido */}
+      {showInvalidInitialPopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowInvalidInitialPopup(false)}
+            />
+            <h2>❌ Monto inválido</h2>
+            <p>Debe ingresar un valor mayor a 0.</p>
+            <button
+              className="popup-btn"
+              onClick={() => setShowInvalidInitialPopup(false)}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Popup: necesitas conexión para cerrar */}
+      {showNoConnPopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowNoConnPopup(false)}
+            />
+            <h2>⚠️ Sin conexión</h2>
+            <p>Necesitas conexión a Internet para cerrar la caja.</p>
+            <button className="popup-btn" onClick={() => setShowNoConnPopup(false)}>
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Popup: confirmar cierre */}
       {showClosePopup && (
         <div className="popup-overlay">
           <div className="popup-content">
-            <X className="popup-close" size={32} onClick={() => setShowClosePopup(false)} />
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowClosePopup(false)}
+            />
             <h2>¿Cerrar la caja?</h2>
-            <p>Se generará el resumen de cierre con el total vendido y el monto esperado en la caja.</p>
+            <p>Se generará un resumen con total vendido y monto esperado.</p>
             <div className="popup-buttons">
-              <button className="popup-btn popup-btn-cash" onClick={closeCashRegister}>
+              <button className="popup-btn" onClick={closeCashRegister}>
                 ✅ Confirmar
               </button>
-              <button className="popup-btn popup-btn-qr" onClick={() => setShowClosePopup(false)}>
+              <button
+                className="popup-btn cancel"
+                onClick={() => setShowClosePopup(false)}
+              >
                 ❌ Cancelar
               </button>
             </div>
@@ -162,31 +239,45 @@ const AdminOptions = () => {
         </div>
       )}
 
-      {/* ✅ Popup de Resumen */}
+      {/* Popup: resumen de cierre */}
       {showSummaryPopup && (
         <div className="popup-overlay">
           <div className="popup-content">
-            <X className="popup-close" size={32} onClick={() => setShowSummaryPopup(false)} />
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowSummaryPopup(false)}
+            />
             <h2>💸 Resumen de Cierre</h2>
-            <p>Total vendido: <strong>${cashSummary.totalSold}</strong></p>
-            <p>Total esperado en caja: <strong>${cashSummary.expectedAmount}</strong></p>
-
-            <button className="calculator-btn" onClick={() => setShowCalculatorPopup(true)}>
+            <p>
+              Total vendido: <strong>${cashSummary.totalSold}</strong>
+            </p>
+            <p>
+              Esperado en caja: <strong>${cashSummary.expectedAmount}</strong>
+            </p>
+            <button
+              className="popup-btn blue"
+              onClick={() => setShowCalculatorPopup(true)}
+            >
               🧮 Abrir Calculadora
             </button>
-
-            {/* ✅ Resultado de la Calculadora */}
             {realAmount && (
               <div className="real-amount-result">
-                <p>Monto real ingresado: <strong>${realAmount}</strong></p>
-                <p className={`difference ${difference >= 0 ? "correct" : "incorrect"}`}>
-                  Diferencia: <strong>${difference}</strong>
+                <p>Monto real: <strong>${realAmount}</strong></p>
+                <p
+                  className={`difference ${
+                    difference >= 0 ? "correct" : "incorrect"
+                  }`}
+                >
+                  Dif: <strong>${difference}</strong>
                 </p>
               </div>
             )}
-
             <div className="popup-buttons">
-              <button className="popup-btn popup-btn-cash" onClick={() => setShowSummaryPopup(false)}>
+              <button
+                className="popup-btn"
+                onClick={() => setShowSummaryPopup(false)}
+              >
                 ✅ Aceptar
               </button>
             </div>
@@ -194,23 +285,30 @@ const AdminOptions = () => {
         </div>
       )}
 
-      {/* ✅ Popup de Calculadora */}
+      {/* Popup: calculadora */}
       {showCalculatorPopup && (
         <div className="popup-overlay">
           <div className="popup-content calculator-popup">
-            <X className="popup-close" size={32} onClick={() => setShowCalculatorPopup(false)} />
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowCalculatorPopup(false)}
+            />
             <h2>🧮 Calculadora</h2>
             <input
               type="text"
               value={calculatorInput}
-              onChange={(e) => setCalculatorInput(e.target.value)}
+              onChange={e => setCalculatorInput(e.target.value)}
               placeholder="Ej: 500+100+300"
             />
             <div className="popup-buttons">
-              <button className="popup-btn popup-btn-cash" onClick={calculateResult}>
+              <button className="popup-btn" onClick={calculateResult}>
                 ✅ Calcular
               </button>
-              <button className="popup-btn popup-btn-qr" onClick={() => setShowCalculatorPopup(false)}>
+              <button
+                className="popup-btn cancel"
+                onClick={() => setShowCalculatorPopup(false)}
+              >
                 ❌ Cerrar
               </button>
             </div>
@@ -222,4 +320,3 @@ const AdminOptions = () => {
 };
 
 export default AdminOptions;
-

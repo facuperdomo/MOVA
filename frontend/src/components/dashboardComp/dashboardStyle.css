@@ -559,4 +559,29 @@
   font-weight: bold;
 }
 
+.popup-btn-empty {
+  width: 100%;
+  padding: 15px;
+  font-size: 22px;
+  font-weight: bold;
+  background-color: green;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease;
+  margin-top: 20px;
+}
 
+.popup-btn-empty:hover {
+  background-color: darkgreen;
+}
+
+.popup-btn-empty:active {
+  transform: scale(1.05);
+}
+
+.popup-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -1,0 +1,61 @@
+.popup-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.7);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .popup-content {
+    background-color: #333;
+    padding: 40px;
+    border-radius: 16px;
+    text-align: center;
+    width: 420px;
+    position: relative;
+    animation: scaleIn 0.3s ease;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+  }
+  
+  /* estilo común */
+.popup-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 22px;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.2s ease;
+    margin-top: 20px;
+    background-color: green;
+    color: white;
+  }
+  .popup-btn:hover { background-color: darkgreen; }
+  .popup-btn:active { transform: scale(1.05); }
+  
+  /* solo para botones “Cancelar” */
+  .popup-btn.cancel {
+    background-color: red;
+  }
+  .popup-btn.cancel:hover {
+    background-color: darkred;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; } to { opacity: 1; }
+  }
+  @keyframes scaleIn {
+    from { transform: scale(0.8); } to { transform: scale(1); }
+  }
+
+  /* variante azul para los que lleven .blue */
+.popup-btn.blue {
+    background-color: #007bff;
+    color: white;
+  }
+  .popup-btn.blue:hover {
+    background-color: #0056b3;
+  }

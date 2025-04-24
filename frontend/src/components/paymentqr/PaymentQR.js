@@ -58,7 +58,6 @@ const PaymentQR = ({ amount }) => {
         <p className="error-message">{errorMessage}</p>
       ) : (
         <div className="qr-content">
-          <p className="qr-instruction">Escanea el código QR para pagar:</p>
           {qrUrl ? (
             <QRCodeCanvas className="qr-canvas" value={qrUrl} size={256} />
           ) : (

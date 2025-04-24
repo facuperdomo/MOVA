@@ -1,6 +1,7 @@
 package com.movauy.mova.controller.mercadopago;
 
 import com.mercadopago.MercadoPago;
+import com.mercadopago.exceptions.MPConfException;
 import com.mercadopago.exceptions.MPException;
 import com.mercadopago.resources.Preference;
 import com.mercadopago.resources.Preference.AutoReturn;
@@ -9,104 +10,88 @@ import com.mercadopago.resources.datastructures.preference.Item;
 import com.mercadopago.resources.datastructures.preference.Payer;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.service.user.AuthService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Controlador para gestionar preferencias de pago con MercadoPago.
- */
 @RestController
 @RequestMapping("/api/mercadopago")
 public class MercadoPagoController {
 
     private final AuthService authService;
 
+    /** URL pública de tu servidor (ngrok o dominio), definida en application.properties */
+    @Value("${app.base-url}")
+    private String baseUrl;
+
     public MercadoPagoController(AuthService authService) {
         this.authService = authService;
     }
 
-    // Endpoint que recibe el ID de la empresa (User de tipo COMPANY)
     @PostMapping("/create-preference/{companyId}")
-    public ResponseEntity<?> createPreference(@PathVariable("companyId") Long companyId, @RequestBody PaymentRequest request) {
+    public ResponseEntity<?> createPreference(
+            @PathVariable Long companyId,
+            @RequestBody PaymentRequest request
+    ) throws MPConfException {
+        // 1) Validar empresa
+        User company = authService.getUserById(companyId);
+        if (company == null || !"COMPANY".equals(company.getRole().name())) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("error", "Empresa no encontrada o no es de tipo COMPANY"));
+        }
+
+        // 2) Token de MP
+        String accessToken = company.getMercadoPagoAccessToken();
+        if (accessToken == null || accessToken.isBlank()) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("error", "La empresa no tiene configurado un Access Token de MercadoPago"));
+        }
+        MercadoPago.SDK.setAccessToken(accessToken);
+
         try {
-            // Obtener la empresa usando el método del AuthService
-            User company = authService.getUserById(companyId);
-            if (company == null || !company.getRole().name().equals("COMPANY")) {
-                return ResponseEntity.badRequest().body("Empresa no encontrada o no es de tipo COMPANY");
-            }
+            // 3) Crear preferencia
+            Preference pref = new Preference();
 
-            // Extraer el Access Token de MercadoPago almacenado en la entidad User
-            // Extraer el Access Token de MercadoPago almacenado en la entidad User
-            String accessToken = company.getMercadoPagoAccessToken();
-            if (accessToken == null || accessToken.isBlank()) {
-                // Devuelve un error JSON indicando específicamente que falta el Access Token
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "La empresa no tiene configurado un Access Token de MercadoPago");
-                return ResponseEntity.badRequest().body(error);
-            }
-
-            System.out.println("AccessToken de la empresa (ID=" + company.getId() + "): " + accessToken);
-            // Configurar el SDK con el Access Token de la empresa
-            MercadoPago.SDK.setAccessToken(accessToken);
-
-            // Crear la preferencia de pago
-            Preference preference = new Preference();
-
-            // Establecer el payer (puedes ajustar el email de prueba o parametrizarlo)
-            Payer payer = new Payer();
-            payer.setEmail("test_user_1023298951@testuser.com");
-            preference.setPayer(payer);
-
-            // Configurar el ítem a cobrar
-            Item item = new Item();
-            item.setTitle("Servicio en el bar")
+            // Ítem
+            pref.appendItem(new Item()
+                    .setTitle("Servicio en el bar")
                     .setQuantity(1)
                     .setCurrencyId("UYU")
-                    .setUnitPrice(request.getAmount());
-            preference.appendItem(item);
+                    .setUnitPrice(request.getAmount())
+            );
 
-            // Configurar las URLs de retorno (asegúrate de usar una URL pública, por ejemplo, con ngrok)
-            BackUrls backUrls = new BackUrls()
-                    .setSuccess("https://e96b-2800-a4-11d4-7f00-41d7-8c68-c74d-772b.ngrok-free.app/success")
-                    .setPending("https://e96b-2800-a4-11d4-7f00-41d7-8c68-c74d-772b.ngrok-free.app/pending")
-                    .setFailure("https://e96b-2800-a4-11d4-7f00-41d7-8c68-c74d-772b.ngrok-free.app/failure");
-            preference.setBackUrls(backUrls);
+            // URLs de retorno
+            pref.setBackUrls(new BackUrls()
+                    .setSuccess(baseUrl + "/success")
+                    .setPending(baseUrl + "/pending")
+                    .setFailure(baseUrl + "/failure")
+            );
+            pref.setAutoReturn(AutoReturn.approved);
 
-            // Configurar auto-retorno al aprobar el pago
-            preference.setAutoReturn(AutoReturn.approved);
+            // <-- Crucial: a dónde envía MP el webhook
+            pref.setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
 
-            // Guardar la preferencia y contactar con los servidores de MercadoPago
-            preference.save();
+            // Guardar y obtener link
+            pref.save();
 
-            // Devolver el init_point para redirigir al pago (y para generar el QR)
-            Map<String, String> response = new HashMap<>();
-            response.put("init_point", preference.getInitPoint());
-            return ResponseEntity.ok(response);
-
+            return ResponseEntity.ok(Map.of("init_point", pref.getInitPoint()));
         } catch (MPException e) {
             e.printStackTrace();
-            String errorMsg = (e.getMessage() == null || e.getMessage().isEmpty())
-                    ? "Error desconocido al crear la preferencia"
-                    : e.getMessage();
-            Map<String, String> error = new HashMap<>();
-            error.put("error", errorMsg);
-            return ResponseEntity.status(500).body(error);
+            String msg = e.getMessage() == null
+                         ? "Error desconocido al crear la preferencia"
+                         : e.getMessage();
+            return ResponseEntity.status(500).body(Map.of("error", msg));
         }
     }
-}
 
-class PaymentRequest {
-
-    private Float amount;
-
-    public Float getAmount() {
-        return amount;
-    }
-
-    public void setAmount(Float amount) {
-        this.amount = amount;
+    public static class PaymentRequest {
+        private Float amount;
+        public Float getAmount() { return amount; }
+        public void setAmount(Float amount) { this.amount = amount; }
     }
 }
