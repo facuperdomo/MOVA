@@ -1,0 +1,24 @@
+/* Botón "Guardar" en el selector de ingredientes */
+.popup-content.large .save-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    margin-top: 20px;
+    background-color: #27ae60;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+  }
+  
+  .popup-content.large .save-btn:hover {
+    background-color: #219150;
+  }
+  
+  .popup-content.large .save-btn:active {
+    transform: scale(0.98);
+  }

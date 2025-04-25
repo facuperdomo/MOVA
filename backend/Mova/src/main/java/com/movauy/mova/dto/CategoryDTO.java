@@ -10,4 +10,5 @@ import lombok.Setter;
 public class CategoryDTO {
     private Long id;
     private String name;
+    boolean hasIngredients;
 }

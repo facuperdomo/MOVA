@@ -13,4 +13,6 @@ public class UserBasicDTO {
     private String username;
     private String companyId;
     private String role;
+    private boolean enableIngredients;
+    private boolean enableKitchenCommands;
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { API_URL } from "../../config/apiConfig";
 import { customFetch } from "../../utils/api";
-import "./paymentQRStyle.css";
+import "./paymentQRStyle.css"; // <- tu CSS de la versión A
 
 const PaymentQR = ({ amount }) => {
   const [qrUrl, setQrUrl] = useState("");
@@ -38,15 +38,25 @@ const PaymentQR = ({ amount }) => {
       });
   }, [amount]);
 
-  if (loading) return <p className="loading-message">Generando código QR…</p>;
-  if (errorMessage) return <p className="error-message">{errorMessage}</p>;
-
-  return qrUrl ? (
-    <div className="qr-content">
-      <QRCodeCanvas value={qrUrl} size={256} />
+  // Aquí está el return "estilo A":
+  return (
+    <div className="payment-qr-container">
+      {loading ? (
+        <p className="loading-message">Generando código QR...</p>
+      ) : errorMessage ? (
+        <p className="error-message">{errorMessage}</p>
+      ) : (
+        <div className="qr-content">
+          {qrUrl ? (
+            <QRCodeCanvas className="qr-canvas" value={qrUrl} size={256} />
+          ) : (
+            <p className="error-message">
+              Ocurrió un error al generar el código QR.
+            </p>
+          )}
+        </div>
+      )}
     </div>
-  ) : (
-    <p className="error-message">Ocurrió un error al generar el código QR.</p>
   );
 };
 

@@ -585,3 +585,30 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ───────────────────────────────
+   Destacar nombre de producto
+────────────────────────────── */
+
+.product-name {
+  font-weight: 700;          /* bold */
+  color: #fff;               /* blanco puro */
+  display: inline-block;
+}
+
+/* Si quieres aún más contraste en la tarjeta */
+.product-info h3 .product-name {
+  font-size: 20px;           /* un poquito más grande si te gusta */
+  letter-spacing: 0.5px;
+}
+
+/* Y en el carrito, si quieres un color distinto */
+.cart-item-text .product-name {
+  color: #ffcc00;            /* dorado, por ejemplo */
+}
+
+.product-quantity {
+
+  font-weight: 700;     /* negrita */
+  margin-left: 4px;     /* separa un poco del texto anterior */
+}

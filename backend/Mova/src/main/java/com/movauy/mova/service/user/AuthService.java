@@ -83,40 +83,41 @@ public class AuthService {
      * Registro de nuevos usuarios
      */
     public AuthResponse register(RegisterRequest request) {
-    Role role;
-    try {
-        role = Role.valueOf(request.getRole().toUpperCase());
-    } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException("El rol enviado no es válido. Use COMPANY, USER o ADMIN.", e);
+        Role role;
+        try {
+            role = Role.valueOf(request.getRole().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("El rol enviado no es válido. Use COMPANY, USER o ADMIN.", e);
+        }
+
+        User user = User.builder()
+                .username(request.getUsername())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(role)
+                .companyId(request.getCompanyId())
+                .mercadoPagoAccessToken(request.getMercadoPagoAccessToken())
+                .enableIngredients(request.isEnableIngredients())
+                .enableKitchenCommands(request.isEnableKitchenCommands())
+                .build();
+
+        userRepository.save(user);
+
+        // ✅ Si es empresa y no tiene companyId, lo igualamos a su propio ID
+        if (role == Role.COMPANY && (user.getCompanyId() == null || user.getCompanyId().isBlank())) {
+            user.setCompanyId(user.getId().toString());
+            userRepository.save(user); // guardamos con el companyId seteado
+        }
+
+        String effectiveCompanyId = user.getCompanyId() != null && !user.getCompanyId().isEmpty()
+                ? user.getCompanyId()
+                : user.getId().toString();
+
+        return AuthResponse.builder()
+                .token(jwtService.getToken(user))
+                .role(user.getRole().name())
+                .companyId(effectiveCompanyId)
+                .build();
     }
-
-    User user = User.builder()
-            .username(request.getUsername())
-            .password(passwordEncoder.encode(request.getPassword()))
-            .role(role)
-            .companyId(request.getCompanyId()) // Puede ser null o ""
-            .mercadoPagoAccessToken(request.getMercadoPagoAccessToken())
-            .build();
-
-    userRepository.save(user);
-
-    // ✅ Si es empresa y no tiene companyId, lo igualamos a su propio ID
-    if (role == Role.COMPANY && (user.getCompanyId() == null || user.getCompanyId().isBlank())) {
-        user.setCompanyId(user.getId().toString());
-        userRepository.save(user); // guardamos con el companyId seteado
-    }
-
-    String effectiveCompanyId = user.getCompanyId() != null && !user.getCompanyId().isEmpty()
-            ? user.getCompanyId()
-            : user.getId().toString();
-
-    return AuthResponse.builder()
-            .token(jwtService.getToken(user))
-            .role(user.getRole().name())
-            .companyId(effectiveCompanyId)
-            .build();
-}
-
 
     private void authenticateUser(String username, String password) {
         authenticationManager.authenticate(
@@ -143,11 +144,6 @@ public class AuthService {
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
 
-    public User getSafeUserById(Long id) {
-        return userRepository.findUserWithoutSensitiveData(id)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-    }
-
     public void updateUser(User user) {
         userRepository.save(user);
     }
@@ -156,30 +152,41 @@ public class AuthService {
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
-
         String username = jwtService.getUsernameFromToken(token);
-        User user = userRepository.findByUsername(username)
+
+        // 1) el usuario logueado
+        User me = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
 
+        // 2) la "empresa" a la que pertenece
+        Long companyId = Long.valueOf(
+                (me.getCompanyId() != null && !me.getCompanyId().isBlank())
+                ? me.getCompanyId()
+                : me.getId().toString()
+        );
+        User company = getUserById(companyId);
+
+        // 3) devuelvo sólo el DTO
         return new UserBasicDTO(
-                user.getId().longValue(),
-                user.getUsername(),
-                user.getCompanyId() != null && !user.getCompanyId().isEmpty()
-                        ? user.getCompanyId()
-                        : user.getId().toString(),
-                user.getRole().name()
+                me.getId().longValue(),
+                me.getUsername(),
+                company.getCompanyId(),
+                me.getRole().name(),
+                company.isEnableIngredients(),
+                company.isEnableKitchenCommands()
         );
     }
 
     public UserBasicDTO getUserBasicById(Long id) {
-        User user = getSafeUserById(id);
+        // aquí id ya es companyId
+        User company = getUserById(id);
         return new UserBasicDTO(
-                user.getId(),
-                user.getUsername(),
-                user.getCompanyId() != null && !user.getCompanyId().isEmpty()
-                        ? user.getCompanyId()
-                        : user.getId().toString(),
-                user.getRole().name()
+                company.getId(),
+                company.getUsername(),
+                company.getCompanyId(),
+                company.getRole().name(),
+                company.isEnableIngredients(),
+                company.isEnableKitchenCommands()
         );
     }
 }

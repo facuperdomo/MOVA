@@ -5,6 +5,8 @@ import "./adminProductsStyle.css";
 import { customFetch } from "../../utils/api";
 import { API_URL } from "../../config/apiConfig";
 import CategoryManager from "./CategoryManager";
+import IngredientManager from "./IngredientManager";
+import IngredientSelector from "./IngredientSelector";
 
 const AdminProducts = () => {
   const navigate = useNavigate();
@@ -22,11 +24,49 @@ const AdminProducts = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [formError, setFormError] = useState("");
   const [filterCategoryId, setFilterCategoryId] = useState(null);
+  const [enableIngredients, setEnableIngredients] = useState(false);
+  const [enableKitchenCommands, setEnableKitchenCommands] = useState(false);
+  const [showIngredientPopup, setShowIngredientPopup] = useState(false);
+
+  const [selectedIngredients, setSelectedIngredients] = useState([]);
+  const [showIngredientSelection, setShowIngredientSelection] = useState(false);
+
+  const [editingIngProductId, setEditingIngProductId] = useState(null);
+  const [selectedIngredientsForEditing, setSelectedIngredientsForEditing] = useState([]);
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const cat = categories.find(c => c.id === selectedCategoryId);
+    if (!editingId && cat?.hasIngredients) {
+      setShowIngredientSelection(true);
+    }
+  }, [selectedCategoryId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await customFetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        console.log("👤 Me:", me);
+        setEnableIngredients(me.enableIngredients);
+        setEnableKitchenCommands(me.enableKitchenCommands);
+        console.log("🔧 enableIngredients:", me.enableIngredients);
+      } catch (err) {
+        console.error("No pude leer settings de la empresa:", err);
+      }
+    })();
+  }, []);
+
+  const openIngredientEditor = (product) => {
+    setEditingIngProductId(product.id);
+    // asumimos que el back te devuelve en cada product un array "ingredients" de DTOs {id,name}
+    setSelectedIngredientsForEditing(product.ingredients.map(i => i.id));
+  };
 
   const fetchProducts = async () => {
     try {
@@ -60,39 +100,49 @@ const AdminProducts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
-  
-    if (!name.trim() || !price) {
+
+    // 1. Trim del nombre y validación básica
+    const nameTrimmed = name.trim();
+    if (!nameTrimmed || !price) {
       setFormError("Completa todos los campos.");
       return;
     }
-  
+
+    // 2. Validación de nombre duplicado (solo al crear, no al editar)
+    if (!editingId && products.some(p => p.name.toLowerCase() === nameTrimmed.toLowerCase())) {
+      setFormError("Ya existe un producto con ese nombre.");
+      return;
+    }
+
+    // 3. Validación de categoría
     if (!selectedCategoryId) {
       setFormError("Selecciona una categoría.");
       return;
     }
-  
+
+    // 4. Validación de imagen
     if (!image && !editingId) {
       setFormError("Selecciona una imagen.");
       return;
     }
-  
+
+    // 5. Construcción del FormData
     const formData = new FormData();
-    formData.append("name", name);
+    formData.append("name", nameTrimmed);
     formData.append("price", price);
     formData.append("categoryId", selectedCategoryId.toString());
-  
-    // Imagen obligatoria si no es edición
+
     if (image) {
       formData.append("image", image);
     } else if (editingId) {
-      const product = products.find((p) => p.id === editingId);
+      // si estamos editando, reutilizo la imagen actual
+      const product = products.find(p => p.id === editingId);
       if (product?.imageUrl) {
         try {
-          const response = await fetch(product.imageUrl);
-          const blob = await response.blob();
+          const resp = await fetch(product.imageUrl);
+          const blob = await resp.blob();
           formData.append("image", blob, "currentImage.png");
-        } catch (err) {
-          console.error("❌ Error al obtener imagen existente:", err);
+        } catch {
           setFormError("Hubo un problema al cargar la imagen.");
           return;
         }
@@ -101,10 +151,17 @@ const AdminProducts = () => {
         return;
       }
     }
-  
+
+    if (selectedIngredients.length) {
+      selectedIngredients.forEach(id => {
+        formData.append("ingredientIds", id);
+      });
+    }
+
+    // 6. Envío al backend
     const url = `${API_URL}/api/products${editingId ? `/${editingId}` : ""}`;
     const method = editingId ? "PUT" : "POST";
-  
+
     try {
       await fetch(url, {
         method,
@@ -120,8 +177,8 @@ const AdminProducts = () => {
       setFormError("Error al guardar producto.");
     }
   };
-  
-  
+
+
 
   const handleEdit = (product) => {
     setName(product.name);
@@ -196,7 +253,7 @@ const AdminProducts = () => {
                   setImage(e.target.files[0]);
                   setImageName(e.target.files[0]?.name || "Seleccionar Imagen");
                 }}
-               
+
               />
             </label>
 
@@ -229,61 +286,77 @@ const AdminProducts = () => {
           </button>
         </div>
       </div>
+      {/* Sólo si la empresa tiene habilitados ingredientes */}
+      {enableIngredients && (
+        <button
+          className="manage-ingredients-btn"
+          onClick={() => setShowIngredientPopup(true)}
+        >
+          🥬 Administrar Ingredientes
+        </button>
+      )}
 
       {/* Productos */}
-      {/* Productos */}
-<div className="products-container">
-  <h2 className="static-title">Lista de Productos</h2>
+      <div className="products-container">
+        <h2 className="static-title">Lista de Productos</h2>
 
-  {/* Tabs de categorías */}
-  <div className="category-tabs">
-    <button
-      className={!filterCategoryId ? "active-tab" : ""}
-      onClick={() => setFilterCategoryId(null)}
-    >
-      Todos
-    </button>
-    {categories.map((cat) => (
-      <button
-        key={cat.id}
-        className={filterCategoryId === cat.id ? "active-tab" : ""}
-        onClick={() => setFilterCategoryId(cat.id)}
-      >
-        {cat.name}
-      </button>
-    ))}
-  </div>
+        {/* Tabs de categorías */}
+        <div className="category-tabs">
+          <button
+            className={!filterCategoryId ? "active-tab" : ""}
+            onClick={() => setFilterCategoryId(null)}
+          >
+            Todos
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              className={filterCategoryId === cat.id ? "active-tab" : ""}
+              onClick={() => setFilterCategoryId(cat.id)}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
 
-  {/* Lista de productos filtrados */}
-  <div className="products-grid-admin">
-    {loading ? (
-      <p>Cargando productos...</p>
-    ) : (
-      products
-        .filter((product) => !filterCategoryId || product.category?.id === filterCategoryId)
-        .map((product) => (
-          <div key={product.id} className="product-item">
-            {product.imageUrl && (
-              <img src={product.imageUrl} alt={product.name} className="product-image" />
-            )}
-            <h3>{product.name}</h3>
-            <p>${product.price}</p>
-            <p style={{ fontSize: "0.8rem", color: "#aaa" }}>
-              {product.category?.name || "Sin categoría"}
-            </p>
-            <div className="product-actions">
-              <button className="edit-btn" onClick={() => handleEdit(product)}>
-                ✏️ Editar
-              </button>
-              <button className="delete-btn" onClick={() => confirmDelete(product)}>
-                🗑️ Eliminar
-              </button>
-            </div>
-          </div>
-        ))
-    )}
-  </div>
-</div>
+        {/* Lista de productos filtrados */}
+        <div className="products-grid-admin">
+          {loading ? (
+            <p>Cargando productos...</p>
+          ) : (
+            products
+              .filter((product) => !filterCategoryId || product.category?.id === filterCategoryId)
+              .map((product) => (
+                <div key={product.id} className="product-item">
+                  {product.imageUrl && (
+                    <img src={product.imageUrl} alt={product.name} className="product-image" />
+                  )}
+                  <h3>{product.name}</h3>
+                  <p>${product.price}</p>
+                  <p style={{ fontSize: "0.8rem", color: "#aaa" }}>
+                    {product.category?.name || "Sin categoría"}
+                  </p>
+                  <div className="product-actions">
+                    <button className="edit-btn" onClick={() => handleEdit(product)}>
+                      ✏️ Editar
+                    </button>
+                    <button className="delete-btn" onClick={() => confirmDelete(product)}>
+                      🗑️ Eliminar
+                    </button>
+                    {categories.find(c => c.id === product.category.id)?.hasIngredients && (
+                      <button
+                        className="ing-btn"
+                        onClick={() => openIngredientEditor(product)}
+                      >
+                        🧂 Ingredientes
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+          )}
+        </div>
+      </div>
 
       {/* Popups */}
       {showDeletePopup && (
@@ -308,6 +381,49 @@ const AdminProducts = () => {
           }}
         />
       )}
+
+      {showIngredientPopup && (
+        <IngredientManager
+          onClose={() => {
+            setShowIngredientPopup(false);
+            // si quieres recargar productos o algo, hazlo aquí
+          }}
+        />
+      )}
+
+      {showIngredientSelection && (
+        <IngredientSelector
+          initial={selectedIngredients}
+          onSave={ings => {
+            setSelectedIngredients(ings);
+            setShowIngredientSelection(false);
+          }}
+          onClose={() => setShowIngredientSelection(false)}
+        />
+      )}
+
+{ editingIngProductId !== null && (
+  <IngredientSelector
+    initial={selectedIngredientsForEditing}
+    onSave={async ings => {
+      // Patch a tu endpoint de ingredientes
+      await customFetch(
+        `${API_URL}/api/products/${editingIngProductId}/ingredients`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          },
+          body: JSON.stringify(ings)
+        }
+      );
+      setEditingIngProductId(null);
+      fetchProducts();
+    }}
+    onClose={() => setEditingIngProductId(null)}
+  />
+) }
     </div>
   );
 };

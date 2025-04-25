@@ -6,7 +6,7 @@ import com.movauy.mova.dto.UserBasicDTO;
 
 public class UserMapper {
 
-    // Convierte de entidad a DTO
+    // Convierte de entidad a DTO, incluyendo los flags de configuración
     public static UserBasicDTO toUserBasicDTO(User user) {
         if (user == null) {
             return null;
@@ -15,7 +15,10 @@ public class UserMapper {
                 user.getId(),
                 user.getUsername(),
                 user.getCompanyId(),
-                user.getRole() != null ? user.getRole().name() : null
+                user.getRole() != null ? user.getRole().name() : null,
+                // Nuevos flags:
+                user.isEnableIngredients(),
+                user.isEnableKitchenCommands()
         );
     }
 
@@ -23,7 +26,6 @@ public class UserMapper {
     public static User toUser(UserBasicDTO dto, User existingUser) {
         if (dto == null) return null;
 
-        existingUser.setId(dto.getId()); // <- opcional si querés conservar la ID
         existingUser.setUsername(dto.getUsername());
         existingUser.setCompanyId(dto.getCompanyId());
 
@@ -36,6 +38,12 @@ public class UserMapper {
         } else {
             throw new RuntimeException("El rol del usuario es null y es requerido.");
         }
+
+        // NOTA: normalmente no exponemos estos flags para escritura desde el DTO,
+        // pues son settings de la empresa que idealmente se controlan en otro flujo.
+        // Si quieres permitir que sean modificables:
+        // existingUser.setEnableIngredients(dto.isEnableIngredients());
+        // existingUser.setEnableKitchenCommands(dto.isEnableKitchenCommands());
 
         return existingUser;
     }

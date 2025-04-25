@@ -1,18 +1,20 @@
 package com.movauy.mova.service.sale;
 
 import com.movauy.mova.dto.SaleDTO;
+import com.movauy.mova.dto.SaleItemDTO;
 import com.movauy.mova.dto.UserBasicDTO;
-import com.movauy.mova.mapper.UserMapper;
 import com.movauy.mova.model.finance.CashRegister;
 import com.movauy.mova.model.product.Product;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.model.sale.SaleItem;
+import com.movauy.mova.model.sale.SaleItemIngredient;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.product.ProductRepository;
+import com.movauy.mova.repository.sale.SaleItemIngredientRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
 import com.movauy.mova.service.user.AuthService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,45 +23,30 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class SaleService {
 
     private final ProductRepository productRepository;
     private final SaleRepository saleRepository;
     private final CashRegisterRepository cashRegisterRepository;
+    private final SaleItemIngredientRepository saleItemIngredientRepository;
     private final AuthService authService;
-
-    @Autowired
-    public SaleService(ProductRepository productRepository,
-                       SaleRepository saleRepository,
-                       CashRegisterRepository cashRegisterRepository,
-                       AuthService authService) {
-        this.productRepository = productRepository;
-        this.saleRepository = saleRepository;
-        this.cashRegisterRepository = cashRegisterRepository;
-        this.authService = authService;
-    }
 
     @Transactional
     public Sale registerSale(SaleDTO saleDTO, String token) {
-        // 1. Obtener información del usuario autenticado
+        // 1) Obtener user básico y verificar caja abierta
         UserBasicDTO userBasic = authService.getUserBasicFromToken(token);
-        Long userId = userBasic.getId();               // ID del cajero
-        String companyIdFromToken = userBasic.getCompanyId(); // ID de la empresa autenticada
+        Long userId = userBasic.getId();
+        String companyId = userBasic.getCompanyId();
 
-        // 2. Verificar que exista una caja abierta para este usuario
         CashRegister currentCashRegister = cashRegisterRepository
-                .findByCloseDateIsNullAndUser_Id(userId)
-                .orElseThrow(() -> new RuntimeException("No se puede realizar la venta porque la caja está cerrada."));
+            .findByCloseDateIsNullAndUser_Id(userId)
+            .orElseThrow(() -> new RuntimeException("La caja está cerrada."));
 
-        // 3. Seleccionar el objeto User a utilizar según el método de pago:
-        User currentUser;
-        if ("QR".equalsIgnoreCase(saleDTO.getPaymentMethod())) {
-            currentUser = authService.getUserById(userId);
-        } else {
-            currentUser = UserMapper.toUser(userBasic, new User());
-        }
+        // 2) Recuperar la entidad User MANAGED desde BD
+        User currentUser = authService.getUserById(userId);
 
-        // 4. Crear la venta
+        // 3) Crear la Sale
         Sale sale = new Sale();
         sale.setTotalAmount(saleDTO.getTotalAmount());
         sale.setPaymentMethod(saleDTO.getPaymentMethod());
@@ -67,32 +54,43 @@ public class SaleService {
         sale.setCashRegister(currentCashRegister);
         sale.setUser(currentUser);
 
-        // 5. Procesar los ítems de la venta
-        List<SaleItem> saleItems = saleDTO.getItems().stream().map(itemDTO -> {
-            SaleItem item = new SaleItem();
-            Product product = productRepository.findById(itemDTO.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + itemDTO.getProductId()));
+        // 4) Construir los SaleItem
+        List<SaleItem> items = saleDTO.getItems().stream().map(dto -> {
+            Product product = productRepository.findById(dto.getProductId())
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado ID=" + dto.getProductId()));
 
-            System.out.println("🧾 Verificando producto...");
-            System.out.println("🧾 Producto ID: " + product.getId());
-            System.out.println("👤 Usuario dueño del producto: " + (product.getUser() != null ? product.getUser().getId() : "null"));
-            System.out.println("🏢 companyId desde token: " + companyIdFromToken);
-            System.out.println("🏢 companyId real del dueño del producto: " + (product.getUser() != null ? product.getUser().getCompanyId() : "null"));
-
-            // Validar que el producto pertenezca a la empresa
-            if (product.getUser() == null || !product.getUser().getCompanyId().equals(companyIdFromToken)) {
-                throw new RuntimeException("El producto con ID " + itemDTO.getProductId() + " no pertenece a esta empresa.");
+            // validar empresa
+            if (product.getUser() == null || !product.getUser().getCompanyId().equals(companyId)) {
+                throw new RuntimeException("Producto ID=" + dto.getProductId() + " no pertenece a esta empresa.");
             }
 
-            item.setProduct(product);
-            item.setQuantity(itemDTO.getQuantity());
-            item.setUnitPrice(itemDTO.getUnitPrice());
+            SaleItem item = new SaleItem();
             item.setSale(sale);
+            item.setProduct(product);
+            item.setQuantity(dto.getQuantity());
+            item.setUnitPrice(dto.getUnitPrice());
             return item;
         }).collect(Collectors.toList());
 
-        sale.setItems(saleItems);
-        return saleRepository.save(sale);
+        // 5) Asociar y salvar
+        sale.setItems(items);
+        Sale savedSale = saleRepository.save(sale);
+        
+        // 6) Persiste ingredientes seleccionados por ítem
+        List<SaleItemDTO> dtos = saleDTO.getItems();
+        for (int i = 0; i < savedSale.getItems().size(); i++) {
+            SaleItem si = savedSale.getItems().get(i);
+            List<Long> ingIds = dtos.get(i).getIngredientIds();
+            if (ingIds != null) {
+                ingIds.forEach(ingId -> {
+                    SaleItemIngredient link = new SaleItemIngredient();
+                    link.setSaleItem(si);
+                    link.setIngredientId(ingId);
+                    saleItemIngredientRepository.save(link);
+                });
+            }
+        }
+
+        return savedSale;
     }
-    
 }

@@ -5,11 +5,12 @@ import com.movauy.mova.model.product.Product;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Representa un ítem dentro de una venta
- * Relación con Sale y Product
- * 
+ * Representa un ítem dentro de una venta Relación con Sale y Product
+ *
  * @author Facundo
  */
 @Getter
@@ -17,6 +18,7 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "sale_item")
 public class SaleItem {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -36,4 +38,7 @@ public class SaleItem {
     public double getSubtotal() {
         return unitPrice * quantity;
     }
+
+    @OneToMany(mappedBy = "saleItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SaleItemIngredient> ingredients = new ArrayList<>();
 }

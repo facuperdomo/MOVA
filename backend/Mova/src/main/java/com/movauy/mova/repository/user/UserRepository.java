@@ -16,10 +16,23 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     Optional<User> findByUsername(String username);
 
-    @Query("SELECT new com.movauy.mova.dto.UserBasicDTO(u.id, u.username, u.role, u.companyId) FROM User u WHERE u.id = :id")
+    /**
+     * Devuelve un DTO con exactamente los seis campos:
+     * id, username, companyId, role, enableIngredients, enableKitchenCommands
+     */
+    @Query("""
+        SELECT new com.movauy.mova.dto.UserBasicDTO(
+            u.id,
+            u.username,
+            u.companyId,
+            u.role.name(),
+            u.enableIngredients,
+            u.enableKitchenCommands
+        )
+        FROM User u
+        WHERE u.id = :id
+        """)
     Optional<UserBasicDTO> findUserBasicById(@Param("id") Long id);
 
-    @Query("SELECT new com.movauy.mova.model.user.User(u.id, u.username, u.password, u.role, u.companyId, null) "
-            + "FROM User u WHERE u.id = :id")
-    Optional<User> findUserWithoutSensitiveData(Long id);
+    
 }

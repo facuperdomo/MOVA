@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -27,22 +28,22 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                // habilitamos CORS con nuestra configuración personalizada
+        http
+                // 1) Aseguramos que Spring use nuestro CorsConfigurationSource
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
+                // 2) Manejamos los errores de auth/denegación
                 .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, authEx) -> {
-                    System.out.println("AuthenticationEntryPoint invocado: " + authEx.getMessage());
-                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, authEx.getMessage());
-                })
-                .accessDeniedHandler((req, res, deniedEx) -> {
-                    System.out.println("AccessDeniedHandler invocado: " + deniedEx.getMessage());
-                    res.sendError(HttpServletResponse.SC_FORBIDDEN, deniedEx.getMessage());
-                })
+                .authenticationEntryPoint((req, res, authEx)
+                        -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, authEx.getMessage()))
+                .accessDeniedHandler((req, res, deniedEx)
+                        -> res.sendError(HttpServletResponse.SC_FORBIDDEN, deniedEx.getMessage()))
                 )
+                // 3) Configuramos qué URLs se permiten sin token...
                 .authorizeHttpRequests(auth -> auth
-                // endpoints públicos
+                // Dejar pasar TODOS los OPTIONS (preflight) a cualquier ruta
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Endpoints públicos
                 .requestMatchers(
                         "/auth/**",
                         "/error/**",
@@ -50,37 +51,43 @@ public class SecurityConfig {
                         "/api/webhooks/mercadopago",
                         "/ws/**"
                 ).permitAll()
+                // El resto requiere JWT
                 .anyRequest().authenticated()
                 )
-                .sessionManagement(sess -> sess
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                // 4) Stateless, usamos nuestro AuthenticationProvider y JWT filter
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authProvider)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
     }
 
+    /**
+     * Nuestro bean CORS global, se usará gracias a http.cors(...)
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+        CorsConfiguration cfg = new CorsConfiguration();
 
-        // en lugar de "*", los orígenes explícitos que usarán tu frontend o ngrok:
-        configuration.setAllowedOrigins(List.of(
+        // Orígenes permitidos
+        cfg.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "https://movauy.top",
-                "https://7fdc-2800-a4-11bc-8800-d561-166e-d771-2a27.ngrok-free.app"
+                "https://movauy.top:8443"
         ));
 
-        // métodos y cabeceras permitidas
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        // Métodos permitidos, ahora incluyendo PATCH
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
-        // necesario para que el navegador acepte cookies / auth headers
-        configuration.setAllowCredentials(true);
+        // Cabeceras permitidas
+        cfg.setAllowedHeaders(List.of("*"));
+
+        // Necesario si envías Authorization
+        cfg.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // aplica esta política a todas las rutas
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/**", cfg);
         return source;
     }
+
 }

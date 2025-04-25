@@ -17,4 +17,7 @@ public class ProductCategory {
 
     @Column(nullable = false)
     private String companyId; // Vincula la categoría con la empresa
+    
+    @Column(nullable = false)
+    boolean hasIngredients;
 }

@@ -40,6 +40,9 @@ const Dashboard = () => {
 
   const [showEmptyCartPopup, setShowEmptyCartPopup] = useState(false);
 
+  const [customizingProduct, setCustomizingProduct] = useState(null);
+  const [tempIngredients, setTempIngredients] = useState([]);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -50,68 +53,68 @@ const Dashboard = () => {
 
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
-  if (offline) {
-    console.log("Offline: no inicializo STOMP/WebSocket");
-    return;
-  }
-  console.log("Iniciando STOMP sobre WebSocket a:", WS_URL);
-  const brokerURL = WS_URL.replace(/^http/, "ws") + "/ws";
-  const client = new Client({
-    brokerURL,
-    reconnectDelay: 5000,
-    debug: (str) => console.log("STOMP DEBUG:", str),
-  });
+    if (offline) {
+      console.log("Offline: no inicializo STOMP/WebSocket");
+      return;
+    }
+    console.log("Iniciando STOMP sobre WebSocket a:", WS_URL);
+    const brokerURL = WS_URL.replace(/^http/, "ws") + "/ws";
+    const client = new Client({
+      brokerURL,
+      reconnectDelay: 5000,
+      debug: (str) => console.log("STOMP DEBUG:", str),
+    });
 
-  client.onConnect = () => {
-    client.subscribe(
-      "/topic/payment-status",
-      async (msg) => {
-        const raw = msg.body.toLowerCase();
-        if (!["approved", "rejected"].includes(raw)) return;
-        const translated = raw === "approved" ? "Aprobado" : "Rechazado";
-        setPaymentStatus(translated);
+    client.onConnect = () => {
+      client.subscribe(
+        "/topic/payment-status",
+        async (msg) => {
+          const raw = msg.body.toLowerCase();
+          if (!["approved", "rejected"].includes(raw)) return;
+          const translated = raw === "approved" ? "Aprobado" : "Rechazado";
+          setPaymentStatus(translated);
 
-        if (raw === "approved") {
-          const saleData = {
-            totalAmount: totalRef.current,
-            paymentMethod: "QR",
-            dateTime: new Date().toISOString(),
-            items: cartRef.current.map(item => ({
-              productId: item.id,
-              quantity: item.quantity,
-              unitPrice: item.price,
-            }))
-          };
+          if (raw === "approved") {
+            const saleData = {
+              totalAmount: totalRef.current,
+              paymentMethod: "QR",
+              dateTime: new Date().toISOString(),
+              items: cartRef.current.map(item => ({
+                productId: item.id,
+                quantity: item.quantity,
+                unitPrice: item.price,
+              }))
+            };
 
-          try {
-            const response = await customFetch(
-              `${API_URL}/api/sales`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(saleData)
-              }
-            );
-            setLastSale(response);
-            setCart([]);
-            setTotal(0);
-            setShowPopup(false);
-            setShowQR(false);
-          } catch (err) {
-            console.error("Error al guardar venta QR:", err);
-            alert("Ocurrió un error guardando la venta QR.");
+            try {
+              const response = await customFetch(
+                `${API_URL}/api/sales`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(saleData)
+                }
+              );
+              setLastSale(response);
+              setCart([]);
+              setTotal(0);
+              setShowPopup(false);
+              setShowQR(false);
+            } catch (err) {
+              console.error("Error al guardar venta QR:", err);
+              alert("Ocurrió un error guardando la venta QR.");
+            }
           }
-        }
-      },
-      { id: "payment-status-sub" }
-    );
-  };
+        },
+        { id: "payment-status-sub" }
+      );
+    };
 
-  client.onStompError = frame => console.error("Error STOMP:", frame.body);
-  client.activate();
-  return () => client.deactivate();
-}, [offline]);
-  
+    client.onStompError = frame => console.error("Error STOMP:", frame.body);
+    client.activate();
+    return () => client.deactivate();
+  }, [offline]);
+
 
   // Si se recibe un estado de pago, se oculta automáticamente después de 5 segundos
   useEffect(() => {
@@ -120,6 +123,12 @@ const Dashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [paymentStatus]);
+
+  const openCustomize = prod => {
+    setCustomizingProduct(prod);
+    // marcamos todos por defecto
+    setTempIngredients(prod.ingredients.map(i => i.id));
+  };
 
   // Verificar si la caja está abierta
   const checkCashRegisterStatus = async () => {
@@ -169,7 +178,7 @@ const Dashboard = () => {
       setOffline(true);
       setShowOfflinePopup(true);
     };
-  
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     return () => {
@@ -189,6 +198,7 @@ const Dashboard = () => {
             ? product.image
             : `data:image/png;base64,${product.image}`,
         imageError: false,
+        ingredients: Array.isArray(product.ingredients) ? product.ingredients : [],
       }));
       setProducts(productsWithFixedImages);
     } catch (error) {
@@ -199,29 +209,48 @@ const Dashboard = () => {
     }
   };
 
-  const addToCart = (product) => {
-    setCart((prevCart) => {
-      const updatedCart = [...prevCart];
-      const index = updatedCart.findIndex((item) => item.id === product.id);
-      if (index !== -1) {
-        updatedCart[index] = {
-          ...updatedCart[index],
-          quantity: updatedCart[index].quantity + 1,
-        };
-      } else {
-        updatedCart.push({ ...product, quantity: 1 });
-      }
-      return updatedCart;
-    });
-    setTotal((prevTotal) => prevTotal + product.price);
+  const sameIngredientSet = (a = [], b = []) => {
+    if (a.length !== b.length) return false;
+    const sa = [...a].sort(), sb = [...b].sort();
+    return sa.every((v, i) => v === sb[i]);
   };
 
-  const removeFromCart = (productId) => {
-    setCart((prevCart) => {
-      const updatedCart = prevCart.filter((item) => item.id !== productId);
-      const newTotal = updatedCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-      setTotal(newTotal);
-      return updatedCart;
+  const addToCart = (product) => {
+    setCart(prevCart => {
+      // extraemos sólo los IDs de ingredientes de la variante que queremos añadir
+      const thisIds = (product.ingredients || []).map(i => i.id);
+
+      // buscamos en el carrito una línea con mismo producto Y mismos ingredientes
+      const idx = prevCart.findIndex(item => {
+        if (item.id !== product.id) return false;
+        const itemIds = (item.ingredients || []).map(i => i.id);
+        return sameIngredientSet(itemIds, thisIds);
+      });
+
+      if (idx !== -1) {
+        // ya existe esa variante, aumentamos quantity
+        const updated = [...prevCart];
+        updated[idx] = {
+          ...updated[idx],
+          quantity: updated[idx].quantity + 1
+        };
+        return updated;
+      } else {
+        // nueva variante → la añadimos con quantity 1
+        return [...prevCart, { ...product, quantity: 1 }];
+      }
+    });
+
+    // actualizamos el total normalmente
+    setTotal(prev => prev + product.price);
+  };
+
+  const removeFromCart = (lineIndex) => {
+    setCart(prev => {
+      const copy = [...prev];
+      copy.splice(lineIndex, 1);
+      setTotal(copy.reduce((sum, it) => sum + it.price * it.quantity, 0));
+      return copy;
     });
   };
 
@@ -257,6 +286,7 @@ const Dashboard = () => {
         productId: item.id,
         quantity: item.quantity,
         unitPrice: item.price,
+        ingredientIds: item.ingredients.map(i => i.id)
       })),
     };
 
@@ -422,7 +452,14 @@ const Dashboard = () => {
                   <div
                     key={product.id}
                     className="product-card"
-                    onClick={() => addToCart(product)}
+                    onClick={() => {
+                      const cat = categories.find(c => c.id === product.categoryId)
+                      if (cat?.hasIngredients) {
+                        openCustomize(product);
+                      } else {
+                        addToCart(product);
+                      }
+                    }}
                   >
                     <div className="image-container">
                       {!product.imageError ? (
@@ -442,7 +479,7 @@ const Dashboard = () => {
                       )}
                     </div>
                     <div className="product-info">
-                      <h3>{product.name}</h3>
+                    <h3><span className="product-name">{product.name}</span></h3>
                       <p>${product.price}</p>
                     </div>
                   </div>
@@ -454,20 +491,41 @@ const Dashboard = () => {
         <div className="cart-panel">
           <h2>Carrito</h2>
           <div className="cart-list">
-            {cart.map((item) => (
-              <div key={item.id} className="cart-item">
-                <div className="cart-item-text">
-                  {item.name} x {item.quantity}
+            {cart.map((item, idx) => {
+              // 1) Buscamos el producto original para obtener su lista completa de ingredientes
+              const original = products.find((p) => p.id === item.id) || { ingredients: [] };
+              const originalIds = original.ingredients.map((ing) => ing.id);
+
+              // 2) Filtramos los ingredientes que ya NO están en item.ingredients
+              const removedNames = original.ingredients
+                .filter((orig) => !item.ingredients.some((i) => i.id === orig.id))
+                .map((i) => i.name);
+
+              return (
+                <div key={`${item.id}-${idx}`} className="cart-item">
+                  <div className="cart-item-text">
+                  <span className="product-name">{item.name}</span>
+                    {/* 3) Si hay ingredientes quitados, los mostramos */}
+                    {removedNames.length > 0 && ` – sin ${removedNames.join(", ")} `}
+                    <span className="product-quantity">{" "}x{item.quantity}</span>
+                  </div>
+                  <button
+                    className="delete-button"
+                    onClick={() => removeFromCart(idx)}
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
-                <button className="delete-button" onClick={() => removeFromCart(item.id)}>
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="cart-footer">
             <span className="total-amount">Total: ${total}</span>
-            <button className="accept-sale" onClick={handlePayment} disabled={!isCashRegisterOpen}>
+            <button
+              className="accept-sale"
+              onClick={handlePayment}
+              disabled={!isCashRegisterOpen}
+            >
               Aceptar Venta
             </button>
             {!isCashRegisterOpen && (
@@ -476,7 +534,11 @@ const Dashboard = () => {
               </p>
             )}
             {pendingSalesCount > 0 && (
-              <button className="sync-sales-btn" onClick={syncOfflineSales} disabled={offline}>
+              <button
+                className="sync-sales-btn"
+                onClick={syncOfflineSales}
+                disabled={offline}
+              >
                 Sincronizar {pendingSalesCount} ventas pendientes
               </button>
             )}
@@ -519,7 +581,7 @@ const Dashboard = () => {
                   </button>
                   <button
                     className="popup-btn popup-btn-qr"
-                   
+
                     onClick={() => {
                       console.log("Pago con QR seleccionado");
                       setShowQR(true);
@@ -583,6 +645,46 @@ const Dashboard = () => {
               onClick={() => setShowEmptyCartPopup(false)}
             >
               Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {customizingProduct && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X className="popup-close" onClick={() => setCustomizingProduct(null)} />
+            <h2>{customizingProduct.name} – Quita Ingredientes</h2>
+            <div className="ingredient-list">
+              {customizingProduct.ingredients.map(ing => (
+                <label key={ing.id} className="ingredient-item">
+                  <input
+                    type="checkbox"
+                    checked={tempIngredients.includes(ing.id)}
+                    onChange={() => {
+                      setTempIngredients(t =>
+                        t.includes(ing.id) ? t.filter(x => x !== ing.id) : [...t, ing.id]
+                      );
+                    }}
+                  />
+                  {ing.name}
+                </label>
+              ))}
+            </div>
+            <button
+              className="popup-btn popup-btn-cash"
+              onClick={() => {
+                // aquí construimos un “item” modificado:
+                addToCart({
+                  ...customizingProduct,
+                  ingredients: customizingProduct.ingredients.filter(i =>
+                    tempIngredients.includes(i.id)
+                  )
+                });
+                setCustomizingProduct(null);
+              }}
+            >
+              Agregar al Carrito
             </button>
           </div>
         </div>

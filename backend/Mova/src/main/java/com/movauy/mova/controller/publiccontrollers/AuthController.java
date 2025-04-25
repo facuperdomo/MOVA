@@ -5,6 +5,7 @@ import com.movauy.mova.dto.AuthResponse;
 import com.movauy.mova.service.user.AuthService;
 import com.movauy.mova.dto.LoginRequest;
 import com.movauy.mova.dto.RegisterRequest;
+import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.user.User;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
@@ -120,5 +121,17 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error al actualizar el Access Token: " + e.getMessage());
         }
+    }
+
+    /**
+     * Devuelve el usuario “actual” (sin datos sensibles), incluyendo los flags
+     *
+     * @param bearerToken
+     * @return
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UserBasicDTO> me(@RequestHeader("Authorization") String bearerToken) {
+        UserBasicDTO dto = authService.getUserBasicFromToken(bearerToken);
+        return ResponseEntity.ok(dto);
     }
 }

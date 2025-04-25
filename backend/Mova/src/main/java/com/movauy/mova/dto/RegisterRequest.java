@@ -19,4 +19,6 @@ public class RegisterRequest {
     String role;
     String companyId;
     String mercadoPagoAccessToken;
+    boolean enableIngredients;
+    boolean enableKitchenCommands;
 }

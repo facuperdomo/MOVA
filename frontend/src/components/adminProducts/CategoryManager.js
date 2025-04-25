@@ -7,6 +7,7 @@ import "./categoryManagerStyle.css";
 const CategoryManager = ({ onClose }) => {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
+  const [newHasIngredients, setNewHasIngredients] = useState(false);
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -21,17 +22,41 @@ const CategoryManager = ({ onClose }) => {
   };
 
   const createCategory = async () => {
-    if (!newCategory.trim()) return;
+    if (!newCategory.trim()) return setError("Escribe un nombre");
     try {
       await customFetch(`${API_URL}/api/categories`, {
         method: "POST",
-        body: JSON.stringify({ name: newCategory.trim() }),
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          name: newCategory.trim(),
+          hasIngredients: newHasIngredients
+        }),
       });
       setNewCategory("");
+      setNewHasIngredients(false);
+      setError(null);
       fetchCategories();
     } catch (err) {
       console.error("❌ Error al crear categoría:", err);
       setError("No se pudo crear la categoría.");
+    }
+  };
+
+  const toggleHasIngredients = async (cat) => {
+    try {
+      // Actualizo solo el flag hasIngredients
+      await customFetch(`${API_URL}/api/categories/${cat.id}`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          name: cat.name,
+          hasIngredients: !cat.hasIngredients
+        }),
+      });
+      fetchCategories();
+    } catch (err) {
+      console.error("❌ Error al actualizar categoría:", err);
+      setError("No se pudo actualizar la categoría.");
     }
   };
 
@@ -51,11 +76,9 @@ const CategoryManager = ({ onClose }) => {
 
   const deleteCategory = async (id) => {
     try {
-      await customFetch(`${API_URL}/api/categories/${id}`, {
-        method: "DELETE",
-      });
-      fetchCategories();
+      await customFetch(`${API_URL}/api/categories/${id}`, { method: "DELETE" });
       setConfirmDelete(null);
+      fetchCategories();
     } catch (err) {
       console.error("❌ Error al eliminar categoría:", err);
       setError("No se pudo eliminar la categoría.");
@@ -67,28 +90,63 @@ const CategoryManager = ({ onClose }) => {
   }, []);
 
   return (
-    <div className="popup-overlay" onClick={(e) => e.target.classList.contains("popup-overlay") && onClose()}>
+    <div
+      className="popup-overlay"
+      onClick={e => e.target.classList.contains("popup-overlay") && onClose()}
+    >
       <div className="popup-content">
         <X className="popup-close" onClick={onClose} />
         <h2>Categorías de Producto</h2>
+  
+        {error && <p className="form-error">{error}</p>}
+  
+        <div className="category-form">
+          {/* FILA 1: input + botón */}
+          <div className="input-category-row">
+            <input
+              type="text"
+              placeholder="Nueva categoría"
+              value={newCategory}
+              onChange={e => setNewCategory(e.target.value)}
+            />
+            
+          </div>
+  
+          {/* FILA 2: checkbox debajo */}
+          <div className="checkbox-row">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={newHasIngredients}
+                onChange={e => setNewHasIngredients(e.target.checked)}
+              />
+              Maneja ingredientes
+            </label>
+          </div>
 
-        {error && <p style={{ color: "red", marginBottom: "10px" }}>{error}</p>}
-
-        <input
-          type="text"
-          placeholder="Nueva categoría"
-          value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
-        />
-        <button className="popup-btn popup-btn-cash" onClick={createCategory}>
-          Crear
-        </button>
-
+          <div className="checkbox-row">
+          <button
+              className="popup-btn popup-btn-cash"
+              onClick={createCategory}
+            >
+              Crear
+            </button>
+          </div>
+        </div>
+  
         <ul className="category-list">
           {categories.length > 0 ? (
-            categories.map((cat) => (
+            categories.map(cat => (
               <li key={cat.id}>
-                {cat.name}
+                <span>{cat.name}</span>
+                <label className="inline-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={cat.hasIngredients}
+                    onChange={() => toggleHasIngredients(cat)}
+                  />
+                  Ingredientes
+                </label>
                 <button onClick={() => handleDeleteClick(cat)}>🗑️</button>
               </li>
             ))
@@ -96,18 +154,24 @@ const CategoryManager = ({ onClose }) => {
             <li>No hay categorías aún.</li>
           )}
         </ul>
-
+  
         {confirmDelete && (
           <div className="popup-warning">
             <p>
-              La categoría <strong>{confirmDelete.name}</strong> tiene productos asociados. ¿Deseas eliminarla de todas
-              formas? Los productos quedarán sin categoría.
+              La categoría <strong>{confirmDelete.name}</strong> tiene productos
+              asociados. ¿Deseas eliminarla de todas formas? Los productos quedarán sin categoría.
             </p>
             <div className="popup-buttons">
-              <button className="popup-btn popup-btn-cash" onClick={() => deleteCategory(confirmDelete.id)}>
+              <button
+                className="popup-btn popup-btn-cash"
+                onClick={() => deleteCategory(confirmDelete.id)}
+              >
                 ✅ Sí, eliminar
               </button>
-              <button className="popup-btn popup-btn-qr" onClick={() => setConfirmDelete(null)}>
+              <button
+                className="popup-btn popup-btn-qr"
+                onClick={() => setConfirmDelete(null)}
+              >
                 ❌ Cancelar
               </button>
             </div>
@@ -116,6 +180,7 @@ const CategoryManager = ({ onClose }) => {
       </div>
     </div>
   );
+  
 };
 
 export default CategoryManager;
