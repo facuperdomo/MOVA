@@ -9,6 +9,7 @@ import { ArrowLeft, Trash2, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
 import PaymentQR from "../paymentqr/PaymentQR";
 import { API_URL, WS_URL } from "../../config/apiConfig";
+import PrintButton from '../impression/PrintButton';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -408,6 +409,11 @@ const Dashboard = () => {
       </div>
     );
 
+    const exampleOrder = {
+      id: 'ABC-123',
+      customerName: 'Juan Pérez'
+    };
+
   return (
     <div className="app-container">
       {isAdmin && (
@@ -487,7 +493,12 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-
+        <div style={{ padding: 20 }}>
+      <h1>Pedidos</h1>
+      <p>Pedido: {exampleOrder.id}</p>
+      <p>Cliente: {exampleOrder.customerName}</p>
+      <PrintButton order={exampleOrder} />
+    </div>
         <div className="cart-panel">
           <h2>Carrito</h2>
           <div className="cart-list">
