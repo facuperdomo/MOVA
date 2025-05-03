@@ -411,7 +411,7 @@ const Dashboard = () => {
 
     const exampleOrder = {
       id: 'ABC-123',
-      customerName: 'Juan Pérez'
+      totalAmount: '199'
     };
 
   return (

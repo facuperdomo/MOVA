@@ -1,7 +1,7 @@
 package com.movauy.mova.service.impression;
 
+import com.movauy.mova.dto.OrderDTO;
 import org.springframework.stereotype.Service;
-import com.movauy.mova.model.sale.Sale;
 
 @Service
 public class PrintService {
@@ -9,7 +9,7 @@ public class PrintService {
     /**
      * Construye un string CPCL para imprimir la orden.
      */
-    public String buildCpclTicket(Sale sale) {
+    public String buildCpclTicket(OrderDTO sale) {
         StringBuilder sb = new StringBuilder();
         // Formato: ! <rotation> <width> <height> <copies>
         sb.append("! 0 200 200 1\r\n");
