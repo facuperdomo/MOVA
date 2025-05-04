@@ -49,7 +49,10 @@ public class SecurityConfig {
                         "/error/**",
                         "/api/mercadopago/**",
                         "/api/webhooks/mercadopago",
-                        "/ws/**"
+                        "/ws/**",
+                        "/api/print/**",
+                        "/actuator/health",
+                        "/actuator/info"
                 ).permitAll()
                 .requestMatchers("/api/print/**").permitAll()
                 // El resto requiere JWT
