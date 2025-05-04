@@ -51,6 +51,7 @@ public class SecurityConfig {
                         "/api/webhooks/mercadopago",
                         "/ws/**"
                 ).permitAll()
+                .requestMatchers("/api/print/**").permitAll()
                 // El resto requiere JWT
                 .anyRequest().authenticated()
                 )
