@@ -2,6 +2,7 @@
   "name": "mova",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:8080",
   "dependencies": {
     "@stomp/stompjs": "^7.1.0",
     "chart.js": "^4.4.8",

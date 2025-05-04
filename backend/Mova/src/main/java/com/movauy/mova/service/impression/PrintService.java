@@ -1,24 +1,13 @@
+// src/main/java/com/movauy/mova/service/impression/PrintService.java
 package com.movauy.mova.service.impression;
 
 import com.movauy.mova.dto.OrderDTO;
-import org.springframework.stereotype.Service;
 
-@Service
-public class PrintService {
-
+public interface PrintService {
     /**
-     * Construye un string CPCL para imprimir la orden.
+     * Genera la cadena CPCL para imprimir la orden.
+     * @param order datos del pedido
+     * @return texto CPCL
      */
-    public String buildCpclTicket(OrderDTO sale) {
-        StringBuilder sb = new StringBuilder();
-        // Formato: ! <rotation> <width> <height> <copies>
-        sb.append("! 0 200 200 1\r\n");
-        sb.append("TEXT 4 0 20 20 Pedido: ").append(sale.getId()).append("\r\n");
-        sb.append("TEXT 4 0 20 60 Total: ").append(sale.getTotalAmount()).append("\r\n");
-        // … más líneas según tu diseño …
-        sb.append("FORM\r\n");
-        sb.append("PRINT\r\n");
-        return sb.toString();
-    }
+    String buildCpclTicket(OrderDTO order);
 }
-

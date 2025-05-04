@@ -1,3 +1,4 @@
+// src/main/java/com/movauy/mova/controller/impression/PrintController.java
 package com.movauy.mova.controller.impression;
 
 import com.movauy.mova.dto.OrderDTO;
@@ -8,12 +9,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 @RestController
-@RequestMapping("/api/print")
+@RequestMapping("/api/print/direct")
 public class PrintController {
 
     private final PrintService printService;
     private final RestTemplate restTemplate = new RestTemplate();
 
+    /** URL de tu bridge Android, p.ej. http://tablet.local:8080 */
     @Value("${printbridge.url}")
     private String bridgeUrl;
 
@@ -21,15 +23,24 @@ public class PrintController {
         this.printService = printService;
     }
 
+    /**
+     * Direct printing (sin cola), recibe también la cabecera X-Company-Id
+     * para que el bridge Android sepa a qué empresa pertenece esta impresora.
+     */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> printOrder(@RequestBody OrderDTO orderDto) {
+    public ResponseEntity<Void> printOrder(
+            @RequestBody OrderDTO orderDto,
+            @RequestHeader("X-Company-Id") String companyId
+    ) {
         // 1) Generar CPCL
         String cpcl = printService.buildCpclTicket(orderDto);
         byte[] payload = cpcl.getBytes();
 
-        // 2) Enviar al bridge Android
+        // 2) Enviar al bridge Android, incluyendo companyId
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.add("X-Company-Id", companyId);
+
         ResponseEntity<String> bridgeResp = restTemplate.postForEntity(
             bridgeUrl + "/print",
             new HttpEntity<>(payload, headers),
