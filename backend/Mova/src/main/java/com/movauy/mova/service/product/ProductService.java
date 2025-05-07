@@ -55,7 +55,6 @@ public class ProductService {
                     categoryId,
                     categoryName,
                     product.isEnableIngredients(),
-                    product.isEnableKitchenCommands(),
                     ingredientDTOs
             );
         }).collect(Collectors.toList());
@@ -135,16 +134,17 @@ public class ProductService {
             existing.setImage(image);
         }
 
-        // Reemplazar ingredientes
+        if (ingredientIds != null) {
         existing.getIngredients().clear();
-        if (ingredientIds != null && !ingredientIds.isEmpty()) {
+        if (!ingredientIds.isEmpty()) {
             List<Ingredient> ingredientes = ingredientRepository
-                    .findByIdsForCompany(companyId.longValue(), ingredientIds);
+                .findByIdsForCompany(companyId.longValue(), ingredientIds);
             existing.getIngredients().addAll(ingredientes);
             existing.setEnableIngredients(true);
         } else {
             existing.setEnableIngredients(false);
         }
+    }
 
         return productRepository.save(existing);
     }

@@ -10,9 +10,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.movauy.mova.dto.ProductResponseDTO;
+import com.movauy.mova.dto.IngredientDTO;
+import com.movauy.mova.dto.ProductDTO;
 
 import java.io.IOException;
+import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/products")
@@ -28,13 +33,33 @@ public class ProductController {
     private final AuthService authService;
 
     @GetMapping
-    public ResponseEntity<List<?>> getProducts(
+    public ResponseEntity<List<ProductResponseDTO>> getProducts(
             @RequestHeader("Authorization") String token
     ) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        return ResponseEntity.ok(
-                productService.getProductsByCompany(companyId.intValue())
-        );
+        int companyId = authService.getCompanyIdFromToken(token).intValue();
+        List<ProductDTO> lista = productService.getProductsByCompany(companyId);
+
+        List<ProductResponseDTO> dtos = lista.stream().map(p -> {
+            // Mapeo de ingredientes
+            List<IngredientDTO> ings = p.getIngredients().stream()
+                    .map(i -> new IngredientDTO(i.getId(), i.getName()))
+                    .collect(Collectors.toList());
+
+            return new ProductResponseDTO(
+                    p.getId(),
+                    p.getName(),
+                    p.getPrice(),
+                    // p.getImage() ya es base64
+                    p.getImage(),
+                    // no hay getCategory(), sino estos dos
+                    p.getCategoryId(),
+                    p.getCategoryName(),
+                    p.isEnableIngredients(),
+                    ings
+            );
+        }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
     }
 
     @PostMapping

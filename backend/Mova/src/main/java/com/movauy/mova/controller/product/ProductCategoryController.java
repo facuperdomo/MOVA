@@ -40,18 +40,18 @@ public class ProductCategoryController {
             @RequestBody Map<String, Object> body) {
 
         String name = (String) body.get("name");
-        if (name == null || name.trim().isEmpty()) {
+        if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
 
-        Boolean hasIngredients = body.get("hasIngredients") instanceof Boolean
-                ? (Boolean) body.get("hasIngredients")
-                : false;
+        boolean hasIngredients = Boolean.TRUE.equals(body.get("hasIngredients"));
+        boolean enableKitchenCommands = Boolean.TRUE.equals(body.get("enableKitchenCommands"));
 
         ProductCategory category = categoryService.createCategory(
                 token,
                 name.trim(),
-                hasIngredients
+                hasIngredients,
+                enableKitchenCommands
         );
         return ResponseEntity.ok(category);
     }
@@ -63,19 +63,19 @@ public class ProductCategoryController {
             @RequestBody Map<String, Object> body) {
 
         String name = (String) body.get("name");
-        if (name == null || name.trim().isEmpty()) {
+        if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
 
-        Boolean hasIngredients = body.get("hasIngredients") instanceof Boolean
-                ? (Boolean) body.get("hasIngredients")
-                : false;
+        boolean hasIngredients = Boolean.TRUE.equals(body.get("hasIngredients"));
+        boolean enableKitchenCommands = Boolean.TRUE.equals(body.get("enableKitchenCommands"));
 
         ProductCategory updated = categoryService.updateCategory(
                 id,
                 token,
                 name.trim(),
-                hasIngredients
+                hasIngredients,
+                enableKitchenCommands
         );
         return ResponseEntity.ok(updated);
     }

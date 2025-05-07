@@ -191,20 +191,21 @@ const Dashboard = () => {
   const fetchProducts = async () => {
     try {
       const response = await customFetch(`${API_URL}/api/products`);
-      if (!Array.isArray(response)) throw new Error("La respuesta no es un array");
-      const productsWithFixedImages = response.map((product) => ({
-        ...product,
-        image:
-          product.image && product.image.startsWith("data:image")
-            ? product.image
-            : `data:image/png;base64,${product.image}`,
+      // <-- aquí sí response existe:
+      console.log('📦 productos crudos del back:', response);
+  
+      const prods = response.map(p => ({
+        ...p,
+        image: p.image.startsWith('data:image')
+          ? p.image
+          : `data:image/png;base64,${p.image}`,
         imageError: false,
-        ingredients: Array.isArray(product.ingredients) ? product.ingredients : [],
+        ingredients: Array.isArray(p.ingredients) ? p.ingredients : []
       }));
-      setProducts(productsWithFixedImages);
-    } catch (error) {
-      console.error("Error al obtener productos:", error);
-      setProducts([]);
+  
+      setProducts(prods);
+    } catch (err) {
+      console.error('Error al fetchProducts:', err);
     } finally {
       setLoading(false);
     }

@@ -66,6 +66,10 @@ public class AuthService {
             throw new BadCredentialsException("El usuario no pertenece a la empresa indicada");
         }
 
+        if (!(user.getRole() == Role.USER || user.getRole() == Role.ADMIN || user.getRole() == Role.KITCHEN)) {
+            throw new BadCredentialsException("No tienes permisos para este login");
+        }
+
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
         );

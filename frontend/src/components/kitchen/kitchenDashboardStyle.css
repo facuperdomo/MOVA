@@ -1,0 +1,75 @@
+.kitchen-dashboard { /* o al selector que envuelva tu .orders-grid */
+    padding-left: 10px;
+  }
+
+ .orders-grid {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 16px;
+     padding-left: 15px;
+ }
+
+ .order-card {
+     background: #fff;
+     border: 2px solid #333;
+     border-radius: 8px;
+     padding: 16px;
+     width: 220px;
+     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+     font-family: "Helvetica Neue", Arial, sans-serif;
+     font-size: 16px;
+     line-height: 1.4;
+     color: #222;
+ }
+
+ .order-card h3 {
+     margin: 0 0 8px;
+     font-size: 1.2em;
+ }
+
+ .order-card ul {
+     list-style: none;
+     padding: 0;
+     margin: 0;
+ }
+
+ .order-card li {
+     margin-bottom: 6px;
+     font-size: 1em;
+ }
+
+ .removed {
+     color: #d32f2f;
+     font-style: italic;
+     margin-left: 4px;
+ }
+
+ /* en src/components/kitchen/kitchenDashboard.css */
+
+.order-card .action-buttons {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .order-card .action-btn {
+    flex: 1;
+    padding: 6px 8px;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9em;
+    cursor: pointer;
+  }
+  
+  .order-card .action-btn:hover {
+    background-color: #555;
+  }
+  
+  .order-card .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  

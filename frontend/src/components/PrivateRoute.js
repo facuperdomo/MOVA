@@ -1,27 +1,27 @@
-import { Navigate, Outlet } from "react-router-dom";
-import { isTokenValid } from "../utils/authUtils";
+import { Navigate, Outlet } from 'react-router-dom';
+import { isTokenValid } from '../utils/authUtils';
 
-const PrivateRoute = ({ adminOnly = false }) => {
-    const tokenValid = isTokenValid();
-    const isAdmin = localStorage.getItem("isAdmin") === "true";
-    const role = localStorage.getItem("role");
+const PrivateRoute = ({ adminOnly = false, kitchenOnly = false }) => {
+  const tokenValid = isTokenValid();
+  const role       = localStorage.getItem('role');
 
-    // Debugging para detectar el problema
-    console.log("🔹 Token válido:", tokenValid);
-    console.log("🔹 isAdmin:", isAdmin);
-    console.log("🔹 Role:", role);
+  if (!tokenValid) {
+    // no logueado → vuelve a la home común
+    return <Navigate to="/" replace />;
+  }
 
-    // Si no hay token válido, redirige según el tipo de usuario
-    if (!tokenValid) {
-        return <Navigate to="/login" replace />;
-    }
+  if (adminOnly && role !== 'ADMIN') {
+    // quien no es ADMIN no puede entrar al panel de admins
+    return <Navigate to={ role === 'KITCHEN' ? '/kitchen-dashboard' : '/dashboard' } replace />;
+  }
 
-    // Si es una ruta de admin y el usuario no es admin, redirige según su rol
-    if (adminOnly && !isAdmin) {
-        return role === "COMPANY" ? <Navigate to="/admin-options" replace /> : <Navigate to="/dashboard" replace />;
-    }
+  if (kitchenOnly && role !== 'KITCHEN') {
+    // quien no es cocina no puede entrar al tablero de cocina
+    return <Navigate to={ role === 'ADMIN' ? '/admin-options' : '/dashboard' } replace />;
+  }
 
-    return <Outlet />;
+  // usuario normal / admin / cocina retienen acceso
+  return <Outlet />;
 };
 
 export default PrivateRoute;

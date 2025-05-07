@@ -8,6 +8,7 @@ const CategoryManager = ({ onClose }) => {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
   const [newHasIngredients, setNewHasIngredients] = useState(false);
+  const [newEnableKitchenCommands, setNewEnableKitchenCommands] = useState(false);
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
@@ -26,14 +27,16 @@ const CategoryManager = ({ onClose }) => {
     try {
       await customFetch(`${API_URL}/api/categories`, {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newCategory.trim(),
-          hasIngredients: newHasIngredients
+          hasIngredients: newHasIngredients,
+          enableKitchenCommands: newEnableKitchenCommands
         }),
       });
       setNewCategory("");
       setNewHasIngredients(false);
+      setNewEnableKitchenCommands(false);
       setError(null);
       fetchCategories();
     } catch (err) {
@@ -42,15 +45,15 @@ const CategoryManager = ({ onClose }) => {
     }
   };
 
-  const toggleHasIngredients = async (cat) => {
+  const updateCategoryFlags = async (cat, updates) => {
     try {
-      // Actualizo solo el flag hasIngredients
       await customFetch(`${API_URL}/api/categories/${cat.id}`, {
         method: "PUT",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: cat.name,
-          hasIngredients: !cat.hasIngredients
+          hasIngredients: updates.hasIngredients,
+          enableKitchenCommands: updates.enableKitchenCommands
         }),
       });
       fetchCategories();
@@ -58,6 +61,20 @@ const CategoryManager = ({ onClose }) => {
       console.error("❌ Error al actualizar categoría:", err);
       setError("No se pudo actualizar la categoría.");
     }
+  };
+
+  const toggleHasIngredients = (cat) => {
+    updateCategoryFlags(cat, {
+      hasIngredients: !cat.hasIngredients,
+      enableKitchenCommands: cat.enableKitchenCommands
+    });
+  };
+
+  const toggleKitchenCommands = (cat) => {
+    updateCategoryFlags(cat, {
+      hasIngredients: cat.hasIngredients,
+      enableKitchenCommands: !cat.enableKitchenCommands
+    });
   };
 
   const handleDeleteClick = async (category) => {
@@ -97,11 +114,10 @@ const CategoryManager = ({ onClose }) => {
       <div className="popup-content">
         <X className="popup-close" onClick={onClose} />
         <h2>Categorías de Producto</h2>
-  
+
         {error && <p className="form-error">{error}</p>}
-  
+
         <div className="category-form">
-          {/* FILA 1: input + botón */}
           <div className="input-category-row">
             <input
               type="text"
@@ -109,10 +125,8 @@ const CategoryManager = ({ onClose }) => {
               value={newCategory}
               onChange={e => setNewCategory(e.target.value)}
             />
-            
           </div>
-  
-          {/* FILA 2: checkbox debajo */}
+
           <div className="checkbox-row">
             <label className="checkbox-label">
               <input
@@ -125,7 +139,18 @@ const CategoryManager = ({ onClose }) => {
           </div>
 
           <div className="checkbox-row">
-          <button
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={newEnableKitchenCommands}
+                onChange={e => setNewEnableKitchenCommands(e.target.checked)}
+              />
+              Requiere comandería
+            </label>
+          </div>
+
+          <div className="checkbox-row">
+            <button
               className="popup-btn popup-btn-cash"
               onClick={createCategory}
             >
@@ -133,11 +158,11 @@ const CategoryManager = ({ onClose }) => {
             </button>
           </div>
         </div>
-  
+
         <ul className="category-list">
           {categories.length > 0 ? (
             categories.map(cat => (
-              <li key={cat.id}>
+              <li key={cat.id} className="category-item">
                 <span>{cat.name}</span>
                 <label className="inline-checkbox">
                   <input
@@ -147,6 +172,14 @@ const CategoryManager = ({ onClose }) => {
                   />
                   Ingredientes
                 </label>
+                <label className="inline-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={cat.enableKitchenCommands}
+                    onChange={() => toggleKitchenCommands(cat)}
+                  />
+                  Comandería
+                </label>
                 <button onClick={() => handleDeleteClick(cat)}>🗑️</button>
               </li>
             ))
@@ -154,7 +187,7 @@ const CategoryManager = ({ onClose }) => {
             <li>No hay categorías aún.</li>
           )}
         </ul>
-  
+
         {confirmDelete && (
           <div className="popup-warning">
             <p>
@@ -180,7 +213,6 @@ const CategoryManager = ({ onClose }) => {
       </div>
     </div>
   );
-  
 };
 
 export default CategoryManager;

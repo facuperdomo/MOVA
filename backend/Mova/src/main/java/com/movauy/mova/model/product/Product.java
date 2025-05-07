@@ -11,8 +11,8 @@ import java.util.Set;
 
 @Entity
 @Table(
-  name = "products",
-  uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"})
+        name = "products",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"})
 )
 @Getter
 @Setter
@@ -21,11 +21,13 @@ import java.util.Set;
 @Builder
 public class Product {
 
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Ya no es único globalmente; se hace único por empresa (user_id + name) */
+    /**
+     * Ya no es único globalmente; se hace único por empresa (user_id + name)
+     */
     @Column(nullable = false)
     private String name;
 
@@ -49,16 +51,15 @@ public class Product {
     @Column(name = "enable_ingredients", nullable = false)
     private boolean enableIngredients = false;
 
-    @Builder.Default
-    @Column(name = "enable_kitchen_commands", nullable = false)
-    private boolean enableKitchenCommands = false;
-
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-      name = "product_ingredients",
-      joinColumns = @JoinColumn(name = "product_id"),
-      inverseJoinColumns = @JoinColumn(name = "ingredient_id")
+            name = "product_ingredients",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "ingredient_id")
     )
     @Builder.Default
     private Set<Ingredient> ingredients = new HashSet<>();
+
+    @Column(name = "enable_kitchen_commands", nullable = false)
+    private boolean enableKitchenCommands = false;
 }

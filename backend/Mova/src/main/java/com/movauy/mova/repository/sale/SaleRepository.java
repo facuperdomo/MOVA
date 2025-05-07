@@ -2,6 +2,7 @@ package com.movauy.mova.repository.sale;
 
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.model.sale.Sale.EstadoVenta;
+import com.movauy.mova.model.sale.Sale.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -34,4 +35,5 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     @Query("SELECT s FROM Sale s WHERE s.user.companyId = :companyId AND s.dateTime >= :date")
     List<Sale> findByUserCompanyIdAndDateTimeAfter(@Param("companyId") String companyId, @Param("date") LocalDateTime date);
 
+    List<Sale> findByKitchenStatus(OrderStatus status);
 }

@@ -184,6 +184,7 @@ input[type="file"] {
 .product-item {
   background-color: #2a2a2a;
   padding: 20px;
+  padding-bottom: 16px;
   border-radius: 12px;
   text-align: center;
   display: flex;
@@ -216,8 +217,15 @@ input[type="file"] {
 }
 .product-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   justify-content: center;
-  gap: 12px;
+  margin-top: auto; /* empuja al fondo */
+}
+.product-actions button {
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .edit-btn, .delete-btn {
   padding: 10px 14px;

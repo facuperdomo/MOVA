@@ -56,15 +56,18 @@ export default function LoginUser() {
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role); // Guardar el rol del usuario
-      localStorage.setItem("isAdmin", data.role === "ADMIN" ? "true" : "false"); // ✅ Guarda si es admin
+      localStorage.setItem('companyId', data.companyId);
+      localStorage.setItem('isAdmin', data.role === 'ADMIN'); // ✅ Guarda si es admin
       console.log("✅ Rol guardado en localStorage:", data.role); // 🔍 Verifica que se guardó bien
 
       // 🔹 Redirigir correctamente después del login
       if (data.role === 'ADMIN') {
         navigate('/admin-options', { replace: true }); // ✅ Lleva a admin-options sin dejar historial
-      } else {
+      } else if (data.role === 'USER') {
         navigate('/dashboard', { replace: true }); // ✅ Lleva a dashboard si es usuario normal
-      }
+      } else if (data.role === 'KITCHEN') {
+        navigate('/kitchen-dashboard', { replace: true }); // ✅ Lleva a la pantalla de comanderia si es usuario cocina
+      } 
 
     } catch (err) {
       showError(err.message);

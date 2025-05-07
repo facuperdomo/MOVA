@@ -28,13 +28,7 @@ public class SaleController {
         }
         try {
             Sale savedSale = saleService.registerSale(saleDTO, token);
-            SaleResponseDTO response = new SaleResponseDTO(
-                    savedSale.getId(),
-                    savedSale.getTotalAmount(),
-                    savedSale.getPaymentMethod(),
-                    savedSale.getDateTime(),
-                    savedSale.getEstado().name()
-            );
+            SaleResponseDTO response = saleService.toResponseDTO(savedSale);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

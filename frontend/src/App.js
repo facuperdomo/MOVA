@@ -9,6 +9,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import AdminProducts from "./components/adminProducts/AdminProducts";
 import { isTokenValid } from "./utils/authUtils";
 import Statistics from "./components/statistics/Statistics";
+import KitchenDashboard from "./components/kitchen/KitchenDashboard";
 
 const App = () => {
   return (
@@ -27,16 +28,28 @@ const App = () => {
             <Route element={<PrivateRoute adminOnly={true} />}>
               <Route path="/admin-options" element={<AdminOptions />} />
               <Route path="/statistics" element={<Statistics />} />
+              <Route path="/adminProducts" element={<AdminProducts />} />
             </Route>
 
             {/* Rutas protegidas para usuarios autenticados */}
             <Route element={<PrivateRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/adminProducts" element={<AdminProducts />} />
+            </Route>
+
+            {/* cocina: sólo KITCHEN */}
+            <Route element={<PrivateRoute kitchenOnly={true} />}>
+              <Route path="/kitchen-dashboard" element={<KitchenDashboard />} />
             </Route>
 
             {/* Redireccionar cualquier otra ruta al dashboard si el usuario está autenticado */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="*"
+              element={
+                isTokenValid()
+                  ? <Navigate to="/dashboard" replace />
+                  : <Navigate to="/login" replace />
+              }
+            />
           </>
         )}
       </Routes>

@@ -41,11 +41,52 @@ const AdminProducts = () => {
 
   useEffect(() => {
     const cat = categories.find(c => c.id === selectedCategoryId);
-    if (!editingId && cat?.hasIngredients) {
-      setShowIngredientSelection(true);
+    if (!cat?.hasIngredients) {
+      setShowIngredientSelection(false);
     }
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, categories]);
 
+  const handleCategoryClick = (catId) => {
+    const cat = categories.find(c => c.id === catId);
+    setSelectedCategoryId(catId);
+  
+    if (cat?.hasIngredients) {
+      if (editingId) {
+        // en edición: abre el modal de ingredientes usando tu helper
+        const prod = products.find(p => p.id === editingId);
+        if (prod) openIngredientEditor(prod);
+      } else {
+        // en creación: abre el selector normal
+        setShowIngredientSelection(true);
+      }
+    } else {
+      // categoría sin ingredientes: cierra ambos
+      setShowIngredientSelection(false);
+      setEditingIngProductId(null);
+    }
+  };
+
+  const handleFormCategoryClick = (catId) => {
+    const cat = categories.find(c => c.id === catId);
+    setSelectedCategoryId(catId);
+  
+    if (cat?.hasIngredients) {
+      if (editingId) {
+        const prod = products.find(p => p.id === editingId);
+        if (prod) openIngredientEditor(prod);
+      } else {
+        setShowIngredientSelection(true);
+      }
+    } else {
+      setShowIngredientSelection(false);
+      setEditingIngProductId(null);
+    }
+  };
+
+  const handleFilterCategory = (catId) => {
+    setFilterCategoryId(catId);
+  };
+  
   useEffect(() => {
     (async () => {
       try {
@@ -275,7 +316,7 @@ const AdminProducts = () => {
               <li
                 key={cat.id}
                 className={selectedCategoryId === cat.id ? "selected-category" : ""}
-                onClick={() => setSelectedCategoryId(cat.id)}
+                onClick={() => handleFormCategoryClick(cat.id)}
               >
                 {cat.name}
               </li>
@@ -304,7 +345,7 @@ const AdminProducts = () => {
         <div className="category-tabs">
           <button
             className={!filterCategoryId ? "active-tab" : ""}
-            onClick={() => setFilterCategoryId(null)}
+            onClick={() => handleFilterCategory(null)}
           >
             Todos
           </button>
@@ -312,7 +353,7 @@ const AdminProducts = () => {
             <button
               key={cat.id}
               className={filterCategoryId === cat.id ? "active-tab" : ""}
-              onClick={() => setFilterCategoryId(cat.id)}
+              onClick={() => handleFilterCategory(cat.id)}
             >
               {cat.name}
             </button>

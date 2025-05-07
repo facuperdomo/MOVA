@@ -1,21 +1,28 @@
 export const isTokenValid = () => {
-    const token = localStorage.getItem("token");
-    if (!token) return false;
-
+    // 1) Recuperamos del localStorage
+    const raw = localStorage.getItem("token");
+    if (!raw) return false;
+  
+    // 2) Si viene con "Bearer ", lo separamos; si no, lo usamos tal cual
+    const token = raw.startsWith("Bearer ")
+      ? raw.split(" ")[1]
+      : raw;
+  
     try {
-        const payload = JSON.parse(atob(token.split(".")[1])); // Decodifica el payload del JWT
-        const isExpired = payload.exp * 1000 < Date.now();
-
-        if (isExpired) {
-            // ✅ Borra el token y la info de admin si el token está vencido
-            localStorage.removeItem("token");
-            localStorage.removeItem("isAdmin");
-            return false;
-        }
-
-        return true;
-    } catch (error) {
-        console.error("❌ Error al validar el token:", error);
+      // 3) Decodificamos payload y comprobamos expiración
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const isExpired = payload.exp * 1000 < Date.now();
+  
+      if (isExpired) {
+        // 4) Si expiró, borramos todo y devolvemos false
+        localStorage.removeItem("token");
+        localStorage.removeItem("isAdmin");
         return false;
+      }
+  
+      return true;
+    } catch (error) {
+      console.error("❌ Error al validar el token:", error);
+      return false;
     }
-};
+  };

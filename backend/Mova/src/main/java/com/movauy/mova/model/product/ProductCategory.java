@@ -20,4 +20,7 @@ public class ProductCategory {
     
     @Column(nullable = false)
     boolean hasIngredients;
+    
+    @Column(name = "enable_kitchen_commands", nullable = false)
+    private boolean enableKitchenCommands = false;
 }

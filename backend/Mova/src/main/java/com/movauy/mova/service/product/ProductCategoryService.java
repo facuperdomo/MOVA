@@ -24,7 +24,7 @@ public class ProductCategoryService {
         return categoryRepository.findByCompanyId(companyId);
     }
 
-    public ProductCategory createCategory(String token, String name, Boolean hasIngredients) {
+    public ProductCategory createCategory(String token, String name, Boolean hasIngredients, Boolean enableKitchenCommands) {
         String companyId = authService.getCompanyIdFromToken(token).toString();
 
         if ("Sin categoría".equalsIgnoreCase(name.trim())) {
@@ -35,28 +35,30 @@ public class ProductCategoryService {
         category.setName(name);
         category.setCompanyId(companyId);
         category.setHasIngredients(hasIngredients != null && hasIngredients);
+        category.setEnableKitchenCommands(enableKitchenCommands != null && enableKitchenCommands);
         return categoryRepository.save(category);
     }
 
     /**
      * Actualiza el nombre y el flag hasIngredients de una categoría existente.
      *
-     * @param id             el id de la categoría a actualizar
-     * @param token          el token de autorización (se extrae la empresa)
-     * @param newName        el nuevo nombre de la categoría
+     * @param id el id de la categoría a actualizar
+     * @param token el token de autorización (se extrae la empresa)
+     * @param newName el nuevo nombre de la categoría
      * @param hasIngredients el nuevo valor de hasIngredients
      * @return la categoría actualizada
      */
     @Transactional
     public ProductCategory updateCategory(Long id,
-                                          String token,
-                                          String newName,
-                                          Boolean hasIngredients) {
+            String token,
+            String newName,
+            Boolean hasIngredients,
+            Boolean enableKitchenCommands) {
         String companyId = authService.getCompanyIdFromToken(token).toString();
 
         // 1) recuperar la categoría y validar empresa
         ProductCategory existing = categoryRepository.findById(id)
-            .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
+                .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
 
         if (!existing.getCompanyId().equals(companyId)) {
             throw new SecurityException("No tienes permiso para modificar esta categoría");
@@ -70,11 +72,11 @@ public class ProductCategoryService {
         // 3) actualizar campos
         existing.setName(newName.trim());
         existing.setHasIngredients(hasIngredients != null && hasIngredients);
-
+        existing.setEnableKitchenCommands(enableKitchenCommands != null && enableKitchenCommands);
         // 4) guardar y devolver
         return categoryRepository.save(existing);
     }
-    
+
     @Transactional
     public void deleteCategory(Long id, String token) {
         String companyId = authService.getCompanyIdFromToken(token).toString();

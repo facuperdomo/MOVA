@@ -17,7 +17,6 @@ public class ProductDTO {
 
     // Nueva sección
     private boolean enableIngredients;
-    private boolean enableKitchenCommands;
     private List<IngredientDTO> ingredients;
 
     public ProductDTO(Long id,
@@ -27,7 +26,6 @@ public class ProductDTO {
                       Long categoryId,
                       String categoryName,
                       boolean enableIngredients,
-                      boolean enableKitchenCommands,
                       List<IngredientDTO> ingredients) {
         this.id = id;
         this.name = name;
@@ -36,7 +34,6 @@ public class ProductDTO {
         this.categoryId = categoryId;
         this.categoryName = categoryName;
         this.enableIngredients = enableIngredients;
-        this.enableKitchenCommands = enableKitchenCommands;
         this.ingredients = ingredients;
     }
 }

@@ -47,4 +47,15 @@ public class Sale {
     @JoinColumn(name = "user_id", nullable = false)  // Relaciona la venta con un usuario
     @JsonIgnore
     private User user;  // Usuario dueño de la venta
+    
+    public enum OrderStatus { 
+        PENDING, SENT_TO_KITCHEN, PREPARING, READY, COMPLETED 
+    }
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderStatus kitchenStatus = OrderStatus.PENDING;
+
+    @Column(name = "kitchen_sent_at")
+    private LocalDateTime kitchenSentAt;
 }
