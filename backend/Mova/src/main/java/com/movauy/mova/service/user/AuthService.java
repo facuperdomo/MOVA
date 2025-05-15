@@ -1,5 +1,6 @@
 package com.movauy.mova.service.user;
 
+import com.movauy.mova.Jwt.JwtAuthenticationFilter;
 import com.movauy.mova.Jwt.JwtService;
 import com.movauy.mova.dto.AuthResponse;
 import com.movauy.mova.dto.LoginRequest;
@@ -7,8 +8,17 @@ import com.movauy.mova.dto.RegisterRequest;
 import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.user.Role;
 import com.movauy.mova.model.user.User;
+import com.movauy.mova.model.branch.Branch;
+import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.repository.user.UserRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,181 +26,220 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final BranchRepository branchRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
-    /**
-     * Login para una empresa (COMPANY)
-     */
-    public AuthResponse loginCompany(LoginRequest request) {
-        authenticateUser(request.getUsername(), request.getPassword());
+    @Autowired
+    private UserTransactionalService userTransactionalService;
 
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+    public AuthResponse loginBranch(LoginRequest request) {
+        Branch branch = branchRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("Sucursal no encontrada"));
 
-        if (user.getRole() != Role.COMPANY) {
-            throw new BadCredentialsException("El usuario no tiene permisos de empresa");
+        if (!passwordEncoder.matches(request.getPassword(), branch.getPassword())) {
+            throw new BadCredentialsException("Credenciales inválidas");
         }
 
-        String token = jwtService.getToken(user);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("branchId", branch.getId());
+        claims.put("companyId", branch.getCompany().getId());
+        claims.put("authType", "BRANCH"); // ✅ útil para distinguir este tipo de token
 
-        // ✅ En lugar de devolver "" como companyId, devolvemos el ID real de la empresa
+        String token = jwtService.generateToken(claims, branch.getUsername());
+
         return AuthResponse.builder()
                 .token(token)
-                .role(user.getRole().name())
-                .companyId(user.getId().toString()) // <- Este ID se usará para asociar usuarios
+                .authType("BRANCH")
+                .branchId(branch.getId())
+                .companyId(branch.getCompany().getId())
                 .build();
     }
 
-    /**
-     * Login para usuarios normales y administradores
-     */
     public AuthResponse loginUser(LoginRequest request) {
-        authenticateUser(request.getUsername(), request.getPassword());
+        authenticate(request.getUsername(), request.getPassword());
 
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+        User user = getUserByUsername(request.getUsername());
 
-        if (request.getCompanyId() == null || request.getCompanyId().isEmpty()) {
-            throw new BadCredentialsException("No se proporcionó el ID de la empresa");
+        if (user.getRole() != Role.SUPERADMIN) {
+            if (request.getBranchId() == null
+                    || user.getBranch() == null
+                    || !user.getBranch().getId().equals(request.getBranchId())) {
+                throw new BadCredentialsException("El usuario no pertenece a la sucursal indicada");
+            }
         }
 
-        if (user.getCompanyId() == null || !user.getCompanyId().equals(request.getCompanyId())) {
-            throw new BadCredentialsException("El usuario no pertenece a la empresa indicada");
+        if (user.getTokenVersion() != null && !user.getTokenVersion().isBlank()) {
+            return AuthResponse.builder()
+                    .message("Ya existe una sesión activa con este usuario")
+                    .build();
         }
 
-        if (!(user.getRole() == Role.USER || user.getRole() == Role.ADMIN || user.getRole() == Role.KITCHEN)) {
-            throw new BadCredentialsException("No tienes permisos para este login");
-        }
+        String newVersion = rotateTokenVersion(user);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("ver", newVersion);
+        claims.put("role", user.getRole().name());
+        claims.put("authType", "USER"); // ← AÑADIR ESTA LÍNEA
+        claims.put("branchId", user.getBranch() != null ? user.getBranch().getId() : null);
+        claims.put("companyId", user.getBranch() != null ? user.getBranch().getCompany().getId() : null);
+
+        String token = jwtService.generateToken(claims, user);
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
         );
 
-        String token = jwtService.getToken(user);
-
         return AuthResponse.builder()
                 .token(token)
                 .role(user.getRole().name())
-                .companyId(user.getCompanyId())
+                .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
+                .companyId(user.getBranch() != null ? user.getBranch().getCompany().getId() : null)
                 .build();
     }
 
-    /**
-     * Registro de nuevos usuarios
-     */
     public AuthResponse register(RegisterRequest request) {
-        Role role;
-        try {
-            role = Role.valueOf(request.getRole().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("El rol enviado no es válido. Use COMPANY, USER o ADMIN.", e);
+        String username = request.getUsername().trim();
+        Long branchId = request.getBranchId();
+        Role role = Role.valueOf(request.getRole().toUpperCase());
+
+        // 1) Comprueba duplicados
+        if (branchId != null && userRepository.existsByUsernameAndBranch_Id(username, branchId)) {
+            throw new DuplicateUsernameException(
+                    "Ya existe un usuario con ese nombre en esta sucursal"
+            );
         }
 
+        // 2) Crea y guarda
         User user = User.builder()
-                .username(request.getUsername())
+                .username(username)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(role)
-                .companyId(request.getCompanyId())
-                .mercadoPagoAccessToken(request.getMercadoPagoAccessToken())
-                .enableIngredients(request.isEnableIngredients())
-                .enableKitchenCommands(request.isEnableKitchenCommands())
+                .tokenVersion(null)
                 .build();
+
+        if (branchId != null) {
+            Branch branch = branchRepository.findById(branchId)
+                    .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada con ID: " + branchId));
+            user.setBranch(branch);
+        }
 
         userRepository.save(user);
 
-        // ✅ Si es empresa y no tiene companyId, lo igualamos a su propio ID
-        if (role == Role.COMPANY && (user.getCompanyId() == null || user.getCompanyId().isBlank())) {
-            user.setCompanyId(user.getId().toString());
-            userRepository.save(user); // guardamos con el companyId seteado
-        }
-
-        String effectiveCompanyId = user.getCompanyId() != null && !user.getCompanyId().isEmpty()
-                ? user.getCompanyId()
-                : user.getId().toString();
-
+        // 3) Arma respuesta sin token
         return AuthResponse.builder()
-                .token(jwtService.getToken(user))
+                .token(null)
                 .role(user.getRole().name())
-                .companyId(effectiveCompanyId)
+                .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
+                .companyId(user.getBranch() != null ? user.getBranch().getCompany().getId() : null)
                 .build();
     }
 
-    private void authenticateUser(String username, String password) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password)
-        );
+    private void authenticate(String username, String password) {
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+    }
+
+    private String cleanToken(String token) {
+        return token.startsWith("Bearer ") ? token.substring(7) : token;
     }
 
     public Long getCompanyIdFromToken(String token) {
-        if (token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-        String username = jwtService.getUsernameFromToken(token);
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-
-        String companyIdStr = user.getCompanyId() != null && !user.getCompanyId().isEmpty()
-                ? user.getCompanyId()
-                : user.getId().toString();
-        return Long.valueOf(companyIdStr);
+        String username = jwtService.getUsernameFromToken(cleanToken(token));
+        return getUserByUsername(username).getBranch().getCompany().getId();
     }
 
-    public User getUserById(Long companyId) {
-        return userRepository.findById(companyId.intValue())
+    public Long getBranchIdFromToken(String token) {
+        return getUserBasicFromToken(token).getBranchId();
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
 
-    public void updateUser(User user) {
-        userRepository.save(user);
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+    }
+
+    public Branch getBranchById(Long id) {
+        return branchRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada con ID: " + id));
     }
 
     public UserBasicDTO getUserBasicFromToken(String token) {
-        if (token.startsWith("Bearer ")) {
-            token = token.substring(7);
-        }
-        String username = jwtService.getUsernameFromToken(token);
+        String username = jwtService.getUsernameFromToken(cleanToken(token));
+        User me = getUserByUsername(username);
 
-        // 1) el usuario logueado
-        User me = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+        Long branchId = me.getBranch() != null ? me.getBranch().getId() : null;
+        Long companyId = me.getBranch() != null ? me.getBranch().getCompany().getId() : null;
 
-        // 2) la "empresa" a la que pertenece
-        Long companyId = Long.valueOf(
-                (me.getCompanyId() != null && !me.getCompanyId().isBlank())
-                ? me.getCompanyId()
-                : me.getId().toString()
-        );
-        User company = getUserById(companyId);
-
-        // 3) devuelvo sólo el DTO
         return new UserBasicDTO(
-                me.getId().longValue(),
+                me.getId(),
                 me.getUsername(),
-                company.getCompanyId(),
+                branchId,
+                companyId,
                 me.getRole().name(),
-                company.isEnableIngredients(),
-                company.isEnableKitchenCommands()
+                me.getBranch() != null && me.getBranch().isEnableIngredients(),
+                me.getBranch() != null && me.getBranch().isEnableKitchenCommands()
         );
     }
 
     public UserBasicDTO getUserBasicById(Long id) {
-        // aquí id ya es companyId
-        User company = getUserById(id);
+        User user = getUserById(id);
+        Long branchId = user.getBranch() != null ? user.getBranch().getId() : null;
+        Long companyId = user.getBranch() != null ? user.getBranch().getCompany().getId() : null;
+
         return new UserBasicDTO(
-                company.getId(),
-                company.getUsername(),
-                company.getCompanyId(),
-                company.getRole().name(),
-                company.isEnableIngredients(),
-                company.isEnableKitchenCommands()
+                user.getId(),
+                user.getUsername(),
+                branchId,
+                companyId,
+                user.getRole().name(),
+                user.getBranch() != null && user.getBranch().isEnableIngredients(),
+                user.getBranch() != null && user.getBranch().isEnableKitchenCommands()
         );
     }
+
+    /**
+     * Genera una nueva versión de token (UUID) para el usuario, la guarda en la
+     * base de datos y la devuelve. Sirve para invalidar sesiones anteriores.
+     */
+    @Transactional
+    public String rotateTokenVersion(User user) {
+        String newVersion = UUID.randomUUID().toString();
+
+        User managedUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        managedUser.setTokenVersion(newVersion);
+
+        userRepository.save(managedUser); // ← 🔧 Esto es lo que faltaba
+
+        logger.warn("🔁 Persistiendo nueva tokenVersion: {}", newVersion);
+
+        return newVersion;
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public class DuplicateUsernameException extends RuntimeException {
+
+        public DuplicateUsernameException(String message) {
+            super(message);
+        }
+    }
+
 }

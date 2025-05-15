@@ -5,6 +5,7 @@ import com.movauy.mova.dto.SaleResponseDTO;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.service.finance.CashRegisterService;
 import com.movauy.mova.service.sale.SaleService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,10 @@ public class SaleController {
     private final SaleService saleService;
     private final CashRegisterService cashRegisterService;
 
+    /**
+     * Registra una nueva venta si la caja está abierta. - Verifica el estado de
+     * la caja con el token. - Registra la venta y devuelve su DTO de respuesta.
+     */
     @PostMapping("/sales")
     public ResponseEntity<?> registerSale(
             @RequestHeader("Authorization") String token,
@@ -32,7 +37,7 @@ public class SaleController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al registrar la venta: " + e.getMessage());
+                    .body(Map.of("error", "Error al registrar la venta: " + e.getMessage()));
         }
     }
 }

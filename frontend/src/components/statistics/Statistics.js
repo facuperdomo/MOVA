@@ -3,10 +3,11 @@ import React, { useState, useEffect } from "react";
 import { Chart, registerables } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Download } from "lucide-react";
 import { customFetch } from "../../utils/api";
 import "./statisticsStyle.css";
 import { API_URL } from '../../config/apiConfig';
+import { exportStatisticsToExcel } from "../../utils/exportStatisticsExcel";
 
 Chart.register(...registerables);
 
@@ -23,21 +24,54 @@ const Statistics = () => {
   const [error, setError] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
   const [saleToCancel, setSaleToCancel] = useState(null);
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   useEffect(() => {
-    if (selectedOption === "sales") fetchSalesData();
-    if (selectedOption === "top-products") fetchTopProducts();
-    if (selectedOption === "cash-register") fetchCashRegisterHistory();
+    if (!customStart && !customEnd) {
+      if (selectedOption === "sales") fetchSalesData();
+      if (selectedOption === "top-products") fetchTopProducts();
+      if (selectedOption === "cash-register") fetchCashRegisterHistory();
+    }
   }, [selectedFilter, selectedOption]);
+
+  useEffect(() => {
+    // Ejecuta solo si ambas fechas están completas
+    if (customStart && customEnd) {
+      if (selectedOption === "sales") fetchSalesData();
+      if (selectedOption === "top-products") fetchTopProducts();
+      if (selectedOption === "cash-register") fetchCashRegisterHistory();
+    }
+  
+    // Si alguna está vacía, limpiar los datos para no mantener anteriores
+    if ((customStart && !customEnd) || (!customStart && customEnd)) {
+      setSalesData([]);
+      setTopProducts([]);
+      setCashRegisterHistory([]);
+    }
+  }, [customStart, customEnd, selectedOption]);
 
   // Obtener estadísticas de ventas
   const fetchSalesData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_URL}/api/statistics/sales?filter=${selectedFilter}`;
+      let url = `${API_URL}/api/statistics/sales`;
+
+      if (customStart && customEnd) {
+        url += `?startDate=${customStart}&endDate=${customEnd}`;
+      } else {
+        url += `?filter=${selectedFilter}`;
+      }
+
       const response = await customFetch(url);
-      if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
+
+      // ✔️ Validación para limpiar si viene vacío
+      if (!Array.isArray(response) || response.length === 0) {
+        setSalesData([]);
+        return;
+      }
+
       setSalesData(response);
     } catch (err) {
       setError("No se pudieron cargar las estadísticas.");
@@ -52,10 +86,19 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_URL}/api/statistics/top-selling-products?filter=${selectedFilter}`;
+      let url = `${API_URL}/api/statistics/top-selling-products`;
+      if (customStart && customEnd) {
+        url += `?startDate=${customStart}&endDate=${customEnd}`;
+      } else {
+        url += `?filter=${selectedFilter}`;
+      }
+
       const response = await customFetch(url);
-      if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
-      setTopProducts(response);
+      if (!Array.isArray(response) || response.length === 0) {
+        setTopProducts([]);
+        return;
+      }
+      setTopProducts(response); // 👈 acá también tenías setSalesData, estaba mal
     } catch (err) {
       setError("Hubo un error al obtener los productos más vendidos.");
       setTopProducts([]);
@@ -69,10 +112,19 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const url = `${API_URL}/api/statistics/cash-register-history?filter=${selectedFilter}`;
+      let url = `${API_URL}/api/statistics/cash-register-history`;
+      if (customStart && customEnd) {
+        url += `?startDate=${customStart}&endDate=${customEnd}`;
+      } else {
+        url += `?filter=${selectedFilter}`;
+      }
+
       const response = await customFetch(url);
-      if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
-      setCashRegisterHistory(response);
+      if (!Array.isArray(response) || response.length === 0) {
+        setCashRegisterHistory([]);
+        return;
+      }
+      setCashRegisterHistory(response); // ✅ ahora correcto
     } catch (err) {
       setError("No se pudo cargar el historial de caja.");
       setCashRegisterHistory([]);
@@ -80,6 +132,7 @@ const Statistics = () => {
       setLoading(false);
     }
   };
+
 
   // Formatear fecha correctamente
   const formatDate = (dateString) => {
@@ -112,7 +165,7 @@ const Statistics = () => {
     labels: topProducts.map(p => p.name),
     datasets: [{
       label: "Cantidad Vendida",
-      data: topProducts.map(p => p.totalSold),
+      data: topProducts.map(p => p.quantity),
       backgroundColor: colors,
       borderColor: colors,
       borderWidth: 1,
@@ -154,48 +207,66 @@ const Statistics = () => {
           <li onClick={() => navigate("/admin-options")}>
             <ArrowLeft size={24} />
           </li>
-          <li
-            className={selectedOption === "sales" ? "active" : ""}
-            onClick={() => setSelectedOption("sales")}
-          >
-            📊
-          </li>
-          <li
-            className={selectedOption === "top-products" ? "active" : ""}
-            onClick={() => setSelectedOption("top-products")}
-          >
-            🍸
-          </li>
-          <li
-            className={selectedOption === "cash-register" ? "active" : ""}
-            onClick={() => setSelectedOption("cash-register")}
-          >
-            💰
-          </li>
+          <li className={selectedOption === "sales" ? "active" : ""} onClick={() => setSelectedOption("sales")}>📊</li>
+          <li className={selectedOption === "top-products" ? "active" : ""} onClick={() => setSelectedOption("top-products")}>🍸</li>
+          <li className={selectedOption === "cash-register" ? "active" : ""} onClick={() => setSelectedOption("cash-register")}>💰</li>
         </ul>
       </nav>
-
+  
       <div className="statistics-content">
         <div className="filter-container">
+          <div className="custom-date-filters">
+            <input
+              type="date"
+              value={customStart}
+              onChange={(e) => {
+                setCustomStart(e.target.value);
+                setSelectedFilter(null);
+              }}
+            />
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(e) => {
+                setCustomEnd(e.target.value);
+                setSelectedFilter(null);
+              }}
+            />
+          </div>
           {["day", "week", "month", "year"].map(f => (
             <button
               key={f}
               className={selectedFilter === f ? "active" : ""}
-              onClick={() => setSelectedFilter(f)}
+              onClick={() => {
+                setSelectedFilter(f);
+                setCustomStart("");
+                setCustomEnd("");
+              }}
             >
               {f === "day" ? "📅 Día" :
-               f === "week" ? "📆 Semana" :
-               f === "month" ? "📅 Mes" : "📆 Año"}
+                f === "week" ? "📆 Semana" :
+                  f === "month" ? "📅 Mes" : "📆 Año"}
             </button>
           ))}
         </div>
-
+  
+        {error && <div className="error-message">{error}</div>}
+  
+        <button
+          className="floating-export-btn"
+          onClick={() => exportStatisticsToExcel({ sales: salesData, topProducts, history: cashRegisterHistory })}
+        >
+          <Download size={20} /> Exportar
+        </button>
+  
         {selectedOption === "sales" && (
           <>
+            {salesData.length === 0 && !loading && (
+              <div className="empty-message">No hay ventas en este período.</div>
+            )}
             <div className="chart-container">
               <Bar data={salesChartData} />
             </div>
-
             <table className="sales-table">
               <thead>
                 <tr>
@@ -206,46 +277,39 @@ const Statistics = () => {
                 </tr>
               </thead>
               <tbody>
-                {/** Aquí invertimos el array para ver primero las ventas más recientes */}
-                {[...salesData]
-                  .reverse()
-                  .map(sale => (
-                    <tr
-                      key={sale.id}
-                      className={sale.estado === "CANCELADA" ? "cancelada" : ""}
-                    >
-                      <td>{formatDate(sale.date)}</td>
-                      <td>${sale.total}</td>
-                      <td>
-                        {sale.estado === "CANCELADA"
-                          ? "❌ Cancelada"
-                          : "✅ Activa"}
-                      </td>
-                      <td>
-                        {sale.estado !== "CANCELADA" && (
-                          <button
-                            className="cancel-button"
-                            onClick={() => handleCancelSale(sale)}
-                          >
-                            ❌ Cancelar
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                {[...salesData].reverse().map(sale => (
+                  <tr key={sale.id} className={sale.estado === "CANCELADA" ? "cancelada" : ""}>
+                    <td>{formatDate(sale.date)}</td>
+                    <td>${sale.total}</td>
+                    <td>{sale.estado === "CANCELADA" ? "❌ Cancelada" : "✅ Activa"}</td>
+                    <td>
+                      {sale.estado !== "CANCELADA" && (
+                        <button className="cancel-button" onClick={() => handleCancelSale(sale)}>❌ Cancelar</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </>
         )}
-
+  
         {selectedOption === "top-products" && (
-          <div className="chart-container">
-            <Pie data={topProductsChartData} />
-          </div>
+          <>
+            {topProducts.length === 0 && !loading && (
+              <div className="empty-message">No hay productos vendidos en este período.</div>
+            )}
+            <div className="chart-container">
+              <Pie data={topProductsChartData} />
+            </div>
+          </>
         )}
-
+  
         {selectedOption === "cash-register" && (
           <>
+            {cashRegisterHistory.length === 0 && !loading && (
+              <div className="empty-message">No hay historial de caja en este período.</div>
+            )}
             <div className="chart-container">
               <Bar
                 data={{
@@ -260,7 +324,6 @@ const Statistics = () => {
                 }}
               />
             </div>
-
             <table className="sales-table">
               <thead>
                 <tr>
@@ -273,11 +336,7 @@ const Statistics = () => {
                 {cashRegisterHistory.map(reg => (
                   <tr key={reg.id}>
                     <td>{formatDate(reg.openDate)}</td>
-                    <td>
-                      {reg.closeDate
-                        ? formatDate(reg.closeDate)
-                        : "Abierta"}
-                    </td>
+                    <td>{reg.closeDate ? formatDate(reg.closeDate) : "Abierta"}</td>
                     <td>${reg.totalSales}</td>
                   </tr>
                 ))}
@@ -285,31 +344,17 @@ const Statistics = () => {
             </table>
           </>
         )}
-
+  
         {showPopup && (
           <div className="popup-overlay">
             <div className="popup-content">
-              <X
-                className="popup-close"
-                size={32}
-                onClick={() => setShowPopup(false)}
-              />
+              <X className="popup-close" size={32} onClick={() => setShowPopup(false)} />
               <h2>¿Seguro que quieres cancelar esta venta?</h2>
               <p>Monto: ${saleToCancel?.total}</p>
               <p>Fecha: {formatDate(saleToCancel?.date)}</p>
               <div className="popup-buttons">
-                <button
-                  className="popup-btn popup-btn-cash"
-                  onClick={confirmCancelSale}
-                >
-                  ✅ Confirmar
-                </button>
-                <button
-                  className="popup-btn popup-btn-qr"
-                  onClick={() => setShowPopup(false)}
-                >
-                  ❌ Cancelar
-                </button>
+                <button className="popup-btn popup-btn-cash" onClick={confirmCancelSale}>✅ Confirmar</button>
+                <button className="popup-btn popup-btn-qr" onClick={() => setShowPopup(false)}>❌ Cancelar</button>
               </div>
             </div>
           </div>
@@ -317,6 +362,7 @@ const Statistics = () => {
       </div>
     </div>
   );
+  
 };
 
 export default Statistics;

@@ -1,4 +1,3 @@
-// src/main/java/com/movauy/mova/dto/IngredientDTO.java
 package com.movauy.mova.dto;
 
 import com.movauy.mova.model.ingredient.Ingredient;
@@ -13,15 +12,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class IngredientDTO {
+
     private Long id;
 
-    @NotBlank(message = "Name must not be blank")
+    @NotBlank(message = "El nombre del ingrediente no puede estar vacío")
     private String name;
 
     /**
      * Crea un DTO a partir de la entidad.
      */
     public static IngredientDTO fromEntity(Ingredient ingredient) {
+        if (ingredient == null) {
+            return null;
+        }
         return IngredientDTO.builder()
                 .id(ingredient.getId())
                 .name(ingredient.getName())
@@ -29,8 +32,8 @@ public class IngredientDTO {
     }
 
     /**
-     * Genera una entidad a partir de este DTO.
-     * NOTA: el campo company se asigna en el servicio.
+     * Genera una entidad a partir de este DTO. NOTA: el campo branch se asigna
+     * dentro del servicio.
      */
     public Ingredient toEntity() {
         Ingredient ing = new Ingredient();

@@ -1,23 +1,13 @@
 package com.movauy.mova.dto;
 
-/**
- *
- * @author Facundo
- */
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class TopSellingDrinkDTO {
     private String name;
     private Long totalSold;
-
-    public TopSellingDrinkDTO(String name, Long totalSold) {
-        this.name = name;
-        this.totalSold = totalSold;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public Long getTotalSold() {
-        return totalSold;
-    }
 }

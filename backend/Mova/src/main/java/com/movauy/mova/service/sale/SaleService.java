@@ -1,3 +1,4 @@
+// src/main/java/com/movauy/mova/service/sale/SaleService.java
 package com.movauy.mova.service.sale;
 
 import com.movauy.mova.dto.SaleDTO;
@@ -19,13 +20,13 @@ import com.movauy.mova.repository.sale.SaleItemIngredientRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
 import com.movauy.mova.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -40,152 +41,152 @@ public class SaleService {
 
     @Transactional
     public Sale registerSale(SaleDTO saleDTO, String token) {
-        // 1) Obtener user básico y verificar caja abierta
-        UserBasicDTO userBasic = authService.getUserBasicFromToken(token);
-        Long userId = userBasic.getId();
-        String companyId = userBasic.getCompanyId();
+        UserBasicDTO me = authService.getUserBasicFromToken(token);
+        Long userId = me.getId();
+        Long companyId = me.getCompanyId();
 
-        CashRegister currentCashRegister = cashRegisterRepository
-                .findByCloseDateIsNullAndUser_Id(userId)
+        Long branchId = me.getBranchId();
+        CashRegister cashReg = cashRegisterRepository
+                .findByCloseDateIsNullAndBranch_Id(branchId)
                 .orElseThrow(() -> new RuntimeException("La caja está cerrada."));
 
-        // 2) Recuperar la entidad User MANAGED desde BD
         User currentUser = authService.getUserById(userId);
 
-        // 3) Crear la Sale
         Sale sale = new Sale();
         sale.setTotalAmount(saleDTO.getTotalAmount());
         sale.setPaymentMethod(saleDTO.getPaymentMethod());
         sale.setDateTime(LocalDateTime.now());
-        sale.setCashRegister(currentCashRegister);
+        sale.setCashRegister(cashReg);
         sale.setUser(currentUser);
         sale.setKitchenStatus(OrderStatus.SENT_TO_KITCHEN);
         sale.setKitchenSentAt(LocalDateTime.now());
+        sale.setBranch(currentUser.getBranch());
 
-        // 4) Construir los SaleItem
-        List<SaleItem> items = saleDTO.getItems().stream().map(dto -> {
-            Product product = productRepository.findById(dto.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Producto no encontrado ID=" + dto.getProductId()));
+        List<SaleItem> items = saleDTO.getItems().stream()
+                .map(dto -> {
+                    Product product = productRepository.findById(dto.getProductId())
+                            .orElseThrow(() -> new RuntimeException("Producto no encontrado ID=" + dto.getProductId()));
 
-            // validar empresa
-            if (product.getUser() == null || !product.getUser().getCompanyId().equals(companyId)) {
-                throw new RuntimeException("Producto ID=" + dto.getProductId() + " no pertenece a esta empresa.");
-            }
+                    Long prodCid = product.getBranch().getCompany().getId();
+                    if (!companyId.equals(prodCid)) {
+                        throw new RuntimeException("Producto ID=" + dto.getProductId() + " no pertenece a esta empresa.");
+                    }
 
-            SaleItem item = new SaleItem();
-            item.setSale(sale);
-            item.setProduct(product);
-            item.setQuantity(dto.getQuantity());
-            item.setUnitPrice(dto.getUnitPrice());
-            return item;
-        }).collect(Collectors.toList());
+                    SaleItem it = new SaleItem();
+                    it.setSale(sale);
+                    it.setProduct(product);
+                    it.setQuantity(dto.getQuantity());
+                    it.setUnitPrice(dto.getUnitPrice());
+                    return it;
+                })
+                .collect(Collectors.toList());
 
-        // 5) Asociar y salvar
         sale.setItems(items);
-        Sale savedSale = saleRepository.save(sale);
 
-        SaleResponseDTO payload = toResponseDTO(savedSale);
-        boolean hasKitchen = savedSale.getItems().stream()
+        System.out.println("DEBUG - Ingredientes recibidos por producto:");
+        for (int i = 0; i < saleDTO.getItems().size(); i++) {
+            SaleItemDTO item = saleDTO.getItems().get(i);
+            System.out.println("Producto ID=" + item.getProductId() + " → Ingredientes=" + item.getIngredientIds());
+        }
+        Sale saved = saleRepository.save(sale);
+
+        boolean toKitchen = saved.getItems().stream()
                 .map(si -> si.getProduct().getCategory())
                 .anyMatch(ProductCategory::isEnableKitchenCommands);
 
-        if (hasKitchen) {
-            savedSale.setKitchenStatus(OrderStatus.SENT_TO_KITCHEN);
-            savedSale.setKitchenSentAt(LocalDateTime.now());
-            savedSale = saleRepository.save(savedSale);
-
-            // Publica sólo si va a cocina
-            messagingTemplate.convertAndSend("/topic/kitchen-orders", toResponseDTO(savedSale));
+        if (toKitchen) {
+            saved.setKitchenStatus(OrderStatus.SENT_TO_KITCHEN);
+            saved.setKitchenSentAt(LocalDateTime.now());
+            saved = saleRepository.save(saved);
         } else {
-            // No va a cocina
-            savedSale.setKitchenStatus(OrderStatus.COMPLETED);
-            savedSale = saleRepository.save(savedSale);
+            saved.setKitchenStatus(OrderStatus.COMPLETED);
+            saved = saleRepository.save(saved);
         }
 
-        // 6) Persiste ingredientes seleccionados por ítem
-        List<SaleItemDTO> dtos = saleDTO.getItems();
-        for (int i = 0; i < savedSale.getItems().size(); i++) {
-            SaleItem si = savedSale.getItems().get(i);
-            List<Long> ingIds = dtos.get(i).getIngredientIds();
-            if (ingIds != null) {
-                ingIds.forEach(ingId -> {
-                    SaleItemIngredient link = new SaleItemIngredient();
-                    link.setSaleItem(si);
-                    link.setIngredientId(ingId);
-                    saleItemIngredientRepository.save(link);
-                });
-            }
+        saveItemIngredients(saved, saleDTO.getItems());
+
+        if (toKitchen) {
+            messagingTemplate.convertAndSend("/topic/kitchen-orders",
+                    toResponseDTO(saved));
         }
 
-        return savedSale;
+        return saved;
     }
 
-    // Obtener ventas por estado
     public List<Sale> getOrdersByStatus(OrderStatus status) {
         return saleRepository.findByKitchenStatus(status);
     }
 
-// Convertir entidad a DTO
     public SaleResponseDTO toResponseDTO(Sale sale) {
-        // mapeo explícito de cada SaleItem a SaleItemResponseDTO
-        List<SaleItemResponseDTO> items = sale.getItems().stream()
+        var items = sale.getItems().stream()
                 .map(si -> {
-                    // traemos de la tabla SaleItemIngredient los IDs de ingrediente
-                    List<Long> ingredientIds = saleItemIngredientRepository
+                    var ingIds = saleItemIngredientRepository
                             .findBySaleItemId(si.getId())
                             .stream()
                             .map(link -> link.getIngredientId())
                             .collect(Collectors.toList());
-
                     return new SaleItemResponseDTO(
                             si.getProduct().getId(),
                             si.getQuantity(),
                             si.getUnitPrice(),
-                            ingredientIds
+                            ingIds
                     );
-                })
-                .collect(Collectors.toList());
+                }).collect(Collectors.toList());
 
-        // finalmente construimos el DTO de la venta completa
         return new SaleResponseDTO(
                 sale.getId(),
                 sale.getTotalAmount(),
                 sale.getPaymentMethod(),
                 sale.getDateTime(),
-                sale.getEstado(), // tu EstadoVenta
-                sale.getKitchenStatus(), // nuevo kitchenStatus
-                sale.getKitchenSentAt(), // timestamp de envío
+                sale.getEstado(),
+                sale.getKitchenStatus(),
+                sale.getKitchenSentAt(),
                 items
         );
     }
 
-// Actualizar estado de un pedido
     @Transactional
     public Sale updateOrderStatus(Long saleId, OrderStatus newStatus) {
-        Sale sale = saleRepository.findById(saleId)
+        Sale s = saleRepository.findById(saleId)
                 .orElseThrow(() -> new RuntimeException("Pedido no encontrado ID=" + saleId));
-        sale.setKitchenStatus(newStatus);
-        // si cambias a SENT_TO_KITCHEN, setea timestamp
+        s.setKitchenStatus(newStatus);
         if (newStatus == OrderStatus.SENT_TO_KITCHEN) {
-            sale.setKitchenSentAt(LocalDateTime.now());
+            s.setKitchenSentAt(LocalDateTime.now());
         }
-        return saleRepository.save(sale);
+        return saleRepository.save(s);
     }
 
     public List<Sale> getOrdersByKitchenStatus(OrderStatus ks) {
         return saleRepository.findByKitchenStatus(ks);
     }
 
-    // actualizar sólo kitchenStatus
     @Transactional
     public Sale updateKitchenStatus(Long saleId, OrderStatus newStatus) {
-        Sale sale = saleRepository.findById(saleId)
-                .orElseThrow(() -> new RuntimeException("Pedido no encontrado ID=" + saleId));
-        sale.setKitchenStatus(newStatus);
-        if (newStatus == OrderStatus.SENT_TO_KITCHEN) {
-            sale.setKitchenSentAt(LocalDateTime.now());
+        return updateOrderStatus(saleId, newStatus);
+    }
+
+    public List<Sale> getOrdersByBranchAndKitchenStatus(String token, OrderStatus status) {
+        Long branchId = authService.getUserBasicFromToken(token).getBranchId();
+        return saleRepository.findByBranchIdAndKitchenStatus(branchId, status);
+    }
+
+    private void saveItemIngredients(Sale savedSale, List<SaleItemDTO> originalItems) {
+        for (int i = 0; i < savedSale.getItems().size(); i++) {
+            SaleItem si = savedSale.getItems().get(i);
+            List<Long> ingredientIds = originalItems.get(i).getIngredientIds();
+
+            // 🔧 Asegurarse de que no sea null
+            if (ingredientIds == null) {
+                ingredientIds = List.of();
+            }
+
+            for (Long ingId : ingredientIds) {
+                SaleItemIngredient link = new SaleItemIngredient();
+                link.setSaleItem(si);
+                link.setIngredientId(ingId);
+                saleItemIngredientRepository.save(link);
+            }
         }
-        return saleRepository.save(sale);
     }
 
 }

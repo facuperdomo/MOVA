@@ -1,5 +1,6 @@
 package com.movauy.mova.controller.product;
 
+import com.movauy.mova.dto.CategoryDTO;
 import com.movauy.mova.model.product.ProductCategory;
 import com.movauy.mova.repository.product.ProductCategoryRepository;
 import com.movauy.mova.repository.product.ProductRepository;
@@ -28,17 +29,25 @@ public class ProductCategoryController {
     private final ProductCategoryRepository categoryRepository;
 
     @GetMapping
-    public ResponseEntity<List<ProductCategory>> getCategories(
-            @RequestHeader("Authorization") String token) {
-        List<ProductCategory> categories = categoryService.getCategoriesForCompany(token);
-        return ResponseEntity.ok(categories);
+    public ResponseEntity<List<CategoryDTO>> getCategories(@RequestHeader("Authorization") String token) {
+        Long branchId = authService.getBranchIdFromToken(token);
+        List<ProductCategory> categories = categoryService.getCategoriesForBranch(branchId);
+
+        List<CategoryDTO> dtos = categories.stream()
+                .map(c -> new CategoryDTO(
+                c.getId(),
+                c.getName(),
+                c.isHasIngredients(),
+                c.isEnableKitchenCommands()
+        ))
+                .toList();
+
+        return ResponseEntity.ok(dtos);
     }
 
     @PostMapping
-    public ResponseEntity<ProductCategory> createCategory(
-            @RequestHeader("Authorization") String token,
+    public ResponseEntity<ProductCategory> createCategory(@RequestHeader("Authorization") String token,
             @RequestBody Map<String, Object> body) {
-
         String name = (String) body.get("name");
         if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest().build();
@@ -46,22 +55,18 @@ public class ProductCategoryController {
 
         boolean hasIngredients = Boolean.TRUE.equals(body.get("hasIngredients"));
         boolean enableKitchenCommands = Boolean.TRUE.equals(body.get("enableKitchenCommands"));
+        Long branchId = authService.getBranchIdFromToken(token);
 
         ProductCategory category = categoryService.createCategory(
-                token,
-                name.trim(),
-                hasIngredients,
-                enableKitchenCommands
+                branchId, name.trim(), hasIngredients, enableKitchenCommands
         );
         return ResponseEntity.ok(category);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductCategory> updateCategory(
-            @RequestHeader("Authorization") String token,
+    public ResponseEntity<ProductCategory> updateCategory(@RequestHeader("Authorization") String token,
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
-
         String name = (String) body.get("name");
         if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest().build();
@@ -69,41 +74,30 @@ public class ProductCategoryController {
 
         boolean hasIngredients = Boolean.TRUE.equals(body.get("hasIngredients"));
         boolean enableKitchenCommands = Boolean.TRUE.equals(body.get("enableKitchenCommands"));
+        Long branchId = authService.getBranchIdFromToken(token);
 
-        ProductCategory updated = categoryService.updateCategory(
-                id,
-                token,
-                name.trim(),
-                hasIngredients,
-                enableKitchenCommands
-        );
+        ProductCategory updated = categoryService.updateCategory(id, branchId, name.trim(), hasIngredients, enableKitchenCommands);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(
-            @RequestHeader("Authorization") String token,
-            @PathVariable Long id) {
-        categoryService.deleteCategory(id, token);
+    public ResponseEntity<Void> deleteCategory(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        Long branchId = authService.getBranchIdFromToken(token);
+        categoryService.deleteCategory(id, branchId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/has-products")
-    public ResponseEntity<Map<String, Boolean>> hasProducts(
-            @RequestHeader("Authorization") String token,
-            @PathVariable Long id) {
-
-        String companyId = authService.getCompanyIdFromToken(token).toString();
+    public ResponseEntity<Map<String, Boolean>> hasProducts(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        Long branchId = authService.getBranchIdFromToken(token);
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
 
-        if (!category.getCompanyId().equals(companyId)) {
+        if (!category.getBranch().getId().equals(branchId)) {
             throw new SecurityException("No tienes permiso para acceder a esta categoría");
         }
 
         boolean hasProducts = productRepository.existsByCategoryId(id);
-        Map<String, Boolean> response = new HashMap<>();
-        response.put("hasProducts", hasProducts);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of("hasProducts", hasProducts));
     }
 }

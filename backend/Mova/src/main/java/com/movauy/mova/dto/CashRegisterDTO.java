@@ -8,17 +8,16 @@ import lombok.Setter;
  *
  * @author Facundo
  */
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class CashRegisterDTO {
     private LocalDateTime openDate;
     private LocalDateTime closeDate;
     private Double totalSales;
-
-    public CashRegisterDTO(LocalDateTime openDate, LocalDateTime closeDate, Double totalSales) {
-        this.openDate = openDate;
-        this.closeDate = closeDate;
-        this.totalSales = totalSales;
-    }
-
 }
+

@@ -31,13 +31,13 @@ public class IngredientController {
     private final IngredientService ingredientService;
 
     /**
-     * List all ingredients for the current company.
+     * List all ingredients for the current branch.
      */
     @GetMapping
     public ResponseEntity<List<IngredientDTO>> listIngredients(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
     ) {
-        List<Ingredient> entities = ingredientService.listForCurrentCompany(authorization);
+        List<Ingredient> entities = ingredientService.listForCurrentBranch(authorization);
         List<IngredientDTO> dtos = entities.stream()
                 .map(IngredientDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -45,18 +45,16 @@ public class IngredientController {
     }
 
     /**
-     * Create a new ingredient under the current company.
+     * Create a new ingredient under the current branch.
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<IngredientDTO> createIngredient(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @Valid @RequestBody IngredientDTO dto
     ) {
-        // Map DTO to entity
         Ingredient toCreate = dto.toEntity();
-        Ingredient created = ingredientService.createForCurrentCompany(authorization, toCreate);
+        Ingredient created = ingredientService.createForCurrentBranch(authorization, toCreate);
 
-        // Build Location header: /api/ingredients/{id}
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
@@ -64,13 +62,11 @@ public class IngredientController {
                 .toUri();
 
         IngredientDTO responseDto = IngredientDTO.fromEntity(created);
-        return ResponseEntity
-                .created(location)
-                .body(responseDto);
+        return ResponseEntity.created(location).body(responseDto);
     }
 
     /**
-     * Delete an ingredient by ID if it belongs to the current company.
+     * Delete an ingredient by ID if it belongs to the current branch.
      */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -78,6 +74,6 @@ public class IngredientController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
             @PathVariable Long id
     ) {
-        ingredientService.deleteForCurrentCompany(authorization, id);
+        ingredientService.deleteForCurrentBranch(authorization, id);
     }
 }

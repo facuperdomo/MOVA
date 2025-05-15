@@ -2,6 +2,7 @@ package com.movauy.mova.service.product;
 
 import com.movauy.mova.model.product.Product;
 import com.movauy.mova.model.product.ProductCategory;
+import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.repository.product.ProductCategoryRepository;
 import com.movauy.mova.repository.product.ProductRepository;
 import com.movauy.mova.service.user.AuthService;
@@ -17,87 +18,75 @@ public class ProductCategoryService {
 
     private final ProductCategoryRepository categoryRepository;
     private final ProductRepository productRepository;
-    private final AuthService authService;
+    private final BranchRepository branchRepository;
 
-    public List<ProductCategory> getCategoriesForCompany(String token) {
-        String companyId = authService.getCompanyIdFromToken(token).toString();
-        return categoryRepository.findByCompanyId(companyId);
+    public List<ProductCategory> getCategoriesForBranch(Long branchId) {
+        return categoryRepository.findByBranchId(branchId);
     }
 
-    public ProductCategory createCategory(String token, String name, Boolean hasIngredients, Boolean enableKitchenCommands) {
-        String companyId = authService.getCompanyIdFromToken(token).toString();
-
+    public ProductCategory createCategory(Long branchId, String name, Boolean hasIngredients, Boolean enableKitchenCommands) {
         if ("Sin categoría".equalsIgnoreCase(name.trim())) {
             throw new IllegalArgumentException("No se puede crear una categoría llamada 'Sin categoría'.");
         }
 
+        categoryRepository.findByBranchIdAndName(branchId, name.trim()).ifPresent(existing -> {
+            throw new IllegalArgumentException("Ya existe una categoría con ese nombre en esta sucursal.");
+        });
+
         ProductCategory category = new ProductCategory();
-        category.setName(name);
-        category.setCompanyId(companyId);
+        category.setName(name.trim());
+        category.setBranch(branchRepository.findById(branchId)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada")));
         category.setHasIngredients(hasIngredients != null && hasIngredients);
         category.setEnableKitchenCommands(enableKitchenCommands != null && enableKitchenCommands);
         return categoryRepository.save(category);
     }
 
-    /**
-     * Actualiza el nombre y el flag hasIngredients de una categoría existente.
-     *
-     * @param id el id de la categoría a actualizar
-     * @param token el token de autorización (se extrae la empresa)
-     * @param newName el nuevo nombre de la categoría
-     * @param hasIngredients el nuevo valor de hasIngredients
-     * @return la categoría actualizada
-     */
     @Transactional
-    public ProductCategory updateCategory(Long id,
-            String token,
-            String newName,
-            Boolean hasIngredients,
-            Boolean enableKitchenCommands) {
-        String companyId = authService.getCompanyIdFromToken(token).toString();
-
-        // 1) recuperar la categoría y validar empresa
+    public ProductCategory updateCategory(Long id, Long branchId, String newName, Boolean hasIngredients, Boolean enableKitchenCommands) {
         ProductCategory existing = categoryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
 
-        if (!existing.getCompanyId().equals(companyId)) {
+        if (!existing.getBranch().getId().equals(branchId)) {
             throw new SecurityException("No tienes permiso para modificar esta categoría");
         }
 
-        // 2) prohibir renombrar a "Sin categoría" (si quieres mantener esa lógica)
         if ("Sin categoría".equalsIgnoreCase(newName.trim())) {
             throw new IllegalArgumentException("No se puede renombrar a 'Sin categoría'.");
         }
 
-        // 3) actualizar campos
+        if (!existing.getName().equalsIgnoreCase(newName.trim())) {
+            categoryRepository.findByBranchIdAndName(branchId, newName.trim()).ifPresent(other -> {
+                throw new IllegalArgumentException("Ya existe otra categoría con ese nombre en esta sucursal.");
+            });
+        }
+
         existing.setName(newName.trim());
         existing.setHasIngredients(hasIngredients != null && hasIngredients);
         existing.setEnableKitchenCommands(enableKitchenCommands != null && enableKitchenCommands);
-        // 4) guardar y devolver
         return categoryRepository.save(existing);
     }
 
     @Transactional
-    public void deleteCategory(Long id, String token) {
-        String companyId = authService.getCompanyIdFromToken(token).toString();
+    public void deleteCategory(Long id, Long branchId) {
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));
 
-        if (!category.getCompanyId().equals(companyId)) {
+        if (!category.getBranch().getId().equals(branchId)) {
             throw new SecurityException("No tienes permiso para eliminar esta categoría");
         }
 
-        // Buscar o crear categoría por defecto
+        // Obtener o crear "Sin categoría"
         ProductCategory defaultCategory = categoryRepository
-                .findByCompanyIdAndName(companyId, "Sin categoría")
+                .findByBranchIdAndName(branchId, "Sin categoría")
                 .orElseGet(() -> {
                     ProductCategory nueva = new ProductCategory();
                     nueva.setName("Sin categoría");
-                    nueva.setCompanyId(companyId);
+                    nueva.setBranch(category.getBranch());
                     return categoryRepository.save(nueva);
                 });
 
-        // Reasignar productos a la categoría por defecto
+        // Reasignar productos
         List<Product> productos = productRepository.findByCategoryId(id);
         for (Product p : productos) {
             p.setCategory(defaultCategory);

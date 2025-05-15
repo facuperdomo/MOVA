@@ -23,6 +23,7 @@ const AdminOptions = () => {
 
   // Monto inicial y resumen
   const [initialCash, setInitialCash] = useState("");
+  const [displayValue, setDisplayValue] = useState("");
   const [cashSummary, setCashSummary] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -34,6 +35,7 @@ const AdminOptions = () => {
 
   // 1) Chequear estado de caja al montar
   useEffect(() => {
+    console.log("🎟️ Token actual:", localStorage.getItem("token"));
     customFetch(`${API_URL}/api/cash-register/status`)
       .then(resp => {
         if (typeof resp !== "string") setIsCashRegisterOpen(resp);
@@ -111,9 +113,22 @@ const AdminOptions = () => {
     }
   };
 
-  const logout = () => {
-    localStorage.clear();
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    try {
+      // notificamos al backend para que invalide la tokenVersion
+      await customFetch(`${API_URL}/auth/logout`, {
+        method: 'POST'
+      });
+    } catch (err) {
+      console.warn('No se pudo notificar el logout al backend:', err);
+    } finally {
+      // limpiamos siempre el localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('isAdmin');
+      localStorage.removeItem('companyId');
+      navigate('/login', { replace: true });
+    }
   };
 
   return (
@@ -133,7 +148,7 @@ const AdminOptions = () => {
           <li onClick={() => navigate("/adminProducts")}>
             📦 {isMenuOpen && <span>Productos</span>}
           </li>
-          <li onClick={logout}>
+          <li onClick={handleLogout}>
             🚪 {isMenuOpen && <span>Cerrar Sesión</span>}
           </li>
         </ul>
@@ -163,8 +178,12 @@ const AdminOptions = () => {
             <label>Ingrese monto inicial:</label>
             <input
               type="text"
-              value={initialCash === "" ? "" : `$${initialCash}`}
-              onChange={e => setInitialCash(e.target.value.replace(/\D/g, ""))}
+              value={displayValue}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, "");
+                setInitialCash(raw);
+                setDisplayValue(raw ? `$${raw}` : "");
+              }}
               placeholder="$0"
             />
             <button className="open-cash-btn" onClick={openCashRegister}>
@@ -265,9 +284,8 @@ const AdminOptions = () => {
               <div className="real-amount-result">
                 <p>Monto real: <strong>${realAmount}</strong></p>
                 <p
-                  className={`difference ${
-                    difference >= 0 ? "correct" : "incorrect"
-                  }`}
+                  className={`difference ${difference >= 0 ? "correct" : "incorrect"
+                    }`}
                 >
                   Dif: <strong>${difference}</strong>
                 </p>

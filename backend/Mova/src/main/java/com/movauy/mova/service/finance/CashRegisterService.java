@@ -1,3 +1,4 @@
+// src/main/java/com/movauy/mova/service/finance/CashRegisterService.java
 package com.movauy.mova.service.finance;
 
 import com.movauy.mova.dto.UserBasicDTO;
@@ -22,43 +23,43 @@ public class CashRegisterService {
     private final SaleRepository saleRepository;
     private final AuthService authService;
 
-    // Obtiene la caja abierta para el usuario autenticado
+    // Obtiene la caja abierta para la sucursal autenticada
     public Optional<CashRegister> getOpenCashRegister(String token) {
-        UserBasicDTO currentUser = authService.getUserBasicFromToken(token);
-        return cashRegisterRepository.findByCloseDateIsNullAndUser_Id(currentUser.getId());
+        Long branchId = authService.getBranchIdFromToken(token);
+        return cashRegisterRepository.findByCloseDateIsNullAndBranch_Id(branchId);
     }
 
-    // Abre una caja para el usuario autenticado si no existe ya una abierta para ese usuario
+    // Abre una caja para el usuario autenticado si no existe ya una abierta para esa sucursal
     public boolean openCashRegister(String token, double initialAmount) {
-        UserBasicDTO currentUser = authService.getUserBasicFromToken(token);
+        Long branchId = authService.getBranchIdFromToken(token);
+        Long userId = authService.getUserBasicFromToken(token).getId();
 
-        if (cashRegisterRepository.findByCloseDateIsNullAndUser_Id(currentUser.getId()).isPresent()) {
-            return false; // Ya existe una caja abierta para este usuario
+        if (cashRegisterRepository.findByCloseDateIsNullAndBranch_Id(branchId).isPresent()) {
+            return false;
         }
 
-        // Si necesitás el usuario completo para persistirlo (por relaciones JPA), podés cargarlo desde el repo
-        User userEntity = authService.getUserById(currentUser.getId());
+        User user = authService.getUserById(userId);
 
         CashRegister newCashRegister = CashRegister.builder()
                 .initialAmount(initialAmount)
                 .openDate(LocalDateTime.now())
                 .open(true)
                 .totalSales(0.0)
-                .user(userEntity)  // Relación completa para persistencia
+                .branch(authService.getBranchById(branchId))
+                .user(user) // ✅ Ahora sí, seteamos el usuario
                 .build();
 
         cashRegisterRepository.save(newCashRegister);
         return true;
     }
 
-    // Cierra la caja abierta para el usuario autenticado
+    // Cierra la caja abierta para la sucursal autenticada
     public Map<String, Object> closeCashRegister(String token) {
-        UserBasicDTO currentUser = authService.getUserBasicFromToken(token);
-        Optional<CashRegister> openCash = cashRegisterRepository.findByCloseDateIsNullAndUser_Id(currentUser.getId());
+        Long branchId = authService.getBranchIdFromToken(token);
+        Optional<CashRegister> openCash = cashRegisterRepository.findByCloseDateIsNullAndBranch_Id(branchId);
 
         if (openCash.isPresent()) {
             CashRegister cashRegister = openCash.get();
-
             double totalSold = calculateTotalSoldByCashRegister(cashRegister.getId());
             double expectedAmount = cashRegister.getInitialAmount() + totalSold;
 
@@ -79,10 +80,6 @@ public class CashRegisterService {
 
     private double calculateTotalSoldByCashRegister(Long cashRegisterId) {
         List<Sale> sales = saleRepository.findByCashRegisterId(cashRegisterId);
-        System.out.println("Ventas encontradas para la caja " + cashRegisterId + ": " + sales.size());
-
-        sales.forEach(sale -> System.out.println("Venta: " + sale.getTotalAmount() + " - Método: " + sale.getPaymentMethod()));
-
         return sales.stream()
                 .filter(sale -> sale.getEstado() == EstadoVenta.ACTIVA)
                 .mapToDouble(Sale::getTotalAmount)

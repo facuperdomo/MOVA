@@ -1,16 +1,4 @@
 /* ───────────────────────────────
-   Globales
-────────────────────────────── */
-
-
-.app-container {
-  width: 100vw;
-  min-height: 100vh;
-  overflow: hidden;
-  position: relative;
-}
-
-/* ───────────────────────────────
    Sidebar Responsiva
 ────────────────────────────── */
 .dashboard-sidebar {

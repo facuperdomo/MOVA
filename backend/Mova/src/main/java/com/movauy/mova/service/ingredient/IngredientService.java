@@ -1,8 +1,9 @@
 package com.movauy.mova.service.ingredient;
 
+import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.ingredient.Ingredient;
-import com.movauy.mova.model.user.User;
 import com.movauy.mova.repository.ingredient.IngredientRepository;
+import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,37 +17,50 @@ public class IngredientService {
 
     private final IngredientRepository repo;
     private final AuthService authService;
+    private final BranchRepository branchRepository;
 
     /**
-     * Lista todos los ingredientes de la empresa extraída del token.
+     * Lista todos los ingredientes de la sucursal del token.
      */
-    public List<Ingredient> listForCurrentCompany(String bearerToken) {
-        Long companyId = authService.getCompanyIdFromToken(bearerToken);
-        return repo.findAllByCompanyId(companyId);
+    public List<Ingredient> listForCurrentBranch(String bearerToken) {
+        Long branchId = authService.getUserBasicFromToken(bearerToken).getBranchId();
+        return repo.findAllByBranchId(branchId);
     }
 
     /**
-     * Crea un nuevo ingrediente asociado a la empresa del token, pero cargando
-     * el User sin datos sensibles.
+     * Crea un nuevo ingrediente para la sucursal actual,
+     * validando que no haya uno con el mismo nombre.
      */
-    public Ingredient createForCurrentCompany(String bearerToken, Ingredient ingredient) {
-        Long companyId = authService.getCompanyIdFromToken(bearerToken);
-        User company = authService.getUserById(companyId);
-        ingredient.setCompany(company);
+    public Ingredient createForCurrentBranch(String bearerToken, Ingredient ingredient) {
+        Long branchId = authService.getUserBasicFromToken(bearerToken).getBranchId();
+        String trimmedName = ingredient.getName().trim();
+
+        // Verificar duplicado
+        repo.findByBranchIdAndName(branchId, trimmedName)
+            .ifPresent(existing -> {
+                throw new IllegalArgumentException("Ya existe un ingrediente con ese nombre en esta sucursal.");
+            });
+
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
+
+        ingredient.setName(trimmedName);
+        ingredient.setBranch(branch);
         return repo.save(ingredient);
     }
 
     /**
-     * Borra un ingrediente sólo si pertenece a la empresa del token.
+     * Elimina un ingrediente solo si pertenece a la sucursal actual.
      */
-    public void deleteForCurrentCompany(String bearerToken, Long ingredientId) {
-        Long companyId = authService.getCompanyIdFromToken(bearerToken);
+    public void deleteForCurrentBranch(String bearerToken, Long ingredientId) {
+        Long branchId = authService.getUserBasicFromToken(bearerToken).getBranchId();
         Ingredient ing = repo.findById(ingredientId)
                 .orElseThrow(() -> new IllegalArgumentException("Ingrediente no encontrado"));
-        if (!ing.getCompany().getId().equals(companyId)) {
-            throw new AccessDeniedException("No tienes permiso para eliminar este ingrediente");
+
+        if (!ing.getBranch().getId().equals(branchId)) {
+            throw new AccessDeniedException("No tienes permiso para eliminar este ingrediente.");
         }
+
         repo.delete(ing);
     }
-    
 }

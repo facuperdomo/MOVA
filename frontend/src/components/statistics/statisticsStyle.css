@@ -197,3 +197,45 @@
 .cancel-button:hover {
   background-color: darkred;
 }
+
+.summary-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+  justify-content: center;
+}
+
+.card {
+  background-color: #000;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  font-size: 1.1rem;
+  font-weight: bold;
+  min-width: 200px;
+  text-align: center;
+}
+
+.floating-export-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 14px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  z-index: 1000;
+  transition: background 0.2s ease-in-out;
+}
+.floating-export-btn:hover {
+  background-color: #219150;
+}

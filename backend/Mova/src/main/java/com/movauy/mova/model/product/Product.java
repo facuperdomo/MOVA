@@ -1,6 +1,6 @@
 package com.movauy.mova.model.product;
 
-import com.movauy.mova.model.user.User;
+import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.ingredient.Ingredient;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -11,8 +11,8 @@ import java.util.Set;
 
 @Entity
 @Table(
-        name = "products",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "name"})
+    name = "products",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"branch_id", "name"})
 )
 @Getter
 @Setter
@@ -25,9 +25,6 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Ya no es único globalmente; se hace único por empresa (user_id + name)
-     */
     @Column(nullable = false)
     private String name;
 
@@ -39,9 +36,8 @@ public class Product {
     private byte[] image;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({"mercadoPagoAccessToken", "password", "authorities"})
-    private User user;
+    @JoinColumn(name = "branch_id", nullable = false)
+    private Branch branch;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id", nullable = false)
@@ -53,9 +49,9 @@ public class Product {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-            name = "product_ingredients",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "ingredient_id")
+        name = "product_ingredients",
+        joinColumns = @JoinColumn(name = "product_id"),
+        inverseJoinColumns = @JoinColumn(name = "ingredient_id")
     )
     @Builder.Default
     private Set<Ingredient> ingredients = new HashSet<>();

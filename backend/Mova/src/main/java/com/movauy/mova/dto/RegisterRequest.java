@@ -5,20 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- *
- * @author Facundo
- */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class RegisterRequest {
-    String username;
-    String password;
-    String role;
-    String companyId;
-    String mercadoPagoAccessToken;
-    boolean enableIngredients;
-    boolean enableKitchenCommands;
+    private String username;
+    private String password;
+    private String role;
+    private Long branchId;
+    private String mercadoPagoAccessToken;
+    private boolean enableIngredients;
+    private boolean enableKitchenCommands;
 }

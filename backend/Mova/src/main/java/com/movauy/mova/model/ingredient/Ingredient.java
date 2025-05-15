@@ -1,20 +1,21 @@
 package com.movauy.mova.model.ingredient;
 
-import com.movauy.mova.model.user.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.movauy.mova.model.branch.Branch;
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
 @Table(
-  name = "ingredients",
-  uniqueConstraints = @UniqueConstraint(columnNames = {"company_id", "name"})
+    name = "ingredients",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"branch_id", "name"})
 )
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Ingredient {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,9 +23,9 @@ public class Ingredient {
     @Column(nullable = false)
     private String name;
 
-    // Cada ingrediente es de una sola empresa
+    // Cada ingrediente pertenece a una sucursal
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
+    @JoinColumn(name = "branch_id", nullable = false)
     @JsonIgnore
-    private User company;
+    private Branch branch;
 }

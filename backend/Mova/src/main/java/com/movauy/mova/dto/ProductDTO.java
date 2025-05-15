@@ -1,11 +1,16 @@
-// src/main/java/com/movauy/mova/dto/ProductDTO.java
 package com.movauy.mova.dto;
 
 import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
 
 import java.util.List;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ProductDTO {
 
     private Long id;
@@ -15,25 +20,7 @@ public class ProductDTO {
     private Long categoryId;
     private String categoryName;
 
-    // Nueva sección
     private boolean enableIngredients;
     private List<IngredientDTO> ingredients;
-
-    public ProductDTO(Long id,
-                      String name,
-                      double price,
-                      String image,
-                      Long categoryId,
-                      String categoryName,
-                      boolean enableIngredients,
-                      List<IngredientDTO> ingredients) {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-        this.image = image;
-        this.categoryId = categoryId;
-        this.categoryName = categoryName;
-        this.enableIngredients = enableIngredients;
-        this.ingredients = ingredients;
-    }
+    private Long ownerCompanyId;
 }

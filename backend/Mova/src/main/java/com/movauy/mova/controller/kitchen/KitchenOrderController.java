@@ -21,19 +21,25 @@ public class KitchenOrderController {
 
     private final SaleService saleService;
 
-    // 1) Listar pedidos pendientes de cocina
     @GetMapping
-    public List<SaleResponseDTO> listPending() {
-        return saleService.getOrdersByKitchenStatus(OrderStatus.SENT_TO_KITCHEN)
-                .stream().map(saleService::toResponseDTO).toList();
+    public ResponseEntity<List<SaleResponseDTO>> listPending(
+            @RequestHeader("Authorization") String token
+    ) {
+        List<Sale> sales = saleService.getOrdersByBranchAndKitchenStatus(token, OrderStatus.SENT_TO_KITCHEN);
+        List<SaleResponseDTO> dtos = sales.stream()
+                .map(saleService::toResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     @PutMapping("/{id}/kitchen-status")
-    public SaleResponseDTO updateKitchenStatus(
+    public ResponseEntity<SaleResponseDTO> updateKitchenStatus(
             @PathVariable Long id,
             @RequestBody UpdateKitchenStatusDTO body
     ) {
         Sale updated = saleService.updateKitchenStatus(id, body.getKitchenStatus());
-        return saleService.toResponseDTO(updated);
+        return ResponseEntity.ok(saleService.toResponseDTO(updated));
     }
+    
 }
+

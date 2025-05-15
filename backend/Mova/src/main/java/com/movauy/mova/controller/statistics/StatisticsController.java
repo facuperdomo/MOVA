@@ -1,12 +1,13 @@
 package com.movauy.mova.controller.statistics;
 
+import com.movauy.mova.dto.CompanyStatisticsDTO;
 import com.movauy.mova.service.statistics.StatisticsService;
 import com.movauy.mova.service.user.AuthService;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,62 +23,102 @@ public class StatisticsController {
     private final AuthService authService;
 
     /**
-     * Obtiene estadísticas de ventas para la empresa actual, filtradas por
-     * día/semana/mes/año.
+     * Devuelve estadísticas de ventas filtradas por día, semana, mes o año. Se
+     * basa en la sucursal obtenida desde el token.
      */
     @GetMapping("/sales")
     public ResponseEntity<List<Map<String, Object>>> getSalesStatistics(
             @RequestHeader("Authorization") String token,
-            @RequestParam(required = false) String filter) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        System.out.println("📊 GET /sales called - companyId: " + companyId + ", filter: " + filter);
-        List<Map<String, Object>> sales = statisticsService.getSalesStatistics(filter, companyId.intValue());
+            @RequestParam(required = false) String filter,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        List<Map<String, Object>> sales
+                = statisticsService.getSalesStatistics(filter, startDate, endDate, token);
         return ResponseEntity.ok(sales);
     }
 
     /**
-     * Devuelve el listado de productos (tragos) más vendidos.
+     * Devuelve los productos más vendidos en el período seleccionado
+     * (día/semana/etc). Útil para generar rankings de ventas.
      */
     @GetMapping("/top-selling-products")
     public ResponseEntity<List<Map<String, Object>>> getTopSellingProducts(
             @RequestHeader("Authorization") String token,
-            @RequestParam(required = false) String filter) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        List<Map<String, Object>> products = statisticsService.getTopSellingProducts(filter, companyId.intValue());
-        return products.isEmpty() ? ResponseEntity.ok(Collections.emptyList()) : ResponseEntity.ok(products);
+            @RequestParam(required = false) String filter,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        List<Map<String, Object>> products
+                = statisticsService.getTopSellingProducts(filter, startDate, endDate, token);
+        return ResponseEntity.ok(products);
     }
 
     /**
-     * Historial de cajas abiertas/cerradas con sus ventas.
+     * Lista la historia de apertura y cierre de cajas, con montos y fechas.
+     * Muestra también el estado actual (abierta o cerrada).
      */
     @GetMapping("/cash-register-history")
     public ResponseEntity<List<Map<String, Object>>> getCashRegisterHistory(
             @RequestHeader("Authorization") String token,
-            @RequestParam(required = false) String filter) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        List<Map<String, Object>> history = statisticsService.getCashRegisterHistory(filter, companyId.intValue());
-        return history.isEmpty() ? ResponseEntity.ok(Collections.emptyList()) : ResponseEntity.ok(history);
+            @RequestParam(required = false) String filter,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        List<Map<String, Object>> history
+                = statisticsService.getCashRegisterHistory(filter, startDate, endDate, token);
+        return ResponseEntity.ok(history);
     }
 
     /**
-     * Cantidad total de ítems vendidos (para mostrar conteos rápidos).
+     * Devuelve la cantidad total de ítems vendidos. Útil para mostrar en
+     * dashboards o KPIs rápidos.
      */
     @GetMapping("/count-sale-items")
-    public ResponseEntity<Integer> countSaleItems(@RequestHeader("Authorization") String token) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        int count = statisticsService.countSaleItems(companyId.intValue());
+    public ResponseEntity<Integer> countSaleItems(
+            @RequestHeader("Authorization") String token) {
+        int count = statisticsService.countSaleItems(token);
         return ResponseEntity.ok(count);
     }
 
     /**
-     * Marca una venta como cancelada.
+     * Marca una venta específica como cancelada. Verifica que la venta
+     * pertenezca a la misma sucursal del usuario.
      */
     @PutMapping("/cancel-sale/{id}")
     public ResponseEntity<Void> cancelarVenta(
             @RequestHeader("Authorization") String token,
             @PathVariable Long id) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        statisticsService.cancelSale(id, companyId.toString());
+        statisticsService.cancelSale(id, token);
         return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    @GetMapping("/by-company/{companyId}")
+    public CompanyStatisticsDTO getStatisticsByCompany(
+            @PathVariable Long companyId,
+            @RequestParam(required = false) String filter,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return statisticsService.getStatisticsByCompany(companyId, filter, startDate, endDate);
+    }
+
+    @PreAuthorize("hasRole('SUPERADMIN')")
+    @GetMapping("/by-branch/{branchId}")
+    public CompanyStatisticsDTO getStatisticsByBranch(
+            @PathVariable Long branchId,
+            @RequestParam(required = false) String filter,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return statisticsService.getStatisticsByBranch(branchId, filter, startDate, endDate);
+    }
+
+    @GetMapping("/by-branch/{branchId}/top-products")
+    public List<Map<String, Object>> getTopProductsByBranch(
+            @PathVariable Long branchId,
+            @RequestParam(required = false) String filter,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return statisticsService.getTopSellingProductsByBranch(branchId, filter, startDate, endDate);
     }
 }

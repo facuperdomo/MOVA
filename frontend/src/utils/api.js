@@ -1,75 +1,114 @@
 import { API_URL } from "../config/apiConfig";
 
-export const customFetch = async (url, options = {}) => {
-  let token = localStorage.getItem("token");
+export const customFetch = async (path, options = {}) => {
+  const { skipRefresh = false, ...fetchOptions } = options;
+  const token = localStorage.getItem("token");
+  const url = path.startsWith("http") ? path : `${API_URL}${path}`;
+  const isMercadoPago = url.includes("/api/mercadopago/");
 
-  // Si la URL es de MercadoPago, no adjuntar el header Authorization
-  const isMercadoPagoEndpoint = url.includes("/api/mercadopago/");
-
-  const headers = {
+  const createHeaders = (authToken) => ({
     "Content-Type": "application/json",
-    // Solo se agrega Authorization si NO es un endpoint de MercadoPago
-    ...(!isMercadoPagoEndpoint && token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(!isMercadoPago && authToken ? { Authorization: `Bearer ${authToken}` } : {})
+  });
+
+  const fetchWithToken = async (authToken) => {
+    const headers = createHeaders(authToken);
+    const opts = { ...fetchOptions, headers };
+
+    console.log(`📡 fetch → ${opts.method || "GET"} ${url}`, {
+      token: authToken?.substring(0, 10) + "...",
+      skipRefresh
+    });
+
+    return await fetch(url, opts);
   };
 
   try {
-    let response = await fetch(url, { ...options, headers });
+    let res = await fetchWithToken(token);
 
-    // Solo intentamos refrescar el token si NO es un endpoint de MercadoPago
-    if (!isMercadoPagoEndpoint && response.status === 401) {
-      console.warn("⚠️ Token expirado. Intentando refrescar...");
+    // ⚠️ Primer intento: 401 y no es MercadoPago → intentar refresh
+    if (!isMercadoPago && res.status === 401 && !skipRefresh) {
+      console.warn("⚠️ Token expirado. Intentando refresh…");
+
       const newToken = await refreshToken();
       if (!newToken) {
-        console.error("❌ No se pudo refrescar el token. Redirigiendo al login...");
+        console.error("🛑 No se pudo refrescar el token. Redirigiendo al login.");
         localStorage.removeItem("token");
-        localStorage.removeItem("isAdmin");
         window.location.href = "/login";
-        return Promise.reject(new Error("Sesión expirada. Redirigiendo al login."));
+        throw Object.assign(new Error("Sesión expirada"), { status: 401 });
       }
-      headers.Authorization = `Bearer ${newToken}`;
-      response = await fetch(url, { ...options, headers });
+
+      console.info("🔁 Nuevo token obtenido, reintentando request…");
+      res = await fetchWithToken(newToken);
+
+      // 🧨 Si sigue dando 401 → probable tokenVersion inválido
+      if (res.status === 401) {
+        console.error("💥 Token aún inválido tras refresh: posible tokenVersion desincronizado");
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        throw Object.assign(new Error("Sesión inválida (tokenVersion). Requiere login."), { status: 401 });
+      }
     }
 
-    const contentType = response.headers.get("Content-Type");
-    if (contentType && contentType.includes("application/json")) {
-      return response.json();
-    } else {
-      return response.text();
+    const contentType = res.headers.get("Content-Type") || "";
+    const isJson = contentType.includes("application/json");
+    const body = isJson ? await res.json() : await res.text();
+
+    if (!res.ok) {
+      const err = new Error(body?.message || res.statusText);
+      err.status = res.status;
+      err.data = body;
+      console.warn(`🚫 Respuesta HTTP ${res.status} al acceder a ${url}`, body);
+      throw err;
     }
-  } catch (error) {
-    console.error("❌ Error en la solicitud:", error);
-    return Promise.reject(error);
+
+    console.log(`✅ Respuesta exitosa de ${url}`, body);
+    return body;
+
+  } catch (err) {
+    console.error("❌ customFetch error:", err);
+    throw err;
   }
 };
 
-/**
- * Función para refrescar el token llamando al backend.
- */
+
+/** Intenta refrescar el token y retorna el nuevo o null */
 const refreshToken = async () => {
+  console.warn("⚠️ Token expirado. Intentando refresh…");
   const token = localStorage.getItem("token");
-  if (!token) return null;
+  if (!token) {
+    console.warn("🟡 No hay token en localStorage para refrescar.");
+    return null;
+  }
 
   try {
-    const response = await fetch(`${API_URL}/auth/refresh-token`, {
+    console.log("🔄 Intentando refresh token...");
+
+    const res = await fetch(`${API_URL}/auth/refresh-token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+        Authorization: `Bearer ${token}`
+      }
     });
 
-    if (!response.ok) {
-      console.error("❌ Error al refrescar el token:", await response.text());
+    if (!res.ok) {
+      console.warn(`🛑 Refresh-token falló con status ${res.status}`);
       return null;
     }
 
-    const data = await response.json();
-    const newToken = data.newToken;
+    const { newToken } = await res.json();
+    if (!newToken) {
+      console.warn("⚠️ La respuesta del refresh no trajo newToken");
+      return null;
+    }
+
     localStorage.setItem("token", newToken);
-    console.log("✅ Token refrescado correctamente.");
+    console.info("🟢 Nuevo token guardado en localStorage");
     return newToken;
-  } catch (error) {
-    console.error("❌ Error en la solicitud de refresh token:", error);
+
+  } catch (err) {
+    console.error("❌ Error al hacer refresh token:", err);
     return null;
   }
 };

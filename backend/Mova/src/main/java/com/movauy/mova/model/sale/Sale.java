@@ -1,19 +1,16 @@
 package com.movauy.mova.model.sale;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.finance.CashRegister;
 import com.movauy.mova.model.user.User;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
-/**
- *
- * @author Facundo
- */
 @Getter
 @Setter
 @Entity
@@ -42,16 +39,20 @@ public class Sale {
     public enum EstadoVenta {
         ACTIVA, CANCELADA
     }
-    
+
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)  // Relaciona la venta con un usuario
+    @JoinColumn(name = "user_id", nullable = false)
     @JsonIgnore
-    private User user;  // Usuario dueño de la venta
-    
-    public enum OrderStatus { 
-        PENDING, SENT_TO_KITCHEN, PREPARING, READY, COMPLETED 
+    private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "branch_id", nullable = false)
+    private Branch branch;
+
+    public enum OrderStatus {
+        PENDING, SENT_TO_KITCHEN, PREPARING, READY, COMPLETED
     }
-    
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus kitchenStatus = OrderStatus.PENDING;

@@ -8,10 +8,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserBasicDTO {
-
     private Long id;
     private String username;
-    private String companyId;
+    private Long branchId;
+    private Long companyId;
     private String role;
     private boolean enableIngredients;
     private boolean enableKitchenCommands;

@@ -1,15 +1,18 @@
 package com.movauy.mova.dto;
 
-import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 
-/**
- *
- * @author Facundo
- */
+import java.util.List;
+
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SaleItemDTO {
     private Long productId;
     private int quantity;

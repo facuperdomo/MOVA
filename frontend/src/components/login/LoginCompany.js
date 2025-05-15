@@ -34,7 +34,7 @@ export default function LoginCompany() {
     }
 
     try {
-      const response = await fetch(`${API_URL}/auth/loginCompany`, {
+      const response = await fetch(`${API_URL}/auth/loginBranch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -45,7 +45,6 @@ export default function LoginCompany() {
       const data = await response.json();
       console.log("📦 LoginCompany respuesta:", data);
       localStorage.setItem('token', data.token); // Guarda el token del usuario
-      localStorage.setItem("companyId", data.companyId); // Guarda el ID de la Empresa
       
       navigate('/loginUser'); // Redirige al login de usuario
     } catch (err) {

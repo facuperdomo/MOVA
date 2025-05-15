@@ -37,7 +37,7 @@ public class CashRegisterController {
 
         // Verifica si ya hay una caja abierta para esta empresa
         if (cashRegisterService.getOpenCashRegister(token).isPresent()) {
-            return ResponseEntity.badRequest().body("Ya hay una caja abierta para esta empresa.");
+            return ResponseEntity.badRequest().body("Ya hay una caja abierta para esta sucursal.");
         }
 
         return cashRegisterService.openCashRegister(token, initialAmount)

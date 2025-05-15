@@ -84,6 +84,7 @@ const Dashboard = () => {
                 productId: item.id,
                 quantity: item.quantity,
                 unitPrice: item.price,
+                ingredientIds: item.ingredients?.map(i => i.id) ?? []
               }))
             };
 
@@ -193,7 +194,7 @@ const Dashboard = () => {
       const response = await customFetch(`${API_URL}/api/products`);
       // <-- aquí sí response existe:
       console.log('📦 productos crudos del back:', response);
-  
+
       const prods = response.map(p => ({
         ...p,
         image: p.image.startsWith('data:image')
@@ -202,7 +203,7 @@ const Dashboard = () => {
         imageError: false,
         ingredients: Array.isArray(p.ingredients) ? p.ingredients : []
       }));
-  
+
       setProducts(prods);
     } catch (err) {
       console.error('Error al fetchProducts:', err);
@@ -256,11 +257,22 @@ const Dashboard = () => {
     });
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("isAdmin");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      // notificamos al backend para que invalide la tokenVersion
+      await customFetch(`${API_URL}/auth/logout`, {
+        method: 'POST'
+      });
+    } catch (err) {
+      console.warn('No se pudo notificar el logout al backend:', err);
+    } finally {
+      // limpiamos siempre el localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('isAdmin');
+      localStorage.removeItem('companyId');
+      navigate('/login', { replace: true });
+    }
   };
 
   // Lógica para abrir el popup de pago
@@ -410,10 +422,10 @@ const Dashboard = () => {
       </div>
     );
 
-    const exampleOrder = {
-      id: 'ABC-123',
-      totalAmount: '199'
-    };
+  const exampleOrder = {
+    id: 'ABC-123',
+    totalAmount: '199'
+  };
 
   return (
     <div className="app-container">
@@ -486,7 +498,7 @@ const Dashboard = () => {
                       )}
                     </div>
                     <div className="product-info">
-                    <h3><span className="product-name">{product.name}</span></h3>
+                      <h3><span className="product-name">{product.name}</span></h3>
                       <p>${product.price}</p>
                     </div>
                   </div>
@@ -494,12 +506,7 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        <div style={{ padding: 20 }}>
-      <h1>Pedidos</h1>
-      <p>Pedido: {exampleOrder.id}</p>
-      <p>Cliente: {exampleOrder.customerName}</p>
-      <PrintButton order={exampleOrder} />
-    </div>
+        
         <div className="cart-panel">
           <h2>Carrito</h2>
           <div className="cart-list">
@@ -516,7 +523,7 @@ const Dashboard = () => {
               return (
                 <div key={`${item.id}-${idx}`} className="cart-item">
                   <div className="cart-item-text">
-                  <span className="product-name">{item.name}</span>
+                    <span className="product-name">{item.name}</span>
                     {/* 3) Si hay ingredientes quitados, los mostramos */}
                     {removedNames.length > 0 && ` – sin ${removedNames.join(", ")} `}
                     <span className="product-quantity">{" "}x{item.quantity}</span>

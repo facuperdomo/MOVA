@@ -1,7 +1,12 @@
 package com.movauy.mova.controller.product;
 
+import com.movauy.mova.dto.IngredientDTO;
+import com.movauy.mova.dto.ProductDTO;
+import com.movauy.mova.dto.ProductResponseDTO;
+import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.product.Product;
 import com.movauy.mova.model.product.ProductCategory;
+import com.movauy.mova.model.user.User;
 import com.movauy.mova.service.product.ProductCategoryService;
 import com.movauy.mova.service.product.ProductService;
 import com.movauy.mova.service.user.AuthService;
@@ -10,12 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import com.movauy.mova.dto.ProductResponseDTO;
-import com.movauy.mova.dto.IngredientDTO;
-import com.movauy.mova.dto.ProductDTO;
 
 import java.io.IOException;
-import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,29 +34,19 @@ public class ProductController {
     private final AuthService authService;
 
     @GetMapping
-    public ResponseEntity<List<ProductResponseDTO>> getProducts(
-            @RequestHeader("Authorization") String token
-    ) {
-        int companyId = authService.getCompanyIdFromToken(token).intValue();
-        List<ProductDTO> lista = productService.getProductsByCompany(companyId);
+    public ResponseEntity<List<ProductResponseDTO>> getProducts(@RequestHeader("Authorization") String token) {
+        Long branchId = authService.getBranchIdFromToken(token);
+        List<ProductDTO> lista = productService.getProductsByBranch(branchId);
 
         List<ProductResponseDTO> dtos = lista.stream().map(p -> {
-            // Mapeo de ingredientes
             List<IngredientDTO> ings = p.getIngredients().stream()
                     .map(i -> new IngredientDTO(i.getId(), i.getName()))
                     .collect(Collectors.toList());
 
             return new ProductResponseDTO(
-                    p.getId(),
-                    p.getName(),
-                    p.getPrice(),
-                    // p.getImage() ya es base64
-                    p.getImage(),
-                    // no hay getCategory(), sino estos dos
-                    p.getCategoryId(),
-                    p.getCategoryName(),
-                    p.isEnableIngredients(),
-                    ings
+                    p.getId(), p.getName(), p.getPrice(), p.getImage(),
+                    p.getCategoryId(), p.getCategoryName(),
+                    p.isEnableIngredients(), ings
             );
         }).collect(Collectors.toList());
 
@@ -72,21 +63,26 @@ public class ProductController {
             @RequestParam("image") MultipartFile imageFile,
             @RequestParam(value = "ingredientIds", required = false) List<Long> ingredientIds
     ) throws IOException {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        // obtenemos la categoría por si queremos validar algo, pero NO la pasamos al servicio
-        ProductCategory category = categoryService.getById(categoryId);
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (price <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Long branchId = authService.getBranchIdFromToken(token);
+        categoryService.getById(categoryId); // Validar existencia
 
         byte[] imageBytes = imageFile.getBytes();
 
         Product created = productService.addProduct(
                 Product.builder()
-                        .name(name)
+                        .name(name.trim())
                         .price(price)
                         .image(imageBytes)
-                        .user(authService.getUserById(companyId))
+                        .branch(productService.getBranch(branchId))
                         .build(),
                 categoryId,
-                companyId,
                 ingredientIds
         );
         return ResponseEntity.ok(created);
@@ -103,35 +99,27 @@ public class ProductController {
             @RequestParam(value = "image", required = false) MultipartFile imageFile,
             @RequestParam(value = "ingredientIds", required = false) List<Long> ingredientIds
     ) throws IOException {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        byte[] imageBytes = (imageFile != null && !imageFile.isEmpty())
-                ? imageFile.getBytes()
-                : null;
+        if (name == null || name.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (price <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
 
-        // validamos que la categoría exista (opcional)
-        categoryService.getById(categoryId);
+        Long branchId = authService.getBranchIdFromToken(token);
+        categoryService.getById(categoryId); // Validar existencia
 
-        // Pasamos **solo** el categoryId, no el objeto ProductCategory
-        Product updated = productService.updateProduct(
-                id,
-                name,
-                price,
-                imageBytes,
-                companyId.intValue(),
-                categoryId,
-                ingredientIds
-        );
+        byte[] imageBytes = (imageFile != null && !imageFile.isEmpty()) ? imageFile.getBytes() : null;
+
+        Product updated = productService.updateProduct(id, name.trim(), price, imageBytes, branchId, categoryId, ingredientIds);
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteProduct(
-            @RequestHeader("Authorization") String token,
-            @PathVariable Long id
-    ) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        productService.deleteProduct(id, companyId.intValue());
+    public ResponseEntity<Void> deleteProduct(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        Long branchId = authService.getBranchIdFromToken(token);
+        productService.deleteProduct(id, branchId);
         return ResponseEntity.noContent().build();
     }
 
@@ -142,8 +130,8 @@ public class ProductController {
             @PathVariable Long id,
             @RequestBody List<Long> ingredientIds
     ) {
-        Long companyId = authService.getCompanyIdFromToken(token);
-        productService.updateIngredients(id, companyId.intValue(), ingredientIds);
+        Long branchId = authService.getBranchIdFromToken(token);
+        productService.updateIngredients(id, branchId, ingredientIds);
         return ResponseEntity.ok().build();
     }
 }

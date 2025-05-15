@@ -29,69 +29,68 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1) Aseguramos que Spring use nuestro CorsConfigurationSource
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                // 2) Manejamos los errores de auth/denegación
-                .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, authEx)
-                        -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, authEx.getMessage()))
-                .accessDeniedHandler((req, res, deniedEx)
-                        -> res.sendError(HttpServletResponse.SC_FORBIDDEN, deniedEx.getMessage()))
-                )
-                // 3) Configuramos qué URLs se permiten sin token...
-                .authorizeHttpRequests(auth -> auth
-                // Dejar pasar TODOS los OPTIONS (preflight) a cualquier ruta
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e)
+                        -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
+                .accessDeniedHandler((req, res, e)
+                        -> res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
+            )
+            .authorizeHttpRequests(auth -> auth
+                // 1) Preflight CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Endpoints públicos
+
+                // 2) Endpoints públicos de auth
+                .requestMatchers(HttpMethod.POST,
+                        "/auth/loginUser",
+                        "/auth/loginCompany",
+                        "/auth/loginBranch",
+                        "/auth/refresh-token" // ✅ añadido aquí
+                ).permitAll()
+
+                // 3) Registrar usuario (control lógico en controller)
+                .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+
+                // 4) Otros públicos
                 .requestMatchers(
-                        "/auth/**",
                         "/error/**",
                         "/api/mercadopago/**",
                         "/api/webhooks/mercadopago",
                         "/ws/**",
                         "/api/print/**",
                         "/actuator/health",
-                        "/actuator/info"
+                        "/actuator/info",
+                        "/api/branches"
                 ).permitAll()
-                .requestMatchers("/api/print/**").permitAll()
-                // El resto requiere JWT
+
+                // 5) Cualquier otro /auth/** requiere JWT
+                .requestMatchers("/auth/**").authenticated()
+
+                // 6) Todo el resto requiere JWT
                 .anyRequest().authenticated()
-                )
-                // 4) Stateless, usamos nuestro AuthenticationProvider y JWT filter
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authProvider)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            )
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authenticationProvider(authProvider)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Nuestro bean CORS global, se usará gracias a http.cors(...)
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-
-        // Orígenes permitidos
         cfg.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "https://movauy.top",
                 "https://movauy.top:8443"
         ));
-
-        // Métodos permitidos, ahora incluyendo PATCH
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-
-        // Cabeceras permitidas
         cfg.setAllowedHeaders(List.of("*"));
-
-        // Necesario si envías Authorization
         cfg.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;
     }
-
 }

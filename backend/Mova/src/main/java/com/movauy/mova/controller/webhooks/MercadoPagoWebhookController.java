@@ -6,9 +6,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
-import com.mercadopago.resources.Payment;
-import com.mercadopago.resources.MerchantOrder;
-
 @RestController
 @RequestMapping("/api/webhooks/mercadopago")
 public class MercadoPagoWebhookController {
@@ -48,7 +45,9 @@ public class MercadoPagoWebhookController {
                     com.mercadopago.resources.MerchantOrder mo
                             = com.mercadopago.resources.MerchantOrder
                                     .findById(mpId);
-                    paymentStatus = mo.getPayments().get(0).getStatus().toString();
+                    if (!mo.getPayments().isEmpty()) {
+                        paymentStatus = mo.getPayments().get(0).getStatus().toString();
+                    }
                 }
             } catch (Exception ex) {
                 ex.printStackTrace();

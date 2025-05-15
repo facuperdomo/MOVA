@@ -1,0 +1,229 @@
+/* ───────────────────────────────
+   Company Dashboard (Estadísticas Globales)
+────────────────────────────── */
+
+.dashboard-container {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    color: white;
+    background-color: #181818;
+  }
+  
+  .dashboard-header {
+    margin-bottom: 32px;
+  }
+  
+  .dashboard-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: #ffcc00;
+  }
+  
+  .dashboard-subtitle {
+    font-size: 16px;
+    color: #bbb;
+    margin: 0;
+  }
+  
+  /* Filtros */
+  .filter-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  
+  .filter-container button {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .filter-container button.active {
+    background-color: #1e90ff;
+    font-weight: bold;
+  }
+  
+  /* ───────────────────────────────
+     Métricas
+  ────────────────────────────── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  
+  .metric-card {
+    background-color: #222;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid #333;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    transition: background 0.3s;
+  }
+  
+  .metric-card:hover {
+    background-color: #2b2b2b;
+  }
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffcc00;
+    margin: 0;
+  }
+  
+  .card-content {
+    margin-top: 10px;
+  }
+  
+  .metric-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+  }
+  
+  .metric-description {
+    font-size: 13px;
+    color: #aaa;
+    margin-top: 4px;
+  }
+  
+  /* ───────────────────────────────
+     Gráficos
+  ────────────────────────────── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  
+  .chart-card {
+    background-color: #222;
+    border-radius: 10px;
+    border: 1px solid #333;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    padding-bottom: 10px;
+  }
+  
+  .chart-card .card-header {
+    padding: 16px;
+    border-bottom: 1px solid #333;
+  }
+  
+  .chart-card .card-description {
+    font-size: 14px;
+    color: #bbb;
+  }
+  
+  .chart-container {
+    padding: 16px;
+    height: 400px;
+  }
+  
+  /* ───────────────────────────────
+     Botón Volver
+  ────────────────────────────── */
+  .popup-btn {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+  }
+  
+  .popup-btn:hover {
+    background-color: #444;
+  }
+  
+  .popup-btn-cancel {
+    background-color: #007bff;
+  }
+  
+  .popup-btn-cancel:hover {
+    background-color: #0056b3;
+  }
+  
+  /* ───────────────────────────────
+     Gráficos: Tooltips y Leyendas
+  ────────────────────────────── */
+  .recharts-tooltip-wrapper {
+    background-color: #222;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    padding: 8px;
+  }
+  
+  .recharts-default-tooltip {
+    background-color: #222 !important;
+    border: none !important;
+    border-radius: 4px;
+    color: white !important;
+  }
+  
+  .recharts-legend-item-text {
+    color: #ddd !important;
+  }
+  
+  /* ───────────────────────────────
+     Adaptabilidad
+  ────────────────────────────── */
+  @media (max-width: 768px) {
+    .chart-container {
+      height: 300px;
+    }
+  }
+
+  /* ───────────────────────────────
+   Inputs de Fechas Personalizadas
+────────────────────────────── */
+.filter-container input[type="date"] {
+    background-color: #2b2b2b;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+  
+  .filter-container input[type="date"]::placeholder {
+    color: #888;
+  }
+  
+  .filter-container input[type="date"]:hover {
+    border-color: #666;
+    background-color: #333;
+  }
+  
+  .filter-container input[type="date"]:focus {
+    border-color: #1e90ff;
+    background-color: #222;
+  }
+  
+  /* Pequeño ajuste para que los inputs no queden apretados */
+  .filter-container input[type="date"] + input[type="date"] {
+    margin-left: 6px;
+  }
+  

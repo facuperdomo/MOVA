@@ -1,38 +1,51 @@
+// src/main/java/com/movauy/mova/repository/user/UserRepository.java
 package com.movauy.mova.repository.user;
 
 import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.user.User;
-import java.util.Optional;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/**
- *
- * @author Facundo
- */
-public interface UserRepository extends JpaRepository<User, Integer> {
+import java.util.List;
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
 
-    /**
-     * Devuelve un DTO con exactamente los seis campos:
-     * id, username, companyId, role, enableIngredients, enableKitchenCommands
-     */
     @Query("""
         SELECT new com.movauy.mova.dto.UserBasicDTO(
             u.id,
             u.username,
-            u.companyId,
+            u.branch.id,
+            u.branch.company.id,
             u.role.name(),
-            u.enableIngredients,
-            u.enableKitchenCommands
+            u.branch.enableIngredients,
+            u.branch.enableKitchenCommands
         )
         FROM User u
         WHERE u.id = :id
-        """)
+    """)
     Optional<UserBasicDTO> findUserBasicById(@Param("id") Long id);
 
-    
+    /**
+     * Devuelve todos los usuarios de una sucursal.
+     */
+    List<User> findByBranch_Id(Long branchId);
+
+    /**
+     * Borra todos los usuarios de una sucursal (para delete-force).
+     */
+    void deleteByBranch_Id(Long branchId);
+
+    /**
+     * Verifica si ya existe un username en esa sucursal.
+     */
+    boolean existsByUsernameAndBranch_Id(String username, Long branchId);
+
+    /**
+     * Devuelve true si hay al menos un usuario asociado a la sucursal.
+     */
+    boolean existsByBranch_Id(Long branchId);
 }
