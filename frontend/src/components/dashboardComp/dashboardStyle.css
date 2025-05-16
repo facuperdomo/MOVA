@@ -600,3 +600,9 @@
   font-weight: 700;     /* negrita */
   margin-left: 4px;     /* separa un poco del texto anterior */
 }
+.sale-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+}

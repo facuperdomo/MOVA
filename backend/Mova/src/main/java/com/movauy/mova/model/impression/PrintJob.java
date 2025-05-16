@@ -23,7 +23,7 @@ public class PrintJob {
     private Status status;       // PENDING, IN_PROGRESS, DONE, ERROR
 
     private String deviceId;     // opcional, si quieres filtrar por tablet
-    private String companyId;
+    private String branchId;
     private long createdAt;    // System.currentTimeMillis()
 
     public enum Status {

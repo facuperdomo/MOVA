@@ -2,12 +2,10 @@
 package com.movauy.mova.service.impression;
 
 import com.movauy.mova.dto.OrderDTO;
+import java.io.IOException;
 
 public interface PrintService {
-    /**
-     * Genera la cadena CPCL para imprimir la orden.
-     * @param order datos del pedido
-     * @return texto CPCL
-     */
-    String buildCpclTicket(OrderDTO order);
+
+    /** Genera un array de bytes con comandos ESC/POS para imprimir el ticket */
+    byte[] buildEscPosTicket(OrderDTO o) throws IOException;
 }

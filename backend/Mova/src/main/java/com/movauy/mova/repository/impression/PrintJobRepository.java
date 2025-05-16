@@ -7,7 +7,10 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface PrintJobRepository extends JpaRepository<PrintJob,Long> {
-  Optional<PrintJob> findFirstByStatusAndCompanyIdOrderByCreatedAtAsc(
-    PrintJob.Status status, String companyId);
+public interface PrintJobRepository extends JpaRepository<PrintJob, Long> {
+
+    Optional<PrintJob> findFirstByStatusAndBranchIdOrderByCreatedAtAsc(
+            PrintJob.Status status,
+            String branchId
+    );
 }

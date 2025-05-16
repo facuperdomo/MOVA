@@ -21,7 +21,7 @@ public class InMemoryPrintQueueService implements PrintQueueService {
     private final Map<String, Queue<PrintJob>> queues = new ConcurrentHashMap<>();
 
     @Override
-    public void enqueue(byte[] payload, String deviceId, String companyId) {
+    public void enqueue(byte[] payload, String deviceId, String branchId) {
         long id = idGen.getAndIncrement();
 
         PrintJob job = PrintJob.builder()
@@ -29,16 +29,16 @@ public class InMemoryPrintQueueService implements PrintQueueService {
                 .payload(payload)                    // tus bytes de CPCL
                 .status(Status.PENDING)              // estado inicial
                 .deviceId(deviceId)                  // opcional
-                .companyId(companyId)                // para filtrar por empresa
+                .branchId(branchId)                // para filtrar por empresa
                 .createdAt(System.currentTimeMillis()) // timestamp millis
                 .build();
 
         allJobs.put(id, job);
         queues
-          .computeIfAbsent(companyId, k -> new ConcurrentLinkedQueue<>())
+          .computeIfAbsent(branchId, k -> new ConcurrentLinkedQueue<>())
           .add(job);
 
-        log.debug("Enqueued print job {} for company={} device={}", id, companyId, deviceId);
+        log.debug("Enqueued print job {} for company={} device={}", id, branchId, deviceId);
     }
 
     @Override

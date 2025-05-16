@@ -43,9 +43,19 @@ export default function LoginCompany() {
       if (!response.ok) throw new Error('Usuario o contraseña incorrectos.');
       
       const data = await response.json();
+      const token = data.token;
       console.log("📦 LoginCompany respuesta:", data);
-      localStorage.setItem('token', data.token); // Guarda el token del usuario
+      localStorage.setItem('token', token); // Guarda el token del usuario
       
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.branchId) {
+          localStorage.setItem('branchId', payload.branchId.toString());
+        }
+      } catch {
+        console.warn('No se pudo extraer branchId del token de empresa.');
+      }
+
       navigate('/loginUser'); // Redirige al login de usuario
     } catch (err) {
       showError(err.message);

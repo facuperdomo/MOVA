@@ -10,6 +10,7 @@ import { customFetch } from "../../utils/api";
 import PaymentQR from "../paymentqr/PaymentQR";
 import { API_URL, WS_URL } from "../../config/apiConfig";
 import PrintButton from '../impression/PrintButton';
+import { printOrder } from "../../utils/print";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -44,6 +45,9 @@ const Dashboard = () => {
   const [customizingProduct, setCustomizingProduct] = useState(null);
   const [tempIngredients, setTempIngredients] = useState([]);
 
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [printError, setPrintError] = useState(false);
+  
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -315,16 +319,30 @@ const Dashboard = () => {
     }
 
     try {
-      const response = await customFetch(`${API_URL}/api/sales`, {
+      const savedSale = await customFetch(`${API_URL}/api/sales`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(saleData),
       });
-      console.log("Venta registrada exitosamente en la base de datos");
-      setLastSale(response);
-      setShowPopup(false);
+
+      // 1) Limpiar UI tras guardado
+      setLastSale(savedSale);
       setCart([]);
       setTotal(0);
+      setShowPopup(false);
       setOfflineMessage("");
+
+      // 2) Disparar impresión
+      setIsPrinting(true);
+      setPrintError(false);
+      try {
+        await printOrder(savedSale);
+      } catch (err) {
+        console.error("❌ Falló impresión automática:", err);
+        setPrintError(true);
+      } finally {
+        setIsPrinting(false);
+      }
     } catch (error) {
       console.error("Error al guardar la venta:", error);
       alert("Ocurrió un error al procesar la venta. Inténtelo de nuevo.");
@@ -352,6 +370,20 @@ const Dashboard = () => {
     } catch (error) {
       console.error("Error al deshacer la venta:", error);
       alert("No se pudo deshacer la última venta.");
+    }
+  };
+
+  const handleRetryPrint = async () => {
+    if (!lastSale) return;
+    setIsPrinting(true);
+    setPrintError(false);
+    try {
+      await printOrder(lastSale);
+    } catch (err) {
+      console.error("❌ Reintento de impresión fallido:", err);
+      setPrintError(true);
+    } finally {
+      setIsPrinting(false);
     }
   };
 
@@ -506,7 +538,7 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        
+
         <div className="cart-panel">
           <h2>Carrito</h2>
           <div className="cart-list">
@@ -563,10 +595,34 @@ const Dashboard = () => {
             )}
             {offlineMessage && <div className="offline-message">{offlineMessage}</div>}
             {lastSale && (
-              <button className="undo-sale-btn" onClick={undoLastSale}>
-                Deshacer Última Venta
-              </button>
-            )}
+  <div
+    className="sale-actions"
+    style={{
+      display: 'flex',
+      gap: '0.5rem',
+      alignItems: 'center',
+      marginTop: '1rem'
+    }}
+  >
+    <button className="undo-sale-btn" onClick={undoLastSale}>
+      Deshacer Última Venta
+    </button>
+
+    {isPrinting ? (
+      <button className="popup-btn" disabled>
+        Imprimiendo…
+      </button>
+    ) : printError ? (
+      <button className="popup-btn" onClick={handleRetryPrint}>
+        Reintentar impresión
+      </button>
+    ) : (
+      // <-- aquí mostramos siempre un botón de impresión manual
+      <PrintButton order={lastSale} />
+    )}
+  </div>
+)}
+
           </div>
         </div>
       </div>

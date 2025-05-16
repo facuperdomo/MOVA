@@ -15,6 +15,7 @@ import java.util.List;
 @Builder
 public class SaleItemDTO {
     private Long productId;
+    private String name;
     private int quantity;
     private double unitPrice;
     private List<Long> ingredientIds;

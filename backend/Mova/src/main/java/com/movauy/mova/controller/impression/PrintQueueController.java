@@ -5,6 +5,7 @@ import com.movauy.mova.dto.OrderDTO;
 import com.movauy.mova.model.impression.PrintJob;
 import com.movauy.mova.service.impression.PrintQueueService;
 import com.movauy.mova.service.impression.PrintService;
+import java.io.IOException;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,11 +30,18 @@ public class PrintQueueController {
     @PostMapping
     public ResponseEntity<Void> enqueue(
             @RequestBody OrderDTO o,
-            @RequestHeader("X-Company-Id") String companyId,
+            @RequestHeader("X-Branch-Id") String branchId,
             @RequestHeader(value = "X-Device-Id", required = false) String deviceId
     ) {
-        byte[] cpcl = printer.buildCpclTicket(o).getBytes();
-        queue.enqueue(cpcl, deviceId, companyId);
+        byte[] payload;
+        try {
+            // <-- llamamos al ESC/POS que ya devuelve bytes
+            payload = printer.buildEscPosTicket(o);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+
+        queue.enqueue(payload, deviceId, branchId);
         return ResponseEntity.accepted().build();
     }
 
@@ -43,10 +51,10 @@ public class PrintQueueController {
      */
     @GetMapping("/jobs/next")
     public ResponseEntity<PrintJobDto> nextJob(
-            @RequestHeader("X-Company-Id") String companyId,
-    @RequestHeader(value="X-Device-Id", required=false) String deviceId
+            @RequestHeader("X-Branch-Id") String branchId,
+            @RequestHeader(value = "X-Device-Id", required = false) String deviceId
     ) {
-        PrintJob job = queue.fetchNextFor(companyId);
+        PrintJob job = queue.fetchNextFor(branchId);
         if (job == null) {
             return ResponseEntity.noContent().build();
         }
@@ -62,7 +70,7 @@ public class PrintQueueController {
     public ResponseEntity<Void> ack(
             @PathVariable Long id,
             @RequestParam boolean success,
-            @RequestHeader("X-Company-Id") String companyId
+            @RequestHeader("X-Branch-Id") String branchId
     ) {
         // (opcional) podrías verificar que el job id pertenezca a companyId
         if (success) {

@@ -47,6 +47,14 @@ const SuperAdminDashboard = () => {
     const [companyStats, setCompanyStats] = useState(null);
     const [showStatsModal, setShowStatsModal] = useState(false);
 
+    const [printers, setPrinters]             = useState([]);
+const [showPrintersModal, setShowPrintersModal] = useState(false);
+const [showPrinterForm, setShowPrinterForm]     = useState(false);
+const [printerForm, setPrinterForm]       = useState({ name: '', macAddress: '', type: '' });
+const [editingPrinter, setEditingPrinter] = useState(null);
+const [showPrinterDeletePopup, setShowPrinterDeletePopup] = useState(false);
+const [printerToDelete, setPrinterToDelete] = useState(null);
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -270,7 +278,7 @@ const SuperAdminDashboard = () => {
     };
 
     const openBranchForm = () => {
-        setBranchForm({ name: '', username: '', password: '', mercadoPagoAccessToken: '', location: '', phone: '', enableIngredients: false, enableKitchenCommands: false });
+        setBranchForm({ name: '', username: '', password: '', mercadoPagoAccessToken: '', location: '', phone: '', rut: '', enableIngredients: false, enableKitchenCommands: false });
         setSelectedBranch(null);
         setShowBranchForm(true);
     };
@@ -309,6 +317,7 @@ const SuperAdminDashboard = () => {
             mercadoPagoAccessToken: b.mercadoPagoAccessToken || '',
             location: b.location || '',
             phone: b.phone || '',
+            rut: b.rut || '',
             enableIngredients: b.enableIngredients,
             enableKitchenCommands: b.enableKitchenCommands
         });
@@ -463,6 +472,99 @@ const SuperAdminDashboard = () => {
         setUserToDelete(null);
     };
 
+    // Traer impresoras por sucursal:
+    const fetchPrintersForBranch = async (branch) => {
+        try {
+          // apuntamos al endpoint de branch/{id}/printers
+          const res = await customFetch(`/api/branches/${branch.id}/printers`);
+          setPrinters(Array.isArray(res) ? res : []);
+          setSelectedBranch(branch);
+          setShowBranchesModal(false);
+          setShowPrintersModal(true);
+        } catch (err) {
+          console.error('Error cargando impresoras:', err);
+          setPrinters([]);
+        }
+      };
+  
+  // Abrir formulario nueva/editar:
+  const openPrinterForm = (printer = null) => {
+    if (printer) {
+      setEditingPrinter(printer);
+      setPrinterForm({
+        name: printer.name,
+        macAddress: printer.macAddress,
+        type: printer.type
+      });
+    } else {
+      setEditingPrinter(null);
+      setPrinterForm({ name: '', macAddress: '', type: '' });
+    }
+    setShowPrinterForm(true);
+  };
+  
+  // Guardar impresora:
+  const submitPrinter = async () => {
+    const payload = {
+      ...printerForm,
+      // tu backend extrae branchId de la URL, no lo mandes en el body
+    };
+  
+    try {
+      if (editingPrinter) {
+        // PUT /api/branches/{branchId}/printers/{id}
+        await customFetch(
+          `/api/branches/${selectedBranch.id}/printers/${editingPrinter.id}`,
+          {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+          }
+        );
+      } else {
+        // POST /api/branches/{branchId}/printers
+        await customFetch(
+          `/api/branches/${selectedBranch.id}/printers`,
+          {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          }
+        );
+      }
+  
+      setShowPrinterForm(false);
+      fetchPrintersForBranch(selectedBranch);
+    } catch (err) {
+      console.error('Error guardando impresora:', err);
+      // aquí podrías mostrar un error en UI
+    }
+  };
+  
+  // Confirmar borrado:
+  const confirmDeletePrinter = (printer) => {
+    setPrinterToDelete(printer);
+    setShowPrinterDeletePopup(true);
+  };
+  
+  const handlePrinterDeleteConfirmed = async () => {
+    try {
+      // DELETE /api/branches/{branchId}/printers/{id}
+      await customFetch(
+        `/api/branches/${selectedBranch.id}/printers/${printerToDelete.id}`,
+        { method: 'DELETE' }
+      );
+      fetchPrintersForBranch(selectedBranch);
+    } catch (err) {
+      console.error('Error eliminando impresora:', err);
+    } finally {
+      setShowPrinterDeletePopup(false);
+    }
+  };
+
+  const handlePrinterChange = e => {
+    const { name, value } = e.target;
+    setPrinterForm(prev => ({ ...prev, [name]: value }));
+  };
+
     console.log('Todas las empresas en estado:', companies);
     console.log('Empresas tras aplicar filtro:', visibleCompanies);
 
@@ -543,6 +645,7 @@ const SuperAdminDashboard = () => {
                                             <button className="delete-btn" onClick={() => confirmDeleteCompany(c)}>Eliminar</button>
                                             <button className="edit-btn" onClick={() => fetchBranchesForCompany(c)}>Ver Sucursales</button>
                                             <button className="edit-btn" onClick={() => navigate(`/company-statistics/${c.id}`)}>Ver Estadísticas</button>
+                                            
                                         </td>
                                     </tr>
                                 ))}
@@ -686,6 +789,12 @@ const SuperAdminDashboard = () => {
                                             <button className="delete-btn" onClick={() => confirmDeleteBranch(b)}>Eliminar</button>
                                             <button className="edit-btn" onClick={() => fetchUsersForBranch(b)}>Ver Usuarios</button>
                                             <button className="edit-btn" onClick={() => navigate(`/branch-statistics/${b.id}`)}>Ver Estadísticas</button>
+                                            <button
+    className="edit-btn"
+    onClick={() => fetchPrintersForBranch(b)}
+  >
+    Ver Impresoras
+  </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -773,6 +882,7 @@ const SuperAdminDashboard = () => {
                         <input name="mercadoPagoAccessToken" placeholder="AccessToken MP" value={branchForm.mercadoPagoAccessToken} onChange={handleBranchChange} />
                         <input name="location" placeholder="Ubicación" value={branchForm.location} onChange={handleBranchChange} />
                         <input name="phone" placeholder="Teléfono" value={branchForm.phone} onChange={handleBranchChange} />
+                        <input name="rut" placeholder="RUT" value={branchForm.rut} onChange={handleBranchChange} />
                         <label><input type="checkbox" name="enableIngredients" checked={branchForm.enableIngredients} onChange={handleBranchChange} /> Habilitar Ingredientes</label>
                         <label><input type="checkbox" name="enableKitchenCommands" checked={branchForm.enableKitchenCommands} onChange={handleBranchChange} /> Comandas a Cocina</label>
                         <div className="popup-buttons">
@@ -924,6 +1034,93 @@ const SuperAdminDashboard = () => {
                     </div>
                 </div>
             )}
+            {showPrintersModal && (
+  <div className="popup-overlay"
+       onClick={e => e.target.classList.contains('popup-overlay') && setShowPrintersModal(false)}>
+    <div className="popup-content branch-modal">
+      <h3>Impresoras de {selectedBranch.name}</h3>
+      <table className="branch-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>MAC</th>
+            <th>Tipo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {printers.map(p => (
+            <tr key={p.id}>
+              <td>{p.name}</td>
+              <td>{p.macAddress}</td>
+              <td>{p.type}</td>
+              <td>
+                <button className="edit-btn" onClick={() => openPrinterForm(p)}>Editar</button>
+                <button className="delete-btn" onClick={() => confirmDeletePrinter(p)}>Eliminar</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button className="popup-btn popup-btn-save" onClick={() => openPrinterForm(null)}>
+        Agregar Impresora
+      </button>
+    </div>
+  </div>
+)}
+
+{/* Formulario de crear/editar impresora */}
+{showPrinterForm && (
+  <div className="popup-overlay"
+       onClick={e => e.target.classList.contains('popup-overlay') && setShowPrinterForm(false)}>
+    <div className="popup-content branch-form">
+      <h3>{editingPrinter ? 'Editar Impresora' : 'Nueva Impresora'}</h3>
+      <input
+        name="name"
+        placeholder="Nombre"
+        value={printerForm.name}
+        onChange={handlePrinterChange /* o crea handlePrinterChange */}
+      />
+      <input
+        name="macAddress"
+        placeholder="MAC Address"
+        value={printerForm.macAddress}
+        onChange={handlePrinterChange}
+      />
+      <input
+        name="type"
+        placeholder="Tipo (e.g. BLUETOOTH)"
+        value={printerForm.type}
+        onChange={handlePrinterChange}
+      />
+      <div className="popup-buttons">
+        <button className="popup-btn popup-btn-save" onClick={submitPrinter}>
+          Guardar
+        </button>
+        <button className="popup-btn popup-btn-cancel"
+                onClick={() => setShowPrinterForm(false)}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Confirmación de borrado */}
+{showPrinterDeletePopup && (
+  <div className="popup-overlay confirm-modal-overlay">
+    <div className="popup-content confirm-modal">
+      <p>¿Eliminar impresora “{printerToDelete.name}”?</p>
+      <button className="popup-btn popup-btn-save" onClick={handlePrinterDeleteConfirmed}>
+        Sí, eliminar
+      </button>
+      <button className="popup-btn popup-btn-cancel"
+              onClick={() => setShowPrinterDeletePopup(false)}>
+        Cancelar
+      </button>
+    </div>
+  </div>
+)}
         </div>
     );
 };

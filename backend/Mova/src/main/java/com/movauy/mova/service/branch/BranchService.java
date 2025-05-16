@@ -40,18 +40,44 @@ public class BranchService {
         return branchRepository.findByCompanyId(companyId);
     }
 
-    public Branch updateBranch(Long id, Branch updated) {
-        Branch existing = branchRepository.findById(id).orElseThrow();
-        existing.setName(updated.getName());
-        existing.setUsername(updated.getUsername());
-        if (updated.getPassword() != null && !updated.getPassword().isBlank()) {
-            existing.setPassword(passwordEncoder.encode(updated.getPassword()));
+    /**
+     * Obtiene una sucursal por su id o lanza IllegalArgumentException si no existe.
+     */
+    public Branch findById(Long id) {
+        return branchRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada: " + id));
+    }
+    
+    @Transactional
+    public Branch updateBranch(
+        Long id,
+        String name,
+        String username,
+        String rawPassword,
+        String mercadoPagoAccessToken,
+        boolean enableIngredients,
+        boolean enableKitchenCommands,
+        String location,
+        String phone,
+        String rut
+    ) {
+        Branch existing = branchRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
+
+        existing.setName(name);
+        existing.setUsername(username);
+
+        if (rawPassword != null && !rawPassword.isBlank()) {
+            existing.setPassword(passwordEncoder.encode(rawPassword));
         }
-        existing.setMercadoPagoAccessToken(updated.getMercadoPagoAccessToken());
-        existing.setEnableIngredients(updated.isEnableIngredients());
-        existing.setEnableKitchenCommands(updated.isEnableKitchenCommands());
-        existing.setLocation(updated.getLocation());
-        existing.setPhone(updated.getPhone());
+
+        existing.setMercadoPagoAccessToken(mercadoPagoAccessToken);
+        existing.setEnableIngredients(enableIngredients);
+        existing.setEnableKitchenCommands(enableKitchenCommands);
+        existing.setLocation(location);
+        existing.setPhone(phone);
+        existing.setRut(rut);
+
         return branchRepository.save(existing);
     }
 

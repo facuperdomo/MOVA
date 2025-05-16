@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.Builder;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Builder
@@ -12,5 +14,16 @@ import lombok.Builder;
 @AllArgsConstructor
 public class OrderDTO {
     private Long id;
-    private BigDecimal totalAmount;
+    private Double totalAmount;
+    private String dateTime;
+    private String paymentMethod;
+    
+    @Builder.Default
+    private List<SaleItemDTO> items = new ArrayList<>();
+    
+    private String branchName;
+    private String branchRut;       
+    private String branchAddress;
+    
+    private String companyName;
 }

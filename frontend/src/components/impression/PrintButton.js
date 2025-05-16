@@ -1,5 +1,6 @@
-// src/components/PrintButton.jsx
-import React, { useState } from 'react';
+// src/components/impression/PrintButton.jsx
+import React, { useState } from "react";
+import { printOrder } from "../../utils/print";
 
 export default function PrintButton({ order }) {
   const [loading, setLoading] = useState(false);
@@ -7,30 +8,19 @@ export default function PrintButton({ order }) {
   const handlePrint = async () => {
     setLoading(true);
     try {
-      const resp = await fetch('/api/print', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(order)
-      });
-      if (resp.ok) {
-        alert('✅ Ticket enviado a imprimir');
-      } else {
-        const text = await resp.text();
-        alert(`❌ Error ${resp.status}: ${text}`);
-      }
+      await printOrder(order);
+      alert("✅ Ticket enviado a imprimir");
     } catch (e) {
       console.error(e);
-      alert('❌ Error de red al enviar a imprimir');
+      alert("❌ " + e.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <button onClick={handlePrint} disabled={loading}>
-      {loading ? 'Imprimiendo…' : 'Imprimir Ticket'}
+    <button onClick={handlePrint} disabled={loading} className="popup-btn">
+      {loading ? "Imprimiendo…" : "Imprimir Ticket"}
     </button>
   );
 }

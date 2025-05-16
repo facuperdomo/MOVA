@@ -38,6 +38,7 @@ public class BranchController {
                 .enableKitchenCommands(dto.isEnableKitchenCommands())
                 .location(dto.getLocation())
                 .phone(dto.getPhone())
+                .rut(dto.getRut())
                 .build();
         Branch saved = branchService.registerBranch(branch);
         return ResponseEntity.status(HttpStatus.CREATED).body(mapToDto(saved));
@@ -59,12 +60,24 @@ public class BranchController {
      * Actualiza una sucursal existente.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<Branch> updateBranch(
+    public ResponseEntity<BranchDTO> updateBranch(
             @PathVariable Long id,
-            @RequestBody Branch updatedBranch
+            @RequestBody BranchDTO dto
     ) {
-        Branch result = branchService.updateBranch(id, updatedBranch);
-        return ResponseEntity.ok(result);
+        // Llamamos directamente al servicio pasándole el DTO
+        Branch updated = branchService.updateBranch(
+            id,
+            dto.getName(),
+            dto.getUsername(),
+            dto.getPassword(),
+            dto.getMercadoPagoAccessToken(),
+            dto.isEnableIngredients(),
+            dto.isEnableKitchenCommands(),
+            dto.getLocation(),
+            dto.getPhone(),
+            dto.getRut()
+        );
+        return ResponseEntity.ok(mapToDto(updated));
     }
 
     /**
@@ -98,23 +111,43 @@ public class BranchController {
                 .companyId(b.getCompany().getId())
                 .name(b.getName())
                 .username(b.getUsername())
-                .password(b.getPassword())
                 .mercadoPagoAccessToken(b.getMercadoPagoAccessToken())
                 .enableIngredients(b.isEnableIngredients())
                 .enableKitchenCommands(b.isEnableKitchenCommands())
                 .location(b.getLocation())
                 .phone(b.getPhone())
+                .rut(b.getRut())
                 .enabled(b.isEnabled())
                 .build();
     }
 
+    /**
+     * Convierte un BranchDTO en la entidad Branch (sin id ni company seteados).
+     */
+    private Branch toEntity(BranchDTO dto) {
+        // Carga la compañía asociada
+        Company company = companyService.findById(dto.getCompanyId());
+        return Branch.builder()
+                .name(dto.getName())
+                .username(dto.getUsername())
+                .password(dto.getPassword())
+                .mercadoPagoAccessToken(dto.getMercadoPagoAccessToken())
+                .enableIngredients(dto.isEnableIngredients())
+                .enableKitchenCommands(dto.isEnableKitchenCommands())
+                .location(dto.getLocation())
+                .phone(dto.getPhone())
+                .rut(dto.getRut())
+                .enabled(dto.isEnabled())
+                .build();
+    }
+
     @PutMapping("/{id}/enabled")
-    public ResponseEntity<Branch> toggleEnabled(
+    public ResponseEntity<BranchDTO> toggleEnabled(
             @PathVariable Long id,
             @RequestParam boolean enabled,
             @RequestParam(defaultValue = "false") boolean force
     ) {
         Branch b = branchService.setEnabled(id, enabled, force);
-        return ResponseEntity.ok(b);
+        return ResponseEntity.ok(mapToDto(b));
     }
 }

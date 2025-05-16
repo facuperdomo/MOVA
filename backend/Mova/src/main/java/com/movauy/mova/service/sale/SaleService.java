@@ -125,8 +125,9 @@ public class SaleService {
                             .stream()
                             .map(link -> link.getIngredientId())
                             .collect(Collectors.toList());
-                    return new SaleItemResponseDTO(
+                    return new SaleItemResponseDTO(                           
                             si.getProduct().getId(),
+                            si.getProduct().getName(),
                             si.getQuantity(),
                             si.getUnitPrice(),
                             ingIds
@@ -189,4 +190,9 @@ public class SaleService {
         }
     }
 
+    public SaleResponseDTO getById(Long saleId) {
+        Sale sale = saleRepository.findById(saleId)
+            .orElseThrow(() -> new RuntimeException("Venta no encontrada: " + saleId));
+        return toResponseDTO(sale);
+    }
 }

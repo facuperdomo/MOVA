@@ -15,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -29,6 +31,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Component
 @RequiredArgsConstructor
+@Order(200)
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
@@ -58,33 +61,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String path = request.getRequestURI();
         String method = request.getMethod();
-        logger.debug("[JWT-FILTER] → {} {}", method, path);
 
-        // 🚫 Evitamos aplicar el filtro al refresh-token porque puede estar expirado
-        if (path.equals("/auth/refresh-token")) {
+        // 0) Si viene del bridge, saltamos TODO el filtro JWT
+        boolean isNextJob = HttpMethod.GET.matches(method)
+                && "/api/print/jobs/next".equals(path);
+        boolean isAck = HttpMethod.POST.matches(method)
+                && path.matches("/api/print/jobs/\\d+/ack");
+        if (isNextJob || isAck) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        logger.debug("[JWT-FILTER] → {} {}", method, path);
+
+        // 1) refresh-token (expirado o no) siempre permitido
+        if ("/auth/refresh-token".equals(path)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 2) Rutas públicas que no requieren token
         if ("OPTIONS".equalsIgnoreCase(method)
-                || path.equals("/auth/loginUser")
-                || path.equals("/auth/loginBranch")
-                || path.equals("/auth/loginCompany")
+                || "/auth/loginUser".equals(path)
+                || "/auth/loginBranch".equals(path)
+                || "/auth/loginCompany".equals(path)
                 || path.startsWith("/ws")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        if (path.equals("/auth/register")) {
-            String token = resolveToken(request);
-            if (token != null) {
+        // 3) Registro de usuario permitido incluso con token expirado
+        if ("/auth/register".equals(path)) {
+            String maybeToken = resolveToken(request);
+            if (maybeToken != null) {
                 try {
-                    String username = jwtService.getUsernameFromToken(token);
+                    String username = jwtService.getUsernameFromToken(maybeToken);
                     UserDetails uds = userDetailsService.loadUserByUsername(username);
-                    if (jwtService.isTokenValid(token, uds)) {
+                    if (jwtService.isTokenValid(maybeToken, uds)) {
                         var authorities = uds.getAuthorities().stream()
                                 .map(GrantedAuthority::getAuthority)
-                                .map(r -> r.startsWith("ROLE_") ? new SimpleGrantedAuthority(r)
+                                .map(r -> r.startsWith("ROLE_")
+                                ? new SimpleGrantedAuthority(r)
                                 : new SimpleGrantedAuthority("ROLE_" + r))
                                 .collect(Collectors.toList());
                         var auth = new UsernamePasswordAuthenticationToken(uds, null, authorities);
@@ -98,6 +115,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // 4) Extraer Bearer token
         String token = resolveToken(request);
         if (token == null) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Falta token");
@@ -105,10 +123,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
+            // 5) Validar token y claims
             String username = jwtService.getUsernameFromToken(token);
-            String authType = jwtService.getClaim(token, claims -> claims.get("authType", String.class));
+            String authType = jwtService.getClaim(token, c -> c.get("authType", String.class));
             Long branchId = jwtService.getClaim(token, c -> c.get("branchId", Long.class));
 
+            // 6) Si es un token BRANCH, lo dejamos pasar directamente
+            if ("BRANCH".equals(authType)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            // 7) Verificar sucursal/empresa
             if (branchId != null) {
                 Branch branch = authService.getBranchById(branchId);
                 if (!branch.isEnabled() || !branch.getCompany().isEnabled()) {
@@ -117,42 +143,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
-            if ("BRANCH".equals(authType)) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
+            // 8) Cargar UserDetails y validar firma/expiración
             UserDetails uds = userDetailsService.loadUserByUsername(username);
-
             if (!jwtService.isTokenValid(token, uds)) {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token inválido o revocado");
                 return;
             }
 
+            // 9) Autenticación correcta: guardar en contexto
             var authorities = uds.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
-                    .map(r -> r.startsWith("ROLE_") ? new SimpleGrantedAuthority(r)
+                    .map(r -> r.startsWith("ROLE_")
+                    ? new SimpleGrantedAuthority(r)
                     : new SimpleGrantedAuthority("ROLE_" + r))
                     .collect(Collectors.toList());
-
             var auth = new UsernamePasswordAuthenticationToken(uds, null, authorities);
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(auth);
 
         } catch (ExpiredJwtException ex) {
             logger.warn("⚠️ Token expirado para usuario: {}", ex.getClaims().getSubject());
-
-            // ⛔ Bloquea todo salvo refresh-token
-            if (path.equals("/auth/refresh-token")) {
-                // ⚠️ Dejá pasar el request al controlador que borra el tokenVersion
+            if ("/auth/refresh-token".equals(path)) {
                 filterChain.doFilter(request, response);
             } else {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expirado");
             }
-
             return;
         }
 
+        // 10) Continuar cadena
         filterChain.doFilter(request, response);
     }
 
