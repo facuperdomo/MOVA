@@ -92,25 +92,20 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
 
     const fetchBranchesForCompany = async (company) => {
         try {
-            const res = await customFetch(`/api/branches?companyId=${company.id}`);
-            const data = Array.isArray(res) ? res : [];
-
-            data.forEach(b =>
-                console.log(`branch #${b.id} raw enabled=`, b.enabled, `typeof=`, typeof b.enabled)
-            );
-
-            const normalized = data.map(b => ({
-                ...b,
-                enabled: String(b.enabled).toLowerCase() === 'true'
-            }));
-            setBranches(normalized);
-            setSelectedCompany(company);
-            setShowBranchesModal(true);
+          const res = await customFetch(`/api/companies/${company.id}/branches`);
+          const data = Array.isArray(res) ? res : [];
+          const normalized = data.map(b => ({
+            ...b,
+            enabled: String(b.enabled).toLowerCase() === 'true'
+          }));
+          setBranches(normalized);
+          setSelectedCompany(company);
+          setShowBranchesModal(true);
         } catch (err) {
-            console.error('Error al traer sucursales:', err);
-            setBranches([]);
+          console.error('Error al traer sucursales:', err);
+          setBranches([]);
         }
-    };
+      };
 
     const visibleCompanies = companies
         .filter(c => {
@@ -138,19 +133,17 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
 
     const handleToggleBranch = async (branch) => {
         try {
-            // Hago el PUT invertido sobre enabled
-            await customFetch(
-                `/api/branches/${branch.id}/enabled?enabled=${!branch.enabled}`,
-                { method: 'PUT' }
-            );
-            // Re-fetch para que venga siempre el valor actualizado
-            fetchBranchesForCompany(selectedCompany);
+          await customFetch(
+            `/api/companies/${selectedCompany.id}/branches/${branch.id}/enabled?enabled=${!branch.enabled}`,
+            { method: 'PUT' }
+          );
+          fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-            console.error('Error toggling branch enabled:', err);
-            const msg = err.data?.message || err.message || 'No se pudo cambiar el estado de la sucursal.';
-            setErrorMessage(msg);
+          console.error('Error toggling branch enabled:', err);
+          const msg = err.data?.message || err.message || 'No se pudo cambiar el estado de la sucursal.';
+          setErrorMessage(msg);
         }
-    };
+      };
 
     const handleToggleCompany = async (c) => {
         // Si vamos a DESHABILITAR y hay sucursales habilitadas, pedimos confirmación
@@ -284,29 +277,35 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
     };
 
     const submitNewBranch = async () => {
-        const payload = { ...branchForm, company: { id: selectedCompany.id } };
-        if (selectedBranch && !branchForm.password) {
-            delete payload.password;
-        }
+        const payload = { ...branchForm }; // SIN companyId en el body
+      
         try {
-            if (selectedBranch) {
-                await customFetch(`/api/branches/${selectedBranch.id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(payload)
-                });
-            } else {
-                await customFetch('/api/branches', {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
-                });
-            }
-            setShowBranchForm(false);
-            fetchBranchesForCompany(selectedCompany);
+          if (selectedBranch) {
+            // UPDATE
+            await customFetch(
+              `/api/companies/${selectedCompany.id}/branches/${selectedBranch.id}`,
+              {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+              }
+            );
+          } else {
+            // CREATE
+            await customFetch(
+              `/api/companies/${selectedCompany.id}/branches`,
+              {
+                method: 'POST',
+                body: JSON.stringify(payload)
+              }
+            );
+          }
+          setShowBranchForm(false);
+          fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-            console.error('Error al guardar sucursal:', err);
-            setErrorMessage('Error al guardar sucursal.');
+          console.error('Error al guardar sucursal:', err);
+          setErrorMessage('Error al guardar sucursal.');
         }
-    };
+      };
 
     const openEditBranch = (b) => {
         setSelectedBranch(b);
@@ -331,37 +330,38 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
 
     const handleBranchDeleteConfirmed = async () => {
         try {
-            // primer intento SIN force
-            await customFetch(`/api/branches/${branchToDelete.id}`, { method: 'DELETE' });
-            fetchBranchesForCompany(selectedCompany);
+          await customFetch(
+            `/api/companies/${selectedCompany.id}/branches/${branchToDelete.id}`,
+            { method: 'DELETE' }
+          );
+          fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-            console.error('Error eliminando sucursal:', err);
-            if (err.data?.error === 'TieneUsuarios') {
-                // si viene nuestro conflicto, abrimos el modal de force-delete
-                setShowForceDeleteBranchPopup(true);
-            } else {
-                setErrorMessage('Ocurrió un error al eliminar la sucursal.');
-            }
+          console.error('Error eliminando sucursal:', err);
+          if (err.data?.error === 'TieneUsuarios') {
+            setShowForceDeleteBranchPopup(true);
+          } else {
+            setErrorMessage('Ocurrió un error al eliminar la sucursal.');
+          }
         } finally {
-            setShowBranchDeletePopup(false);
+          setShowBranchDeletePopup(false);
         }
-    };
+      };
 
-    const handleForceDeleteBranch = async () => {
+      const handleForceDeleteBranch = async () => {
         try {
-            await customFetch(
-                `/api/branches/${branchToDelete.id}?force=true`,
-                { method: 'DELETE' }
-            );
-            fetchBranchesForCompany(selectedCompany);
+          await customFetch(
+            `/api/companies/${selectedCompany.id}/branches/${branchToDelete.id}?force=true`,
+            { method: 'DELETE' }
+          );
+          fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-            console.error('Error forzando eliminación de sucursal:', err);
-            setErrorMessage('No se pudo borrar la sucursal.');
+          console.error('Error forzando eliminación de sucursal:', err);
+          setErrorMessage('No se pudo borrar la sucursal.');
         } finally {
-            setShowForceDeleteBranchPopup(false);
-            setBranchToDelete(null);
+          setShowForceDeleteBranchPopup(false);
+          setBranchToDelete(null);
         }
-    };
+      };
 
     const handleForceDeleteCompany = async () => {
         try {

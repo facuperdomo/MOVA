@@ -5,6 +5,7 @@ import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.company.Company;
 import com.movauy.mova.service.branch.BranchService;
 import com.movauy.mova.service.company.CompanyService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,49 +23,51 @@ public class BranchController {
     private final BranchService branchService;
     private final CompanyService companyService;
 
-    /**
-     * Crea una nueva sucursal.
-     */
+    /** Crea una nueva sucursal bajo la empresa {companyId} */
     @PostMapping
-    public ResponseEntity<BranchDTO> createBranch(@RequestBody BranchDTO dto) {
-        Company company = companyService.findById(dto.getCompanyId());
+    public ResponseEntity<BranchDTO> createBranch(
+        @PathVariable Long companyId,
+        @Valid @RequestBody BranchDTO dto   // ya no llevas companyId en el body
+    ) {
+        Company company = companyService.findById(companyId);
         Branch branch = Branch.builder()
-                .company(company)
-                .name(dto.getName())
-                .username(dto.getUsername())
-                .password(dto.getPassword())
-                .mercadoPagoAccessToken(dto.getMercadoPagoAccessToken())
-                .enableIngredients(dto.isEnableIngredients())
-                .enableKitchenCommands(dto.isEnableKitchenCommands())
-                .location(dto.getLocation())
-                .phone(dto.getPhone())
-                .rut(dto.getRut())
-                .build();
+            .company(company)
+            .name(dto.getName())
+            .username(dto.getUsername())
+            .password(dto.getPassword())
+            .mercadoPagoAccessToken(dto.getMercadoPagoAccessToken())
+            .enableIngredients(dto.isEnableIngredients())
+            .enableKitchenCommands(dto.isEnableKitchenCommands())
+            .location(dto.getLocation())
+            .phone(dto.getPhone())
+            .rut(dto.getRut())
+            .build();
+
         Branch saved = branchService.registerBranch(branch);
-        return ResponseEntity.status(HttpStatus.CREATED).body(mapToDto(saved));
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(mapToDto(saved));
     }
 
-    /**
-     * Obtiene todas las sucursales de una empresa.
-     */
+    /** Lista todas las sucursales de la empresa {companyId} */
     @GetMapping
-    public ResponseEntity<List<BranchDTO>> getBranchesByCompany(@RequestParam Long companyId) {
+    public ResponseEntity<List<BranchDTO>> getBranchesByCompany(
+        @PathVariable Long companyId
+    ) {
         List<BranchDTO> dtos = branchService.findByCompanyId(companyId)
-                .stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+            .stream()
+            .map(this::mapToDto)
+            .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
-    /**
-     * Actualiza una sucursal existente.
-     */
+    /** Actualiza la sucursal {id} (no necesita el companyId en el body) */
     @PutMapping("/{id}")
     public ResponseEntity<BranchDTO> updateBranch(
-            @PathVariable Long id,
-            @RequestBody BranchDTO dto
+        @PathVariable Long companyId,       // opcional si lo necesitas para validar 
+        @PathVariable Long id,
+        @Valid @RequestBody BranchDTO dto
     ) {
-        // Llamamos directamente al servicio pasándole el DTO
         Branch updated = branchService.updateBranch(
             id,
             dto.getName(),
@@ -80,25 +83,20 @@ public class BranchController {
         return ResponseEntity.ok(mapToDto(updated));
     }
 
-    /**
-     * DELETE /api/branches/{id}?force={true|false}
-     */
+    /** Elimina la sucursal {id} */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteBranch(
-            @PathVariable Long id,
-            @RequestParam(name = "force", defaultValue = "false") boolean force
+        @PathVariable Long companyId,
+        @PathVariable Long id,
+        @RequestParam(name="force", defaultValue="false") boolean force
     ) {
         try {
             branchService.deleteBranch(id, force);
             return ResponseEntity.noContent().build();
         } catch (IllegalStateException ex) {
-            // devolvemos código 409 + payload con clave "error" y "message"
             String code = ex.getMessage().contains("usuarios") ? "TieneUsuarios" : "TieneIngredientes";
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of(
-                            "error", code,
-                            "message", ex.getMessage()
-                    ));
+                .body(Map.of("error", code, "message", ex.getMessage()));
         }
     }
 
