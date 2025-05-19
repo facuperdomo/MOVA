@@ -10,6 +10,7 @@ import com.movauy.mova.repository.print.PrinterRepository;
 import com.movauy.mova.service.branch.BranchService;
 import com.movauy.mova.service.impression.PrintService;
 import com.movauy.mova.service.sale.SaleService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -50,7 +51,7 @@ public class PrintController {
             @RequestHeader("X-Branch-Id") Long branchId,
             @RequestHeader(value = "X-Printer-Id", required = false) Long printerId
     ) {
-        // 0) Rellenar datos de la sucursal en el DTO
+        // 0) Rellenar datos de la sucursal
         Branch b = branchService.findById(branchId);
         orderDto.setBranchRut(b.getRut());
         orderDto.setBranchName(b.getName());
@@ -62,7 +63,7 @@ public class PrintController {
         orderDto.setPaymentMethod(sale.getPaymentMethod());
         orderDto.setTotalAmount(sale.getTotalAmount());
 
-        // 2) Mapear items
+        // 2) Mapear ítems
         List<SaleItemDTO> items = sale.getItems().stream()
                 .map(i -> SaleItemDTO.builder()
                         .productId(i.getProductId())
@@ -101,13 +102,19 @@ public class PrintController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
-        // 5) Publicar por WebSocket (payload en Base64)
-        Long deviceId = target.getDevice().getId();
-        String b64 = java.util.Base64.getEncoder().encodeToString(payload);
-        log.info("Enviando impresión por WS a dispositivo {}", deviceId);
-        messaging.convertAndSend("/topic/print/" + deviceId, b64);
+        // 5) Publicar por WebSocket un PrintMessage
+        Long deviceId   = target.getDevice().getId();
+        String b64      = java.util.Base64.getEncoder().encodeToString(payload);
+        String mac      = target.getMacAddress();
 
-        // 6) Responder 202 Accepted (la tablet hará la impresión)
+        PrintMessage msg = new PrintMessage();
+        msg.setB64(b64);
+        msg.setMacAddress(mac);
+
+        log.info("Enviando PrintMessage a /topic/print/{} → mac={}", deviceId, mac);
+        messaging.convertAndSend("/topic/print/" + deviceId, msg);
+
+        // 6) Responder 202 Accepted (la tablet imprimirá)
         long t2 = System.currentTimeMillis();
         log.info("Impresión delegada en total {} ms", t2 - t0);
         return ResponseEntity.accepted().build();
