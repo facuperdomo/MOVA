@@ -8,4 +8,6 @@ import java.util.List;
 public interface PrinterRepository extends JpaRepository<Printer, Long> {
     List<Printer> findAllByBranchId(Long branchId);
     List<Printer> findByBranchId(Long branchId);
+    List<Printer> findByDevice_Id(Long deviceId);
+    List<Printer> findAllByDeviceId(Long deviceId);
 }

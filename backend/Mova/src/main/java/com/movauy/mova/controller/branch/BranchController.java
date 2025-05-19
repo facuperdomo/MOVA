@@ -3,8 +3,10 @@ package com.movauy.mova.controller.branch;
 import com.movauy.mova.dto.BranchDTO;
 import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.company.Company;
+import com.movauy.mova.model.print.Printer;
 import com.movauy.mova.service.branch.BranchService;
 import com.movauy.mova.service.company.CompanyService;
+import com.movauy.mova.service.print.PrinterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,73 +24,82 @@ public class BranchController {
 
     private final BranchService branchService;
     private final CompanyService companyService;
+    private final PrinterService printerService;
 
-    /** Crea una nueva sucursal bajo la empresa {companyId} */
+    /**
+     * Crea una nueva sucursal bajo la empresa {companyId}
+     */
     @PostMapping
     public ResponseEntity<BranchDTO> createBranch(
-        @PathVariable Long companyId,
-        @Valid @RequestBody BranchDTO dto   // ya no llevas companyId en el body
+            @PathVariable Long companyId,
+            @Valid @RequestBody BranchDTO dto // ya no llevas companyId en el body
     ) {
         Company company = companyService.findById(companyId);
         Branch branch = Branch.builder()
-            .company(company)
-            .name(dto.getName())
-            .username(dto.getUsername())
-            .password(dto.getPassword())
-            .mercadoPagoAccessToken(dto.getMercadoPagoAccessToken())
-            .enableIngredients(dto.isEnableIngredients())
-            .enableKitchenCommands(dto.isEnableKitchenCommands())
-            .location(dto.getLocation())
-            .phone(dto.getPhone())
-            .rut(dto.getRut())
-            .build();
+                .company(company)
+                .name(dto.getName())
+                .username(dto.getUsername())
+                .password(dto.getPassword())
+                .mercadoPagoAccessToken(dto.getMercadoPagoAccessToken())
+                .enableIngredients(dto.isEnableIngredients())
+                .enableKitchenCommands(dto.isEnableKitchenCommands())
+                .location(dto.getLocation())
+                .phone(dto.getPhone())
+                .rut(dto.getRut())
+                .build();
 
         Branch saved = branchService.registerBranch(branch);
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(mapToDto(saved));
+                .status(HttpStatus.CREATED)
+                .body(mapToDto(saved));
     }
 
-    /** Lista todas las sucursales de la empresa {companyId} */
+    /**
+     * Lista todas las sucursales de la empresa {companyId}
+     */
     @GetMapping
     public ResponseEntity<List<BranchDTO>> getBranchesByCompany(
-        @PathVariable Long companyId
+            @PathVariable Long companyId
     ) {
         List<BranchDTO> dtos = branchService.findByCompanyId(companyId)
-            .stream()
-            .map(this::mapToDto)
-            .collect(Collectors.toList());
+                .stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 
-    /** Actualiza la sucursal {id} (no necesita el companyId en el body) */
+    /**
+     * Actualiza la sucursal {id} (no necesita el companyId en el body)
+     */
     @PutMapping("/{id}")
     public ResponseEntity<BranchDTO> updateBranch(
-        @PathVariable Long companyId,       // opcional si lo necesitas para validar 
-        @PathVariable Long id,
-        @Valid @RequestBody BranchDTO dto
+            @PathVariable Long companyId, // opcional si lo necesitas para validar 
+            @PathVariable Long id,
+            @Valid @RequestBody BranchDTO dto
     ) {
         Branch updated = branchService.updateBranch(
-            id,
-            dto.getName(),
-            dto.getUsername(),
-            dto.getPassword(),
-            dto.getMercadoPagoAccessToken(),
-            dto.isEnableIngredients(),
-            dto.isEnableKitchenCommands(),
-            dto.getLocation(),
-            dto.getPhone(),
-            dto.getRut()
+                id,
+                dto.getName(),
+                dto.getUsername(),
+                dto.getPassword(),
+                dto.getMercadoPagoAccessToken(),
+                dto.isEnableIngredients(),
+                dto.isEnableKitchenCommands(),
+                dto.getLocation(),
+                dto.getPhone(),
+                dto.getRut()
         );
         return ResponseEntity.ok(mapToDto(updated));
     }
 
-    /** Elimina la sucursal {id} */
+    /**
+     * Elimina la sucursal {id}
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteBranch(
-        @PathVariable Long companyId,
-        @PathVariable Long id,
-        @RequestParam(name="force", defaultValue="false") boolean force
+            @PathVariable Long companyId,
+            @PathVariable Long id,
+            @RequestParam(name = "force", defaultValue = "false") boolean force
     ) {
         try {
             branchService.deleteBranch(id, force);
@@ -96,7 +107,7 @@ public class BranchController {
         } catch (IllegalStateException ex) {
             String code = ex.getMessage().contains("usuarios") ? "TieneUsuarios" : "TieneIngredientes";
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("error", code, "message", ex.getMessage()));
+                    .body(Map.of("error", code, "message", ex.getMessage()));
         }
     }
 
@@ -148,4 +159,5 @@ public class BranchController {
         Branch b = branchService.setEnabled(id, enabled, force);
         return ResponseEntity.ok(mapToDto(b));
     }
+
 }

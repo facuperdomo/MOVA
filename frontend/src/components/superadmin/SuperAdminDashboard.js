@@ -47,15 +47,67 @@ const SuperAdminDashboard = () => {
     const [companyStats, setCompanyStats] = useState(null);
     const [showStatsModal, setShowStatsModal] = useState(false);
 
-    const [printers, setPrinters]             = useState([]);
-const [showPrintersModal, setShowPrintersModal] = useState(false);
-const [showPrinterForm, setShowPrinterForm]     = useState(false);
-const [printerForm, setPrinterForm]       = useState({ name: '', macAddress: '', type: '' });
-const [editingPrinter, setEditingPrinter] = useState(null);
-const [showPrinterDeletePopup, setShowPrinterDeletePopup] = useState(false);
-const [printerToDelete, setPrinterToDelete] = useState(null);
+    const [printers, setPrinters] = useState([]);
+    const [showPrintersModal, setShowPrintersModal] = useState(false);
+    const [showPrinterForm, setShowPrinterForm] = useState(false);
+    const [printerForm, setPrinterForm] = useState({ name: '', macAddress: '', type: '' });
+    const [editingPrinter, setEditingPrinter] = useState(null);
+    const [showPrinterDeletePopup, setShowPrinterDeletePopup] = useState(false);
+    const [printerToDelete, setPrinterToDelete] = useState(null);
+
+    const [devices, setDevices] = useState([]);
+    const [showDevicesModal, setShowDevicesModal] = useState(false);
+    const [showDeviceForm, setShowDeviceForm] = useState(false);
+    const [deviceForm, setDeviceForm] = useState({ name: '', bridgeUrl: '' });
+    const [editingDevice, setEditingDevice] = useState(null);
+    const [showDeviceDeletePopup, setShowDeviceDeletePopup] = useState(false);
+    const [deviceToDelete, setDeviceToDelete] = useState(null);
+
+    // para el modal de asignación
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    // impresoras disponibles en la sucursal
+    const [availablePrinters, setAvailablePrinters] = useState([]);
+    // ids de impresoras ya asignadas al device
+    const [assignedPrinterIds, setAssignedPrinterIds] = useState([]);
+
+    const [selectedDevice, setSelectedDevice] = useState(null);
 
     const navigate = useNavigate();
+
+    const openAssignModal = async (device) => {
+        setSelectedDevice(device);
+        await fetchAvailablePrinters();        // trae todas las impresoras de la sucursal
+        await fetchAssignedPrinters(device);   // trae las ya asignadas al dispositivo
+        setShowAssignModal(true);
+      };
+
+    const closeAssignModal = () => {
+        setShowAssignModal(false);
+        setAssignedPrinterIds([]);
+    };
+
+    const togglePrinter = id => {
+        setAssignedPrinterIds(prev =>
+            prev.includes(id)
+                ? prev.filter(x => x !== id)
+                : [...prev, id]
+        );
+    };
+
+    const submitAssignPrinters = async () => {
+        try {
+            await customFetch(
+                `/api/devices/${selectedDevice.id}/printers`,
+                {
+                    method: 'PUT',
+                    body: JSON.stringify(assignedPrinterIds)
+                }
+            );
+            closeAssignModal();
+        } catch (err) {
+            console.error('Error asignando impresoras:', err);
+        }
+    };
 
     useEffect(() => {
         fetchCompanies();
@@ -92,20 +144,20 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
 
     const fetchBranchesForCompany = async (company) => {
         try {
-          const res = await customFetch(`/api/companies/${company.id}/branches`);
-          const data = Array.isArray(res) ? res : [];
-          const normalized = data.map(b => ({
-            ...b,
-            enabled: String(b.enabled).toLowerCase() === 'true'
-          }));
-          setBranches(normalized);
-          setSelectedCompany(company);
-          setShowBranchesModal(true);
+            const res = await customFetch(`/api/companies/${company.id}/branches`);
+            const data = Array.isArray(res) ? res : [];
+            const normalized = data.map(b => ({
+                ...b,
+                enabled: String(b.enabled).toLowerCase() === 'true'
+            }));
+            setBranches(normalized);
+            setSelectedCompany(company);
+            setShowBranchesModal(true);
         } catch (err) {
-          console.error('Error al traer sucursales:', err);
-          setBranches([]);
+            console.error('Error al traer sucursales:', err);
+            setBranches([]);
         }
-      };
+    };
 
     const visibleCompanies = companies
         .filter(c => {
@@ -133,17 +185,17 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
 
     const handleToggleBranch = async (branch) => {
         try {
-          await customFetch(
-            `/api/companies/${selectedCompany.id}/branches/${branch.id}/enabled?enabled=${!branch.enabled}`,
-            { method: 'PUT' }
-          );
-          fetchBranchesForCompany(selectedCompany);
+            await customFetch(
+                `/api/companies/${selectedCompany.id}/branches/${branch.id}/enabled?enabled=${!branch.enabled}`,
+                { method: 'PUT' }
+            );
+            fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-          console.error('Error toggling branch enabled:', err);
-          const msg = err.data?.message || err.message || 'No se pudo cambiar el estado de la sucursal.';
-          setErrorMessage(msg);
+            console.error('Error toggling branch enabled:', err);
+            const msg = err.data?.message || err.message || 'No se pudo cambiar el estado de la sucursal.';
+            setErrorMessage(msg);
         }
-      };
+    };
 
     const handleToggleCompany = async (c) => {
         // Si vamos a DESHABILITAR y hay sucursales habilitadas, pedimos confirmación
@@ -278,34 +330,34 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
 
     const submitNewBranch = async () => {
         const payload = { ...branchForm }; // SIN companyId en el body
-      
+
         try {
-          if (selectedBranch) {
-            // UPDATE
-            await customFetch(
-              `/api/companies/${selectedCompany.id}/branches/${selectedBranch.id}`,
-              {
-                method: 'PUT',
-                body: JSON.stringify(payload)
-              }
-            );
-          } else {
-            // CREATE
-            await customFetch(
-              `/api/companies/${selectedCompany.id}/branches`,
-              {
-                method: 'POST',
-                body: JSON.stringify(payload)
-              }
-            );
-          }
-          setShowBranchForm(false);
-          fetchBranchesForCompany(selectedCompany);
+            if (selectedBranch) {
+                // UPDATE
+                await customFetch(
+                    `/api/companies/${selectedCompany.id}/branches/${selectedBranch.id}`,
+                    {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    }
+                );
+            } else {
+                // CREATE
+                await customFetch(
+                    `/api/companies/${selectedCompany.id}/branches`,
+                    {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    }
+                );
+            }
+            setShowBranchForm(false);
+            fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-          console.error('Error al guardar sucursal:', err);
-          setErrorMessage('Error al guardar sucursal.');
+            console.error('Error al guardar sucursal:', err);
+            setErrorMessage('Error al guardar sucursal.');
         }
-      };
+    };
 
     const openEditBranch = (b) => {
         setSelectedBranch(b);
@@ -330,38 +382,38 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
 
     const handleBranchDeleteConfirmed = async () => {
         try {
-          await customFetch(
-            `/api/companies/${selectedCompany.id}/branches/${branchToDelete.id}`,
-            { method: 'DELETE' }
-          );
-          fetchBranchesForCompany(selectedCompany);
+            await customFetch(
+                `/api/companies/${selectedCompany.id}/branches/${branchToDelete.id}`,
+                { method: 'DELETE' }
+            );
+            fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-          console.error('Error eliminando sucursal:', err);
-          if (err.data?.error === 'TieneUsuarios') {
-            setShowForceDeleteBranchPopup(true);
-          } else {
-            setErrorMessage('Ocurrió un error al eliminar la sucursal.');
-          }
+            console.error('Error eliminando sucursal:', err);
+            if (err.data?.error === 'TieneUsuarios') {
+                setShowForceDeleteBranchPopup(true);
+            } else {
+                setErrorMessage('Ocurrió un error al eliminar la sucursal.');
+            }
         } finally {
-          setShowBranchDeletePopup(false);
+            setShowBranchDeletePopup(false);
         }
-      };
+    };
 
-      const handleForceDeleteBranch = async () => {
+    const handleForceDeleteBranch = async () => {
         try {
-          await customFetch(
-            `/api/companies/${selectedCompany.id}/branches/${branchToDelete.id}?force=true`,
-            { method: 'DELETE' }
-          );
-          fetchBranchesForCompany(selectedCompany);
+            await customFetch(
+                `/api/companies/${selectedCompany.id}/branches/${branchToDelete.id}?force=true`,
+                { method: 'DELETE' }
+            );
+            fetchBranchesForCompany(selectedCompany);
         } catch (err) {
-          console.error('Error forzando eliminación de sucursal:', err);
-          setErrorMessage('No se pudo borrar la sucursal.');
+            console.error('Error forzando eliminación de sucursal:', err);
+            setErrorMessage('No se pudo borrar la sucursal.');
         } finally {
-          setShowForceDeleteBranchPopup(false);
-          setBranchToDelete(null);
+            setShowForceDeleteBranchPopup(false);
+            setBranchToDelete(null);
         }
-      };
+    };
 
     const handleForceDeleteCompany = async () => {
         try {
@@ -475,95 +527,195 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
     // Traer impresoras por sucursal:
     const fetchPrintersForBranch = async (branch) => {
         try {
-          // apuntamos al endpoint de branch/{id}/printers
-          const res = await customFetch(`/api/branches/${branch.id}/printers`);
-          setPrinters(Array.isArray(res) ? res : []);
-          setSelectedBranch(branch);
-          setShowBranchesModal(false);
-          setShowPrintersModal(true);
+            // apuntamos al endpoint de branch/{id}/printers
+            const res = await customFetch(`/api/branches/${branch.id}/printers`);
+            setPrinters(Array.isArray(res) ? res : []);
+            setSelectedBranch(branch);
+            setShowBranchesModal(false);
+            setShowPrintersModal(true);
         } catch (err) {
-          console.error('Error cargando impresoras:', err);
-          setPrinters([]);
+            console.error('Error cargando impresoras:', err);
+            setPrinters([]);
         }
-      };
-  
-  // Abrir formulario nueva/editar:
-  const openPrinterForm = (printer = null) => {
-    if (printer) {
-      setEditingPrinter(printer);
-      setPrinterForm({
-        name: printer.name,
-        macAddress: printer.macAddress,
-        type: printer.type
-      });
-    } else {
-      setEditingPrinter(null);
-      setPrinterForm({ name: '', macAddress: '', type: '' });
-    }
-    setShowPrinterForm(true);
-  };
-  
-  // Guardar impresora:
-  const submitPrinter = async () => {
-    const payload = {
-      ...printerForm,
-      // tu backend extrae branchId de la URL, no lo mandes en el body
     };
-  
-    try {
-      if (editingPrinter) {
-        // PUT /api/branches/{branchId}/printers/{id}
-        await customFetch(
-          `/api/branches/${selectedBranch.id}/printers/${editingPrinter.id}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify(payload),
-          }
-        );
-      } else {
-        // POST /api/branches/{branchId}/printers
-        await customFetch(
-          `/api/branches/${selectedBranch.id}/printers`,
-          {
-            method: 'POST',
-            body: JSON.stringify(payload),
-          }
-        );
-      }
-  
-      setShowPrinterForm(false);
-      fetchPrintersForBranch(selectedBranch);
-    } catch (err) {
-      console.error('Error guardando impresora:', err);
-      // aquí podrías mostrar un error en UI
-    }
-  };
-  
-  // Confirmar borrado:
-  const confirmDeletePrinter = (printer) => {
-    setPrinterToDelete(printer);
-    setShowPrinterDeletePopup(true);
-  };
-  
-  const handlePrinterDeleteConfirmed = async () => {
-    try {
-      // DELETE /api/branches/{branchId}/printers/{id}
-      await customFetch(
-        `/api/branches/${selectedBranch.id}/printers/${printerToDelete.id}`,
-        { method: 'DELETE' }
-      );
-      fetchPrintersForBranch(selectedBranch);
-    } catch (err) {
-      console.error('Error eliminando impresora:', err);
-    } finally {
-      setShowPrinterDeletePopup(false);
-    }
-  };
 
-  const handlePrinterChange = e => {
-    const { name, value } = e.target;
-    setPrinterForm(prev => ({ ...prev, [name]: value }));
-  };
+    // Abrir formulario nueva/editar:
+    const openPrinterForm = (printer = null) => {
+        if (printer) {
+            setEditingPrinter(printer);
+            setPrinterForm({
+                name: printer.name,
+                macAddress: printer.macAddress,
+                type: printer.type
+            });
+        } else {
+            setEditingPrinter(null);
+            setPrinterForm({ name: '', macAddress: '', type: '' });
+        }
+        setShowPrinterForm(true);
+    };
+
+    // Guardar impresora:
+    const submitPrinter = async () => {
+        const payload = { ...printerForm };
+
+        try {
+            if (selectedDevice) {
+                // Contexto dispositivo
+                if (editingPrinter) {
+                    await customFetch(
+                        `/api/devices/${selectedDevice.id}/printers/${editingPrinter.id}`,
+                        { method: 'PUT', body: JSON.stringify(payload) }
+                    );
+                } else {
+                    await customFetch(
+                        `/api/devices/${selectedDevice.id}/printers`,
+                        { method: 'POST', body: JSON.stringify(payload) }
+                    );
+                }
+                // refresca impresoras asignadas al device
+                await fetchAssignedPrinters(selectedDevice);
+            } else {
+                // Contexto sucursal
+                if (editingPrinter) {
+                    await customFetch(
+                        `/api/branches/${selectedBranch.id}/printers/${editingPrinter.id}`,
+                        { method: 'PUT', body: JSON.stringify(payload) }
+                    );
+                } else {
+                    await customFetch(
+                        `/api/branches/${selectedBranch.id}/printers`,
+                        { method: 'POST', body: JSON.stringify(payload) }
+                    );
+                }
+                fetchPrintersForBranch(selectedBranch);
+            }
+
+            closePrinterForm();
+        } catch (err) {
+            console.error('Error guardando impresora:', err);
+        }
+    };
+
+    const closePrinterForm = () => {
+        setShowPrinterForm(false);
+        setEditingPrinter(null);
+        setSelectedDevice(null);
+        setPrinterForm({ name: '', macAddress: '', type: '' });
+    };
+
+    // Confirmar borrado:
+    const confirmDeletePrinter = (printer) => {
+        setPrinterToDelete(printer);
+        setShowPrinterDeletePopup(true);
+    };
+
+    const handlePrinterDeleteConfirmed = async () => {
+        try {
+            // DELETE /api/branches/{branchId}/printers/{id}
+            await customFetch(
+                `/api/branches/${selectedBranch.id}/printers/${printerToDelete.id}`,
+                { method: 'DELETE' }
+            );
+            fetchPrintersForBranch(selectedBranch);
+        } catch (err) {
+            console.error('Error eliminando impresora:', err);
+        } finally {
+            setShowPrinterDeletePopup(false);
+        }
+    };
+
+    const handlePrinterChange = e => {
+        const { name, value } = e.target;
+        setPrinterForm(prev => ({ ...prev, [name]: value }));
+    };
+
+
+    // 1) traer todos los devices de una sucursal:
+    const fetchDevicesForBranch = async (branch) => {
+        try {
+            const res = await customFetch(`/api/branches/${branch.id}/devices`);
+            setDevices(Array.isArray(res) ? res : []);
+            setSelectedBranch(branch);
+            setShowBranchesModal(false);
+            setShowDevicesModal(true);
+        } catch (err) {
+            console.error('Error cargando devices:', err);
+            setDevices([]);
+        }
+    };
+
+    // 2) abrir formulario nuevo/editar
+    const openDeviceForm = (device = null) => {
+        if (device) {
+            setEditingDevice(device);
+            setDeviceForm({ name: device.name, bridgeUrl: device.bridgeUrl });
+        } else {
+            setEditingDevice(null);
+            setDeviceForm({ name: '', bridgeUrl: '' });
+        }
+        setShowDeviceForm(true);
+    };
+
+    // 3) manejar cambios en el form
+    const handleDeviceChange = e => {
+        const { name, value } = e.target;
+        setDeviceForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    // 4) submit crear/editar
+    const submitDevice = async () => {
+        try {
+            if (editingDevice) {
+                await customFetch(
+                    `/api/branches/${selectedBranch.id}/devices/${editingDevice.id}`,
+                    { method: 'PUT', body: JSON.stringify(deviceForm) }
+                );
+            } else {
+                await customFetch(
+                    `/api/branches/${selectedBranch.id}/devices`,
+                    { method: 'POST', body: JSON.stringify(deviceForm) }
+                );
+            }
+            setShowDeviceForm(false);
+            fetchDevicesForBranch(selectedBranch);
+        } catch (err) {
+            console.error('Error guardando device:', err);
+        }
+    };
+
+    // 5) delete flow
+    const confirmDeleteDevice = (d) => {
+        setDeviceToDelete(d);
+        setShowDeviceDeletePopup(true);
+    };
+    const handleDeviceDeleteConfirmed = async () => {
+        try {
+            await customFetch(
+                `/api/branches/${selectedBranch.id}/devices/${deviceToDelete.id}`,
+                { method: 'DELETE' }
+            );
+            fetchDevicesForBranch(selectedBranch);
+        } catch (err) {
+            console.error('Error eliminando device:', err);
+        } finally {
+            setShowDeviceDeletePopup(false);
+            setDeviceToDelete(null);
+        }
+    };
+
+    // trae todas las impresoras de la sucursal
+    const fetchAvailablePrinters = async () => {
+        const res = await customFetch(`/api/branches/${selectedBranch.id}/printers`);
+        setAvailablePrinters(Array.isArray(res) ? res : []);
+    };
+
+    // trae las impresoras ya asignadas al dispositivo
+    const fetchAssignedPrinters = async (device) => {
+        const res = await customFetch(`/api/devices/${device.id}/printers`);
+        const ids = Array.isArray(res) ? res.map(p => p.id) : [];
+        setAssignedPrinterIds(ids);
+    };
 
     console.log('Todas las empresas en estado:', companies);
     console.log('Empresas tras aplicar filtro:', visibleCompanies);
@@ -645,7 +797,7 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
                                             <button className="delete-btn" onClick={() => confirmDeleteCompany(c)}>Eliminar</button>
                                             <button className="edit-btn" onClick={() => fetchBranchesForCompany(c)}>Ver Sucursales</button>
                                             <button className="edit-btn" onClick={() => navigate(`/company-statistics/${c.id}`)}>Ver Estadísticas</button>
-                                            
+
                                         </td>
                                     </tr>
                                 ))}
@@ -790,11 +942,14 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
                                             <button className="edit-btn" onClick={() => fetchUsersForBranch(b)}>Ver Usuarios</button>
                                             <button className="edit-btn" onClick={() => navigate(`/branch-statistics/${b.id}`)}>Ver Estadísticas</button>
                                             <button
-    className="edit-btn"
-    onClick={() => fetchPrintersForBranch(b)}
-  >
-    Ver Impresoras
-  </button>
+                                                className="edit-btn"
+                                                onClick={() => fetchPrintersForBranch(b)}
+                                            >
+                                                Ver Impresoras
+                                            </button>
+                                            <button className="edit-btn" onClick={() => fetchDevicesForBranch(b)}>
+                                                Ver Dispositivos
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -1035,92 +1190,215 @@ const [printerToDelete, setPrinterToDelete] = useState(null);
                 </div>
             )}
             {showPrintersModal && (
-  <div className="popup-overlay"
-       onClick={e => e.target.classList.contains('popup-overlay') && setShowPrintersModal(false)}>
-    <div className="popup-content branch-modal">
-      <h3>Impresoras de {selectedBranch.name}</h3>
-      <table className="branch-table">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>MAC</th>
-            <th>Tipo</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {printers.map(p => (
-            <tr key={p.id}>
-              <td>{p.name}</td>
-              <td>{p.macAddress}</td>
-              <td>{p.type}</td>
-              <td>
-                <button className="edit-btn" onClick={() => openPrinterForm(p)}>Editar</button>
-                <button className="delete-btn" onClick={() => confirmDeletePrinter(p)}>Eliminar</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <button className="popup-btn popup-btn-save" onClick={() => openPrinterForm(null)}>
-        Agregar Impresora
-      </button>
-    </div>
-  </div>
-)}
+                <div
+                    className="popup-overlay"
+                    onClick={e => e.target.classList.contains('popup-overlay') && setShowPrintersModal(false)}
+                >
+                    <div className="popup-content branch-modal">
+                        <h3>Impresoras de {selectedBranch.name}</h3>
+                        <table className="branch-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>MAC</th>
+                                    <th>Tipo</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {printers.map(p => (
+                                    <tr key={p.id}>
+                                        <td>{p.name}</td>
+                                        <td>{p.macAddress}</td>
+                                        <td>{p.type}</td>
+                                        <td>
+                                            <button className="edit-btn" onClick={() => openPrinterForm(p)}>Editar</button>
+                                            <button className="delete-btn" onClick={() => confirmDeletePrinter(p)}>Eliminar</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {/* este botón lanza el form en contexto de sucursal */}
+                        <button className="popup-btn popup-btn-save" onClick={() => openPrinterForm(null)}>
+                            Agregar Impresora
+                        </button>
+                    </div>
+                </div>
+            )}
 
-{/* Formulario de crear/editar impresora */}
-{showPrinterForm && (
-  <div className="popup-overlay"
-       onClick={e => e.target.classList.contains('popup-overlay') && setShowPrinterForm(false)}>
-    <div className="popup-content branch-form">
-      <h3>{editingPrinter ? 'Editar Impresora' : 'Nueva Impresora'}</h3>
-      <input
-        name="name"
-        placeholder="Nombre"
-        value={printerForm.name}
-        onChange={handlePrinterChange /* o crea handlePrinterChange */}
-      />
-      <input
-        name="macAddress"
-        placeholder="MAC Address"
-        value={printerForm.macAddress}
-        onChange={handlePrinterChange}
-      />
-      <input
-        name="type"
-        placeholder="Tipo (e.g. BLUETOOTH)"
-        value={printerForm.type}
-        onChange={handlePrinterChange}
-      />
-      <div className="popup-buttons">
-        <button className="popup-btn popup-btn-save" onClick={submitPrinter}>
-          Guardar
-        </button>
-        <button className="popup-btn popup-btn-cancel"
-                onClick={() => setShowPrinterForm(false)}>
-          Cancelar
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            {/* Formulario de crear/editar impresora */}
+            {showPrinterForm && (
+                <div className="popup-overlay"
+                    onClick={e => e.target.classList.contains('popup-overlay') && setShowPrinterForm(false)}>
+                    <div className="popup-content branch-form">
+                        <h3>{editingPrinter ? 'Editar Impresora' : 'Nueva Impresora'}</h3>
+                        <input
+                            name="name"
+                            placeholder="Nombre"
+                            value={printerForm.name}
+                            onChange={handlePrinterChange /* o crea handlePrinterChange */}
+                        />
+                        <input
+                            name="macAddress"
+                            placeholder="MAC Address"
+                            value={printerForm.macAddress}
+                            onChange={handlePrinterChange}
+                        />
+                        <input
+                            name="type"
+                            placeholder="Tipo (e.g. BLUETOOTH)"
+                            value={printerForm.type}
+                            onChange={handlePrinterChange}
+                        />
+                        <div className="popup-buttons">
+                            <button className="popup-btn popup-btn-save" onClick={submitPrinter}>
+                                Guardar
+                            </button>
+                            <button className="popup-btn popup-btn-cancel"
+                                onClick={() => setShowPrinterForm(false)}>
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-{/* Confirmación de borrado */}
-{showPrinterDeletePopup && (
-  <div className="popup-overlay confirm-modal-overlay">
-    <div className="popup-content confirm-modal">
-      <p>¿Eliminar impresora “{printerToDelete.name}”?</p>
-      <button className="popup-btn popup-btn-save" onClick={handlePrinterDeleteConfirmed}>
-        Sí, eliminar
-      </button>
-      <button className="popup-btn popup-btn-cancel"
-              onClick={() => setShowPrinterDeletePopup(false)}>
-        Cancelar
-      </button>
-    </div>
-  </div>
-)}
+            {/* Confirmación de borrado */}
+            {showPrinterDeletePopup && (
+                <div className="popup-overlay confirm-modal-overlay">
+                    <div className="popup-content confirm-modal">
+                        <p>¿Eliminar impresora “{printerToDelete.name}”?</p>
+                        <button className="popup-btn popup-btn-save" onClick={handlePrinterDeleteConfirmed}>
+                            Sí, eliminar
+                        </button>
+                        <button className="popup-btn popup-btn-cancel"
+                            onClick={() => setShowPrinterDeletePopup(false)}>
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+            {/* — Modal Dispositivos — */}
+            {showDevicesModal && (
+                <div
+                    className="popup-overlay"
+                    onClick={e => e.target.classList.contains('popup-overlay') && setShowDevicesModal(false)}
+                >
+                    <div className="popup-content branch-modal">
+                        <h3>Dispositivos de {selectedBranch.name}</h3>
+                        <table className="branch-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>IP</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {devices.map(d => (
+                                    <tr key={d.id}>
+                                        <td>{d.name}</td>
+                                        <td>{d.bridgeUrl}</td>
+                                        <td className="actions-cell">
+                                            <button className="edit-btn" onClick={() => openDeviceForm(d)}>Editar</button>
+                                            <button className="delete-btn" onClick={() => confirmDeleteDevice(d)}>Eliminar</button>
+                                            {/* este botón abre el form de impresora en contexto de dispositivo */}
+                                            <button
+                                                className="edit-btn"
+                                                onClick={() => {
+                                                    openAssignModal(d)
+                                                }}
+                                            >
+                                                Asignar Impresoras
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <button className="popup-btn popup-btn-save" onClick={() => openDeviceForm(null)}>
+                            Agregar Dispositivo
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* — Formulario Crear/Editar Device — */}
+            {showDeviceForm && (
+                <div className="popup-overlay"
+                    onClick={e => e.target.classList.contains('popup-overlay') && setShowDeviceForm(false)}>
+                    <div className="popup-content branch-form">
+                        <h3>{editingDevice ? 'Editar Dispositivo' : 'Nuevo Dispositivo'}</h3>
+                        <input
+                            name="name"
+                            placeholder="Nombre"
+                            value={deviceForm.name}
+                            onChange={handleDeviceChange}
+                        />
+                        <input
+                            name="bridgeUrl"
+                            placeholder="IP del dispositivo"
+                            value={deviceForm.bridgeUrl}
+                            onChange={handleDeviceChange}
+                        />
+                        <div className="popup-buttons">
+                            <button className="popup-btn popup-btn-save" onClick={submitDevice}>
+                                Guardar
+                            </button>
+                            <button className="popup-btn popup-btn-cancel" onClick={() => setShowDeviceForm(false)}>
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* — Confirmar Borrado Device — */}
+            {showDeviceDeletePopup && (
+                <div className="popup-overlay confirm-modal-overlay">
+                    <div className="popup-content confirm-modal">
+                        <p>¿Eliminar dispositivo “{deviceToDelete.name}”?</p>
+                        <button className="popup-btn popup-btn-save" onClick={handleDeviceDeleteConfirmed}>
+                            Sí, eliminar
+                        </button>
+                        <button className="popup-btn popup-btn-cancel" onClick={() => setShowDeviceDeletePopup(false)}>
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showAssignModal && (
+                <div className="popup-overlay"
+                    onClick={e => e.target.classList.contains('popup-overlay') && closeAssignModal()}>
+                    <div className="popup-content branch-modal">
+                        <h3>Asignar Impresoras a {selectedDevice.name}</h3>
+                        <ul className="printer-list">
+                            {availablePrinters.map(p => (
+                                <li key={p.id}>
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={assignedPrinterIds.includes(p.id)}
+                                            onChange={() => togglePrinter(p.id)}
+                                        />
+                                        {p.name} ({p.macAddress})
+                                    </label>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="popup-buttons">
+                            <button className="popup-btn popup-btn-save" onClick={submitAssignPrinters}>
+                                Guardar
+                            </button>
+                            <button className="popup-btn popup-btn-cancel" onClick={closeAssignModal}>
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
