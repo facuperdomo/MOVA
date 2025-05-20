@@ -103,7 +103,7 @@ public class PrintController {
         }
 
         // 5) Publicar por WebSocket un PrintMessage
-        Long deviceId   = target.getDevice().getId();
+        String deviceUuid = target.getDevice().getUuid();
         String b64      = java.util.Base64.getEncoder().encodeToString(payload);
         String mac      = target.getMacAddress();
 
@@ -111,8 +111,8 @@ public class PrintController {
         msg.setB64(b64);
         msg.setMacAddress(mac);
 
-        log.info("Enviando PrintMessage a /topic/print/{} → mac={}", deviceId, mac);
-        messaging.convertAndSend("/topic/print/" + deviceId, msg);
+        log.info("Enviando PrintMessage a /topic/print/{} → mac={}", deviceUuid, mac);
+        messaging.convertAndSend("/topic/print/" + deviceUuid, msg);
 
         // 6) Responder 202 Accepted (la tablet imprimirá)
         long t2 = System.currentTimeMillis();
