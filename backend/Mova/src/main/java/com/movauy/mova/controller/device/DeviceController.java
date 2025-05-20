@@ -40,6 +40,7 @@ public class DeviceController {
         Device device = new Device();
         device.setName(dto.getName());
         device.setBridgeUrl(dto.getBridgeUrl());
+        device.setUuid(dto.getUuid());
         device.setBranch(branch);
 
         Device saved = deviceRepo.save(device);

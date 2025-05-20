@@ -103,7 +103,7 @@ public class PrintController {
         }
 
         // 5) Publicar por WebSocket un PrintMessage
-        String deviceUuid = target.getDevice().getUuid();
+        String deviceUuid = target.getDevice().getBridgeUrl();
         String b64      = java.util.Base64.getEncoder().encodeToString(payload);
         String mac      = target.getMacAddress();
 
