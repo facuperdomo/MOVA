@@ -8,7 +8,7 @@ export const customFetch = async (path, options = {}) => {
 
   const createHeaders = (authToken) => ({
     "Content-Type": "application/json",
-    ...(!isMercadoPago && authToken ? { Authorization: `Bearer ${authToken}` } : {})
+    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
   });
 
   const fetchWithToken = async (authToken) => {

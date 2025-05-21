@@ -45,7 +45,6 @@ public class MercadoPagoController {
     @PostMapping(path = "/create-preference/{branchId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> createPreference(
             @PathVariable Long branchId,
-            @RequestHeader("Authorization") String token,
             @RequestBody PaymentRequest request
     ) {
         log.info("🔔 createPreference invoked for branchId={} amount={}", branchId, request.getAmount());

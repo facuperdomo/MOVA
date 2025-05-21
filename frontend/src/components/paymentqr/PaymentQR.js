@@ -18,7 +18,7 @@ const PaymentQR = ({ amount }) => {
     }
 
     customFetch(
-      `${API_URL}/api/mercadopago/create-preference/${branchId}`,
+      `/api/mercadopago/create-preference/${branchId}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
