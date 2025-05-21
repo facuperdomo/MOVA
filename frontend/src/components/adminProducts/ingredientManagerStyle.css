@@ -73,30 +73,31 @@
   /* Cada tarjeta */
   .ingredient-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     background: #1f1f1f;
-    padding: 10px 16px;
+    padding: 8px 12px;
     border-radius: 6px;
   }
   
   /* Nombre truncado */
   .ingredient-item .ingredient-name {
-    font-size: 16px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    cursor: pointer;
+    flex: 1 1 auto;
+    margin-right: 8px;
+    white-space: normal;     /* antes tenías nowrap */
+    overflow: visible;       /* quitas el hidden */
+    word-break: break-word;  /* para líneas largas */
+    font-size: 1rem;
   }
   
   /* Botón borrar */
   .ingredient-item .delete-btn {
+    flex: 0 0 auto;
+    padding: 4px 8px;      /* más pequeño */
+    font-size: 1rem;    /* letra más chica */
+    line-height: 1;
+    width: auto;
     background: #e74c3c;
-    border: none;
     border-radius: 4px;
-    padding: 4px 8px;
-    color: white;
-    cursor: pointer;
   }
   .ingredient-item .delete-btn:hover {
     background: #c0392b;

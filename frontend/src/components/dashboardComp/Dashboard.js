@@ -47,7 +47,9 @@ const Dashboard = () => {
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [printError, setPrintError] = useState(false);
-  
+
+  const [enableIngredients, setEnableIngredients] = useState(false);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -55,6 +57,20 @@ const Dashboard = () => {
     cartRef.current = cart;
     totalRef.current = total;
   }, [cart, total]);
+
+  useEffect(() => {
+    const branchId = localStorage.getItem("branchId");
+    if (!branchId) return;
+    (async () => {
+      try {
+        const branch = await customFetch(`${API_URL}/api/branches/${branchId}`);
+        console.log("flag enableIngredients:", branch.enableIngredients);
+        setEnableIngredients(branch.enableIngredients);
+      } catch (err) {
+        console.error("Error al cargar configuración de sucursal:", err);
+      }
+    })();
+  }, []);
 
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
@@ -504,8 +520,8 @@ const Dashboard = () => {
                     key={product.id}
                     className="product-card"
                     onClick={() => {
-                      const cat = categories.find(c => c.id === product.categoryId)
-                      if (cat?.hasIngredients) {
+                      // si la sucursal permite ingredientes y el producto realmente tiene ingredientes:
+                      if (enableIngredients && product.ingredients?.length > 0) {
                         openCustomize(product);
                       } else {
                         addToCart(product);
@@ -595,33 +611,33 @@ const Dashboard = () => {
             )}
             {offlineMessage && <div className="offline-message">{offlineMessage}</div>}
             {lastSale && (
-  <div
-    className="sale-actions"
-    style={{
-      display: 'flex',
-      gap: '0.5rem',
-      alignItems: 'center',
-      marginTop: '1rem'
-    }}
-  >
-    <button className="undo-sale-btn" onClick={undoLastSale}>
-      Deshacer Última Venta
-    </button>
+              <div
+                className="sale-actions"
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  alignItems: 'center',
+                  marginTop: '1rem'
+                }}
+              >
+                <button className="undo-sale-btn" onClick={undoLastSale}>
+                  Deshacer Última Venta
+                </button>
 
-    {isPrinting ? (
-      <button className="popup-btn" disabled>
-        Imprimiendo…
-      </button>
-    ) : printError ? (
-      <button className="popup-btn" onClick={handleRetryPrint}>
-        Reintentar impresión
-      </button>
-    ) : (
-      // <-- aquí mostramos siempre un botón de impresión manual
-      <PrintButton order={lastSale} />
-    )}
-  </div>
-)}
+                {isPrinting ? (
+                  <button className="popup-btn" disabled>
+                    Imprimiendo…
+                  </button>
+                ) : printError ? (
+                  <button className="popup-btn" onClick={handleRetryPrint}>
+                    Reintentar impresión
+                  </button>
+                ) : (
+                  // <-- aquí mostramos siempre un botón de impresión manual
+                  <PrintButton order={lastSale} />
+                )}
+              </div>
+            )}
 
           </div>
         </div>

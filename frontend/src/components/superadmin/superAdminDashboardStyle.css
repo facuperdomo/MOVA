@@ -225,8 +225,7 @@
 /* Estilo consistente para campos del submodal */
 .popup-content input[type="text"],
 .popup-content input[type="password"],
-.popup-content input[type="email"],
-.popup-content input[type="checkbox"] {
+.popup-content input[type="email"]{
     padding: 10px 15px;
     background-color: #444;
     color: white;
@@ -350,29 +349,6 @@
     cursor: pointer;
     width: 100%;
     max-width: 320px;
-}
-
-/* ESTILO checkbox */
-.popup-content.branch-form input[type="checkbox"] {
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border: 2px solid #1e90ff;
-    border-radius: 4px;
-    display: inline-block;
-    position: relative;
-    cursor: pointer;
-    background-color: transparent;
-}
-
-.popup-content.branch-form input[type="checkbox"]:checked::after {
-    content: '✔';
-    color: #1e90ff;
-    font-size: 14px;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -55%);
 }
 
 .popup-content.branch-form .popup-buttons {
@@ -560,15 +536,47 @@
     accent-color: #007bff;
   }
 
-/* Sólo aplicamos a los CHECKBOX **dentro** del formulario de editar/agregar sucursal */
-.popup-content.branch-form input[type="checkbox"] {
-    padding: 10px 15px;
-    background-color: #444;
+/* 1) Quitar bullets de la lista */
+.popup-content.branch-modal .printer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* 2) Forzar tamaño fijo y apariencia sencilla */
+  .popup-content.branch-modal input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin: 0 8px 0 0;       /* espacio entre casilla y texto */
+    border: 2px solid #1e90ff;
+    border-radius: 4px;
+    background-color: transparent;
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+  }
+  
+  /* 3) Estado checked: fondo y palomita */
+  .popup-content.branch-modal input[type="checkbox"]:checked {
+    background-color: #1e90ff;
+    border-color: #1e90ff;
+  }
+  .popup-content.branch-modal input[type="checkbox"]:checked::after {
+    content: '✔';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
     color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
+    line-height: 1;
+  }
+  
+  /* 4) Asegurar que label esté alineado */
+  .popup-content.branch-modal label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }

@@ -41,16 +41,18 @@ const AdminProducts = () => {
 
   useEffect(() => {
     const cat = categories.find(c => c.id === selectedCategoryId);
-    if (!cat?.hasIngredients) {
+    // si la sucursal no tiene ingredientes o la categoría no los soporta, cerramos el selector y el editor
+    if (!enableIngredients || !cat?.hasIngredients) {
       setShowIngredientSelection(false);
+      setEditingIngProductId(null);
     }
-  }, [selectedCategoryId, categories]);
+  }, [selectedCategoryId, categories, enableIngredients]);
 
   const handleCategoryClick = (catId) => {
     const cat = categories.find(c => c.id === catId);
     setSelectedCategoryId(catId);
   
-    if (cat?.hasIngredients) {
+    if (enableIngredients && cat?.hasIngredients) {
       if (editingId) {
         // en edición: abre el modal de ingredientes usando tu helper
         const prod = products.find(p => p.id === editingId);
@@ -70,7 +72,7 @@ const AdminProducts = () => {
     const cat = categories.find(c => c.id === catId);
     setSelectedCategoryId(catId);
   
-    if (cat?.hasIngredients) {
+    if (enableIngredients && cat?.hasIngredients) {
       if (editingId) {
         const prod = products.find(p => p.id === editingId);
         if (prod) openIngredientEditor(prod);
@@ -384,7 +386,7 @@ const AdminProducts = () => {
                     <button className="delete-btn" onClick={() => confirmDelete(product)}>
                       🗑️ Eliminar
                     </button>
-                    {categories.find(c => c.id === product.category.id)?.hasIngredients && (
+                    {enableIngredients && categories.find(c => c.id === product.category.id)?.hasIngredients && (
                       <button
                         className="ing-btn"
                         onClick={() => openIngredientEditor(product)}

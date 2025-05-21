@@ -61,7 +61,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String path = request.getRequestURI();
         String method = request.getMethod();
-
+        
+        if (path.startsWith("/api/mercadopago/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         // 0) Si viene del bridge, saltamos TODO el filtro JWT
         boolean isNextJob = HttpMethod.GET.matches(method)
                 && "/api/print/jobs/next".equals(path);

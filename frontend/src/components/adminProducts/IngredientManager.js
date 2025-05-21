@@ -76,7 +76,7 @@ export default function IngredientManager({ onClose }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
-          <button onClick={handleAdd}>➕ Agregar</button>
+          <button onClick={handleAdd}>Agregar</button>
         </div>
 
         <div className="ingredient-list">

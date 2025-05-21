@@ -97,7 +97,7 @@ const refreshToken = async () => {
       return null;
     }
 
-    const { newToken } = await res.json();
+    const { token: newToken } = await res.json();
     if (!newToken) {
       console.warn("⚠️ La respuesta del refresh no trajo newToken");
       return null;

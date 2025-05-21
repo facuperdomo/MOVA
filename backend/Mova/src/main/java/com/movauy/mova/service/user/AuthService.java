@@ -69,7 +69,7 @@ public class AuthService {
                 .build();
     }
 
-    public AuthResponse loginUser(LoginRequest request) {
+    public AuthResponse loginUser(LoginRequest request, String token) {
         authenticate(request.getUsername(), request.getPassword());
 
         User user = getUserByUsername(request.getUsername());
@@ -82,10 +82,28 @@ public class AuthService {
             }
         }
 
+        // ⚠️ Validamos si hay sesión activa real o solo quedó colgado
         if (user.getTokenVersion() != null && !user.getTokenVersion().isBlank()) {
-            return AuthResponse.builder()
-                    .message("Ya existe una sesión activa con este usuario")
-                    .build();
+            boolean tokenSigueActivo = false;
+
+            try {
+                if (token != null && jwtService.isTokenValid(token, user)) {
+                    tokenSigueActivo = true;
+                    logger.warn("🛑 Token aún válido para '{}', se bloquea nuevo login", user.getUsername());
+                } else {
+                    logger.warn("💥 Token vencido o no presente para '{}', limpiando tokenVersion", user.getUsername());
+                    userTransactionalService.clearTokenVersionByUsername(user.getUsername());
+                }
+            } catch (Exception e) {
+                logger.warn("⚠️ Error al validar token activo: {}. Se limpia por precaución.", e.getMessage());
+                userTransactionalService.clearTokenVersionByUsername(user.getUsername());
+            }
+
+            if (tokenSigueActivo) {
+                return AuthResponse.builder()
+                        .message("Ya existe una sesión activa con este usuario")
+                        .build();
+            }
         }
 
         String newVersion = rotateTokenVersion(user);
@@ -93,18 +111,18 @@ public class AuthService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("ver", newVersion);
         claims.put("role", user.getRole().name());
-        claims.put("authType", "USER"); // ← AÑADIR ESTA LÍNEA
+        claims.put("authType", "USER");
         claims.put("branchId", user.getBranch() != null ? user.getBranch().getId() : null);
         claims.put("companyId", user.getBranch() != null ? user.getBranch().getCompany().getId() : null);
 
-        String token = jwtService.generateToken(claims, user);
+        String newToken = jwtService.generateToken(claims, user);
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
         );
 
         return AuthResponse.builder()
-                .token(token)
+                .token(newToken)
                 .role(user.getRole().name())
                 .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
                 .companyId(user.getBranch() != null ? user.getBranch().getCompany().getId() : null)

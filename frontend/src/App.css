@@ -1,3 +1,70 @@
 body {
   background-color: #1e1e24;
 }
+
+input[type="checkbox"] {
+  /* anulamos cualquier width:100% heredado */
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 8px 0 0;
+  
+  /* eliminamos apariencia nativa */
+  -webkit-appearance: none;
+  appearance: none;
+  
+  /* estilo de casilla */
+  border: 2px solid #1e90ff;
+  border-radius: 4px;
+  background-color: transparent;
+  position: relative;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked {
+  background-color: #1e90ff !important;
+  border-color: #1e90ff !important;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '✔';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  color: white;
+  line-height: 1;
+}
+
+/* Aseguramos que labels sigan alineados en cualquier parte */
+label > input[type="checkbox"],
+input[type="checkbox"] + label {
+  vertical-align: middle;
+}
+
+/* ───────────────────────────────
+   Eliminar highlight azul en touch
+   y desactivar selección de texto
+   ─────────────────────────────── */
+
+/* 1) Quitar el “flash” azul en iOS/Android WebKit */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* 2) Desactivar selección de texto en todo el documento */
+html, body, #root, .app-container, * {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none;
+}
+
+/* 3) Volver a permitir selección en los campos editables */
+input, textarea, select {
+  -webkit-user-select: text;
+     -moz-user-select: text;
+      -ms-user-select: text;
+          user-select: text;
+}

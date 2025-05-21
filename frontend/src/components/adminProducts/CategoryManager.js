@@ -1,10 +1,11 @@
+// src/components/CategoryManager.jsx
 import React, { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { customFetch } from "../../utils/api";
 import { API_URL } from "../../config/apiConfig";
-import { X } from "lucide-react";
 import "./categoryManagerStyle.css";
 
-const CategoryManager = ({ onClose }) => {
+export default function CategoryManager({ onClose }) {
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
   const [newHasIngredients, setNewHasIngredients] = useState(false);
@@ -12,12 +13,15 @@ const CategoryManager = ({ onClose }) => {
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   const fetchCategories = async () => {
     try {
       const res = await customFetch(`${API_URL}/api/categories`);
       setCategories(Array.isArray(res) ? res : []);
-    } catch (err) {
-      console.error("❌ Error al obtener categorías:", err);
+    } catch {
       setError("No se pudieron cargar las categorías.");
     }
   };
@@ -39,8 +43,7 @@ const CategoryManager = ({ onClose }) => {
       setNewEnableKitchenCommands(false);
       setError(null);
       fetchCategories();
-    } catch (err) {
-      console.error("❌ Error al crear categoría:", err);
+    } catch {
       setError("No se pudo crear la categoría.");
     }
   };
@@ -57,120 +60,108 @@ const CategoryManager = ({ onClose }) => {
         }),
       });
       fetchCategories();
-    } catch (err) {
-      console.error("❌ Error al actualizar categoría:", err);
+    } catch {
       setError("No se pudo actualizar la categoría.");
     }
   };
 
-  const toggleHasIngredients = (cat) => {
+  const toggleHasIngredients = cat =>
     updateCategoryFlags(cat, {
       hasIngredients: !cat.hasIngredients,
       enableKitchenCommands: cat.enableKitchenCommands
     });
-  };
 
-  const toggleKitchenCommands = (cat) => {
+  const toggleKitchenCommands = cat =>
     updateCategoryFlags(cat, {
       hasIngredients: cat.hasIngredients,
       enableKitchenCommands: !cat.enableKitchenCommands
     });
-  };
 
-  const handleDeleteClick = async (category) => {
+  const handleDeleteClick = async cat => {
     try {
-      const response = await customFetch(`${API_URL}/api/categories/${category.id}/has-products`);
-      if (response.hasProducts) {
-        setConfirmDelete(category);
-      } else {
-        await deleteCategory(category.id);
-      }
-    } catch (err) {
-      console.error("❌ Error al verificar productos:", err);
-      setError("No se pudo verificar si la categoría tiene productos.");
+      const resp = await customFetch(
+        `${API_URL}/api/categories/${cat.id}/has-products`
+      );
+      if (resp.hasProducts) setConfirmDelete(cat);
+      else await deleteCategory(cat.id);
+    } catch {
+      setError("No se pudo verificar productos.");
     }
   };
 
-  const deleteCategory = async (id) => {
+  const deleteCategory = async id => {
     try {
       await customFetch(`${API_URL}/api/categories/${id}`, { method: "DELETE" });
       setConfirmDelete(null);
       fetchCategories();
-    } catch (err) {
-      console.error("❌ Error al eliminar categoría:", err);
+    } catch {
       setError("No se pudo eliminar la categoría.");
     }
   };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   return (
     <div
       className="popup-overlay"
       onClick={e => e.target.classList.contains("popup-overlay") && onClose()}
     >
-      <div className="popup-content">
+      {/* ─── MODAL DE CREACIÓN ─── */}
+      <div className="popup-content create-panel">
         <X className="popup-close" onClick={onClose} />
         <h2>Categorías de Producto</h2>
 
         {error && <p className="form-error">{error}</p>}
 
         <div className="category-form">
-          <div className="input-category-row">
+          <input
+            type="text"
+            placeholder="Nueva categoría"
+            value={newCategory}
+            onChange={e => setNewCategory(e.target.value)}
+          />
+          <label className="checkbox-label">
             <input
-              type="text"
-              placeholder="Nueva categoría"
-              value={newCategory}
-              onChange={e => setNewCategory(e.target.value)}
+              type="checkbox"
+              checked={newHasIngredients}
+              onChange={e => setNewHasIngredients(e.target.checked)}
             />
-          </div>
+            Maneja ingredientes
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={newEnableKitchenCommands}
+              onChange={e => setNewEnableKitchenCommands(e.target.checked)}
+            />
+            Requiere comandería
+          </label>
+          <button
+            className="popup-btn popup-btn-cash"
+            onClick={createCategory}
+          >
+            Crear
+          </button>
+        </div>
+      </div>
 
-          <div className="checkbox-row">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={newHasIngredients}
-                onChange={e => setNewHasIngredients(e.target.checked)}
-              />
-              Maneja ingredientes
-            </label>
-          </div>
-
-          <div className="checkbox-row">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={newEnableKitchenCommands}
-                onChange={e => setNewEnableKitchenCommands(e.target.checked)}
-              />
-              Requiere comandería
-            </label>
-          </div>
-
-          <div className="checkbox-row">
-            <button
-              className="popup-btn popup-btn-cash"
-              onClick={createCategory}
-            >
-              Crear
-            </button>
-          </div>
+      {/* ─── PANEL DE LISTADO ─── */}
+      <div className="popup-content list-panel">
+        <div className="side-header">
+          <h3>Listado de Categorías</h3>
         </div>
 
         <ul className="category-list">
-          {categories.length > 0 ? (
-            categories.map(cat => (
-              <li key={cat.id} className="category-item">
-                <span>{cat.name}</span>
+          {categories.length === 0 && <li>No hay categorías.</li>}
+          {categories.map(cat => (
+            <li key={cat.id} className="category-item">
+              <span className="category-name">{cat.name}</span>
+              <div className="actions-row">
                 <label className="inline-checkbox">
                   <input
                     type="checkbox"
                     checked={cat.hasIngredients}
                     onChange={() => toggleHasIngredients(cat)}
                   />
-                  Ingredientes
+                  Ingred.
                 </label>
                 <label className="inline-checkbox">
                   <input
@@ -178,34 +169,37 @@ const CategoryManager = ({ onClose }) => {
                     checked={cat.enableKitchenCommands}
                     onChange={() => toggleKitchenCommands(cat)}
                   />
-                  Comandería
+                  Comand.
                 </label>
-                <button onClick={() => handleDeleteClick(cat)}>🗑️</button>
-              </li>
-            ))
-          ) : (
-            <li>No hay categorías aún.</li>
-          )}
+                <button
+                  className="delete-btn"
+                  onClick={() => handleDeleteClick(cat)}
+                >
+                  🗑️
+                </button>
+              </div>
+            </li>
+          ))}
         </ul>
 
         {confirmDelete && (
           <div className="popup-warning">
             <p>
-              La categoría <strong>{confirmDelete.name}</strong> tiene productos
-              asociados. ¿Deseas eliminarla de todas formas? Los productos quedarán sin categoría.
+              La categoría <strong>{confirmDelete.name}</strong> tiene productos.
+              ¿Eliminarla igualmente?
             </p>
             <div className="popup-buttons">
               <button
                 className="popup-btn popup-btn-cash"
                 onClick={() => deleteCategory(confirmDelete.id)}
               >
-                ✅ Sí, eliminar
+                ✅ Sí
               </button>
               <button
                 className="popup-btn popup-btn-qr"
                 onClick={() => setConfirmDelete(null)}
               >
-                ❌ Cancelar
+                ❌ No
               </button>
             </div>
           </div>
@@ -213,6 +207,4 @@ const CategoryManager = ({ onClose }) => {
       </div>
     </div>
   );
-};
-
-export default CategoryManager;
+}

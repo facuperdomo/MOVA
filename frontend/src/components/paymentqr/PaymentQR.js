@@ -10,15 +10,15 @@ const PaymentQR = ({ amount }) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const companyId = localStorage.getItem("companyId");
-    if (!companyId) {
-      setErrorMessage("No se encontró la identificación de la empresa.");
+    const branchId = localStorage.getItem("branchId");
+    if (!branchId) {
+      setErrorMessage("No se encontró la identificación de la sucursl.");
       setLoading(false);
       return;
     }
 
     customFetch(
-      `${API_URL}/api/mercadopago/create-preference/${companyId}`,
+      `${API_URL}/api/mercadopago/create-preference/${branchId}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

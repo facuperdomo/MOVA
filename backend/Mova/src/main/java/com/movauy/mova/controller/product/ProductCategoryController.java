@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -46,8 +47,10 @@ public class ProductCategoryController {
     }
 
     @PostMapping
-    public ResponseEntity<ProductCategory> createCategory(@RequestHeader("Authorization") String token,
-            @RequestBody Map<String, Object> body) {
+    public ResponseEntity<CategoryDTO> createCategory(
+            @RequestHeader("Authorization") String token,
+            @RequestBody Map<String, Object> body
+    ) {
         String name = (String) body.get("name");
         if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest().build();
@@ -57,16 +60,25 @@ public class ProductCategoryController {
         boolean enableKitchenCommands = Boolean.TRUE.equals(body.get("enableKitchenCommands"));
         Long branchId = authService.getBranchIdFromToken(token);
 
-        ProductCategory category = categoryService.createCategory(
+        ProductCategory created = categoryService.createCategory(
                 branchId, name.trim(), hasIngredients, enableKitchenCommands
         );
-        return ResponseEntity.ok(category);
+
+        CategoryDTO dto = new CategoryDTO(
+                created.getId(),
+                created.getName(),
+                created.isHasIngredients(),
+                created.isEnableKitchenCommands()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductCategory> updateCategory(@RequestHeader("Authorization") String token,
+    public ResponseEntity<CategoryDTO> updateCategory(
+            @RequestHeader("Authorization") String token,
             @PathVariable Long id,
-            @RequestBody Map<String, Object> body) {
+            @RequestBody Map<String, Object> body
+    ) {
         String name = (String) body.get("name");
         if (name == null || name.isBlank()) {
             return ResponseEntity.badRequest().build();
@@ -76,19 +88,34 @@ public class ProductCategoryController {
         boolean enableKitchenCommands = Boolean.TRUE.equals(body.get("enableKitchenCommands"));
         Long branchId = authService.getBranchIdFromToken(token);
 
-        ProductCategory updated = categoryService.updateCategory(id, branchId, name.trim(), hasIngredients, enableKitchenCommands);
-        return ResponseEntity.ok(updated);
+        ProductCategory updated = categoryService.updateCategory(
+                id, branchId, name.trim(), hasIngredients, enableKitchenCommands
+        );
+
+        CategoryDTO dto = new CategoryDTO(
+                updated.getId(),
+                updated.getName(),
+                updated.isHasIngredients(),
+                updated.isEnableKitchenCommands()
+        );
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCategory(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+    public ResponseEntity<Void> deleteCategory(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long id
+    ) {
         Long branchId = authService.getBranchIdFromToken(token);
         categoryService.deleteCategory(id, branchId);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/has-products")
-    public ResponseEntity<Map<String, Boolean>> hasProducts(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+    public ResponseEntity<Map<String, Boolean>> hasProducts(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long id
+    ) {
         Long branchId = authService.getBranchIdFromToken(token);
         ProductCategory category = categoryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Categoría no encontrada"));

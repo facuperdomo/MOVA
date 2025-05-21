@@ -1,157 +1,118 @@
+/* overlay */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: start;
+  justify-content: center;
+  padding-top: 40px;
+  gap: 12px;            /* separación mínima entre paneles */
+  z-index: 1000;
+}
+
+/* estilo común a ambos */
 .popup-content {
-  background-color: #333;
-  padding: 30px 25px;
-  border-radius: 16px;
-  text-align: center;
-  width: 420px;
-  max-height: 90vh;
-  overflow: hidden;
-  position: relative;
+  background: #333;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+  max-height: 80vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7);
 }
 
-.popup-content h2 {
-  font-size: 23px;
-  font-weight: bold;
-  margin-bottom: 20px;
+/* ancho fijo para cada panel */
+.create-panel {
+  width: 400px;
+}
+.list-panel {
+  width: 300px;
 }
 
-/* Alinea el input y el botón en una fila */
-.input-category-row {
+/* cabecera listado */
+.list-panel .side-header {
   display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.list-panel .side-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #fff;
 }
 
-/* Input con estilo */
-.popup-content input[type="text"] {
-  flex: 1;
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: none;
-  background-color: #1f1f1f;
-  color: white;
-  font-size: 14px;
-  outline: none;
-  transition: box-shadow 0.2s, background-color 0.2s;
-}
-.popup-content input::placeholder {
-  color: #aaa;
-}
-.popup-content input:focus {
-  box-shadow: 0 0 0 2px #27ae60;
-  background-color: #222;
-}
-
-/* Botón más chico */
-.popup-btn.popup-btn-cash {
-  padding: 10px 16px;
-  font-size: 14px;
-  background-color: #27ae60;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  white-space: nowrap;
-  transition: background 0.2s, transform 0.1s;
-  margin-top: 5px;
-}
-.popup-btn.popup-btn-cash:hover {
-  background-color: #219150;
-}
-
-/* Lista de categorías con scroll si se excede */
+/* lista */
 .category-list {
   list-style: none;
   padding: 0;
-  margin-top: 10px;
-  overflow-y: auto;
-  max-height: 280px;
-  -ms-overflow-style: none;  /* IE y Edge */
-  scrollbar-width: none;     /* Firefox */
-}
-.category-list::-webkit-scrollbar {
-  display: none;             /* Chrome, Safari */
-}
-
-.category-list li {
+  margin: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #444;
-  padding: 10px 14px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 15px;
+  flex-direction: column;
+  gap: 10px;
 }
-.category-list li button {
-  background: #555;
+.category-item {
+  background: #3a3a3a;
+  padding: 10px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.category-name {
+  font-weight: bold;
+  color: white;
+}
+.actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inline-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: white;
+  font-size: 13px;
+}
+.delete-btn {
+  margin-left: auto;
+  background: #e74c3c;
   border: none;
   color: white;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background 0.2s;
 }
-.category-list li button:hover {
-  background: #777;
+.delete-btn:hover {
+  background: #c0392b;
 }
 
+/* formulario */
 .category-form {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-bottom: 16px;
 }
-
-.input-category-row {
-  display: flex;
-  gap: 10px;
-}
-
 .checkbox-label {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.category-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.form-error {
-  background: #c0392b;
   color: white;
-  padding: 8px;
-  border-radius: 6px;
-  margin-bottom: 10px;
-}
-
-.popup-btn.popup-btn-cash {
-  margin: 0;
-}
-
-.checkbox-row {
-  display: flex;
-  align-items: center;
-}
-
-.inline-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   font-size: 14px;
 }
-
-/* Pequeño espacio en el input de lista */
-.inline-checkbox input {
-  margin: 0;
+.popup-btn-cash {
+  margin-top: 8px;
+}
+.popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  cursor: pointer;
+  color: #aaa;
+}
+.popup-close:hover {
+  color: #fff;
 }

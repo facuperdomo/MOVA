@@ -110,16 +110,30 @@ public class AuthController {
      * activa, gira el token, y genera el JWT con datos de sucursal y empresa.
      */
     @PostMapping("/loginUser")
-    public ResponseEntity<AuthResponse> loginUser(@RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> loginUser(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+            @RequestBody LoginRequest request) {
+
+        String token = null;
+
+        // 👇 Intentamos extraer el token del header
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
+
         User user = authService.getUserByUsername(request.getUsername());
 
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
+        // ✅ Login para SUPERADMIN (no requiere branch)
         if (user.getRole() == Role.SUPERADMIN) {
             String newVersion = authService.rotateTokenVersion(user);
-            Map<String, Object> claims = buildClaims(user, newVersion);
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("ver", newVersion);
+            claims.put("role", user.getRole().name());
+            claims.put("authType", "USER"); // opcional
             String jwt = jwtService.generateToken(claims, user);
 
             return ResponseEntity.ok(
@@ -132,16 +146,33 @@ public class AuthController {
             );
         }
 
-        if (user.getTokenVersion() != null && !user.getTokenVersion().isEmpty()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(AuthResponse.builder()
-                            .message("Ya existe una sesión activa con este usuario")
-                            .build());
+        // 👇 Validación de sesión activa para usuarios normales
+        if (user.getTokenVersion() != null && !user.getTokenVersion().isBlank()) {
+            boolean tokenSigueActivo = false;
+
+            try {
+                if (token != null && jwtService.isTokenValid(token, user)) {
+                    tokenSigueActivo = true;
+                    logger.warn("🛑 Token aún válido para '{}', se bloquea nuevo login", user.getUsername());
+                } else {
+                    logger.warn("💥 Token vencido o inválido para '{}', limpiando tokenVersion", user.getUsername());
+                    userTransactionalService.clearTokenVersionByUsername(user.getUsername());
+                }
+            } catch (Exception e) {
+                logger.warn("⚠️ Error al validar token de '{}': {}. Se limpia por precaución.", user.getUsername(), e.getMessage());
+                userTransactionalService.clearTokenVersionByUsername(user.getUsername());
+            }
+
+            if (tokenSigueActivo) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(AuthResponse.builder()
+                                .message("Ya existe una sesión activa con este usuario")
+                                .build());
+            }
         }
 
-        // Ya rota adentro de este método 👇
-        AuthResponse resp = authService.loginUser(request);
-
+        // ✅ Continuar con login normal
+        AuthResponse resp = authService.loginUser(request, token);
         return ResponseEntity.ok(resp);
     }
 
