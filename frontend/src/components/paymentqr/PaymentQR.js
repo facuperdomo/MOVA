@@ -4,16 +4,14 @@ import { customFetch } from "../../utils/api";
 import "./paymentQRStyle.css";
 
 const PaymentQR = ({ amount }) => {
-  const [qrUrl, setQrUrl]       = useState("");
-  const [loading, setLoading]   = useState(true);
-  const [errorMessage, setError] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const branchId = localStorage.getItem("branchId");
-    console.log("🏷 branchId desde localStorage:", branchId);
-
     if (!branchId) {
-      setError("No se encontró branchId");
+      setErrorMessage("No se encontró la identificación de la sucursal.");
       setLoading(false);
       return;
     }
@@ -22,29 +20,33 @@ const PaymentQR = ({ amount }) => {
       method: "POST",
       body: JSON.stringify({ amount })
     })
-      .then((resp) => {
-        console.log("📲 create-preference response:", resp);
-        if (resp.error) throw new Error(resp.error);
-        setQrUrl(resp.init_point);
-      })
-      .catch((err) => {
-        console.error("💥 Error generando QR:", err);
-        setError(err.message || "Error al generar QR");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    .then(data => {
+      console.log("🚀 create-preference response:", data);
+      // fallback sandbox si hace falta
+      const url = data.init_point || data.sandbox_init_point;
+      if (!url) {
+        throw new Error(`No init_point ni sandbox_init_point:\n${JSON.stringify(data)}`);
+      }
+      setQrUrl(url);
+    })
+    .catch(err => {
+      console.error("💥 Error generando QR:", err);
+      setErrorMessage(err.message || "Error al generar el QR.");
+    })
+    .finally(() => setLoading(false));
   }, [amount]);
 
   return (
     <div className="payment-qr-container">
       {loading
-        ? <p>Generando código QR…</p>
+        ? <p className="loading-message">Generando código QR…</p>
         : errorMessage
-          ? <p className="error">{errorMessage}</p>
-          : qrUrl
-            ? <QRCodeCanvas value={qrUrl} size={256} />
-            : <p className="error">No vino init_point en la respuesta</p>
+          ? <p className="error-message">{errorMessage}</p>
+          : (
+            qrUrl
+              ? <QRCodeCanvas className="qr-canvas" value={qrUrl} size={256} />
+              : <p className="error-message">Ocurrió un error al generar el código QR.</p>
+          )
       }
     </div>
   );

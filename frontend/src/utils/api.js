@@ -6,7 +6,6 @@ export const customFetch = async (path, options = {}) => {
   const url = path.startsWith("http") ? path : `${API_URL}${path}`;
   const isMercadoPago = url.includes("/api/mercadopago/");
 
-  // Sólo adjuntamos Authorization si NO es MercadoPago y existe token
   const createHeaders = (authToken) => ({
     "Content-Type": "application/json",
     ...(!isMercadoPago && authToken
@@ -17,19 +16,13 @@ export const customFetch = async (path, options = {}) => {
   const fetchWithToken = async (authToken) => {
     const headers = createHeaders(authToken);
     const opts = { ...fetchOptions, headers };
-
-    console.log(
-      `📡 fetch → ${opts.method || "GET"} ${url}`,
-      { headers, skipRefresh }
-    );
-
+    console.log(`📡 fetch → ${opts.method||"GET"} ${url}`, { headers, skipRefresh });
     return fetch(url, opts);
   };
 
   try {
     let res = await fetchWithToken(token);
 
-    // Si NO es MP y recibimos 401 → intento refresh
     if (!isMercadoPago && res.status === 401 && !skipRefresh) {
       console.warn("⚠️ 401 recibido, intentando refresh-token…");
       const newToken = await refreshToken();
@@ -41,8 +34,6 @@ export const customFetch = async (path, options = {}) => {
       }
       console.info("🔁 Refresh exitoso, retry fetch con nuevo token");
       res = await fetchWithToken(newToken);
-
-      // Si vuelve a 401 → fuerza login
       if (res.status === 401) {
         console.error("💥 Sigue 401 tras refresh → tokenVersion desincronizado");
         localStorage.removeItem("token");
@@ -51,23 +42,24 @@ export const customFetch = async (path, options = {}) => {
       }
     }
 
-    // parseamos body
-    const contentType = res.headers.get("Content-Type") || "";
-    const isJson = contentType.includes("application/json");
-    const body = isJson ? await res.json() : await res.text();
+    const contentType = res.headers.get("Content-Type")||"";
+    const body = contentType.includes("application/json")
+      ? await res.json()
+      : await res.text();
 
     if (!res.ok) {
       console.warn(`🚫 HTTP ${res.status} en ${url}`, body);
       const err = new Error(body?.error || body?.message || res.statusText);
       err.status = res.status;
-      err.data = body;
+      err.data = body;            // <-- payload completo
       throw err;
     }
 
     console.log(`✅ ${url} →`, body);
     return body;
+
   } catch (err) {
-    console.error("❌ customFetch error:", err);
+    console.error("❌ customFetch error:", err, err.data);
     throw err;
   }
 };
@@ -84,8 +76,8 @@ const refreshToken = async () => {
     const res = await fetch(`${API_URL}/auth/refresh-token`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
+        "Content-Type":"application/json",
+        Authorization:`Bearer ${token}`
       }
     });
     if (!res.ok) {

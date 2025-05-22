@@ -54,16 +54,12 @@ public class MercadoPagoController {
                 .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
         String accessToken = branch.getMercadoPagoAccessToken();
         if (accessToken == null || accessToken.isBlank()) {
-            log.warn("🛑 No hay MP accessToken para branchId={}", branchId);
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "La sucursal no tiene configurado un Access Token"));
+                    .body(Map.of("error", "La sucursal no tiene configurado un Access Token de MercadoPago"));
         }
 
         try {
-            // seteamos el token de MP
             MercadoPago.SDK.setAccessToken(accessToken);
-            log.debug("🔑 MP SDK configurado con token de sucursal");
-
             Preference pref = new Preference()
                     .setPayer(new Payer().setEmail("anonymous@movauy.com"))
                     .appendItem(new Item()
@@ -77,36 +73,50 @@ public class MercadoPagoController {
                             .setFailure(baseUrl + "/failure"))
                     .setAutoReturn(AutoReturn.approved)
                     .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
+
             pref.save();
 
-            log.debug("🔔 Preference saved: id={} init_point={} sandbox_init_point={}",
-                    pref.getId(), pref.getInitPoint(), pref.getSandboxInitPoint());
+            // --- DEBUG: imprimir TODO lo que llegó de MP ---
+            log.debug("MP preference",
+    pref.getInitPoint(),
+    pref.getSandboxInitPoint()
+);
 
-            // fallback a sandbox
-            String initPoint = pref.getInitPoint() != null
-                    ? pref.getInitPoint()
-                    : pref.getSandboxInitPoint();
+            String initPoint = pref.getInitPoint();
+            String sandboxInitPoint = pref.getSandboxInitPoint();  // puede venir sólo en sandbox
 
-            if (initPoint == null) {
-                log.error("❌ Ni init_point ni sandbox_init_point vinieron en la respuesta de MP");
-                return ResponseEntity.status(500)
-                        .body(Map.of("error", "No se obtuvo init_point de MercadoPago"));
+            if (initPoint == null && sandboxInitPoint != null) {
+                initPoint = sandboxInitPoint;
+                log.warn("⚠️ init_point nulo, usando sandbox_init_point en su lugar");
             }
 
-            return ResponseEntity.ok(Map.of("init_point", initPoint));
+            if (initPoint == null) {
+                log.debug("🎯 initPoint: {}    sandboxInitPoint: {}",
+    pref.getInitPoint(),
+    pref.getSandboxInitPoint()
+);
+                return ResponseEntity.status(500)
+                        .body(Map.of("error", "No se obtuvo init_point ni sandbox_init_point de MercadoPago"));
+            }
+
+            // devolvemos ambos campos para que el front pueda inspeccionarlos
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("init_point", initPoint);
+            resp.put("sandbox_init_point", sandboxInitPoint);
+            return ResponseEntity.ok(resp);
 
         } catch (MPConfException e) {
-            log.error("❌ MPConfException: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("error",
-                    "Error de configuración de MercadoPago: " + e.getMessage()));
+            log.error("❌ Config MP error: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error de configuración de MercadoPago: " + e.getMessage()));
         } catch (MPException e) {
-            log.error("❌ MPException: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("error",
-                    "Error al crear preferencia: " + e.getMessage()));
+            log.error("❌ MPException al crear preferencia: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error al crear preferencia: " + e.getMessage()));
         } catch (Exception e) {
-            log.error("❌ Excepción inesperada: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body(Map.of("error",
-                    "Error inesperado: " + e.getMessage()));
+            log.error("❌ Excepción inesperada al crear preferencia: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error inesperado: " + e.getMessage()));
         }
     }
 
