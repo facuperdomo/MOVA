@@ -79,23 +79,23 @@ const Dashboard = () => {
       return;
     }
     console.log("Iniciando STOMP/SockJS a:", WS_URL);
-  
+
     const client = new Client({
       // 1) Creamos la conexión SockJS
       webSocketFactory: () => new SockJS(`${WS_URL}/ws-sockjs`),
       reconnectDelay: 5000,
       debug: (str) => console.log("STOMP/SockJS DEBUG:", str),
     });
-  
+
     client.onConnect = () => {
       // 2) Nos suscribimos al topic de estado de pago
       client.subscribe("/topic/payment-status", async (msg) => {
         const raw = msg.body.toLowerCase();
         if (!["approved", "rejected"].includes(raw)) return;
-  
+
         const translated = raw === "approved" ? "Aprobado" : "Rechazado";
         setPaymentStatus(translated);
-  
+
         if (raw === "approved") {
           const saleData = {
             totalAmount: totalRef.current,
@@ -122,6 +122,17 @@ const Dashboard = () => {
             setTotal(0);
             setShowPopup(false);
             setShowQR(false);
+
+            setIsPrinting(true);
+            setPrintError(false);
+            try {
+              await printOrder(response);
+            } catch (err) {
+              console.error("❌ Falló impresión automática tras QR:", err);
+              setPrintError(true);
+            } finally {
+              setIsPrinting(false);
+            }
           } catch (err) {
             console.error("Error al guardar venta QR:", err);
             alert("Ocurrió un error guardando la venta QR.");
@@ -129,10 +140,10 @@ const Dashboard = () => {
         }
       }, { id: "payment-status-sub" });
     };
-  
+
     client.onStompError = frame => console.error("Error STOMP:", frame.body);
     client.activate();
-  
+
     return () => client.deactivate();
   }, [offline]);
 
