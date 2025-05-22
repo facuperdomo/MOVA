@@ -87,6 +87,7 @@ public class MercadoPagoController {
 
             // 4) Parsear con Jackson para extraer los campos
             JsonNode root = mapper.readTree(rawJson);
+            // a veces viene dentro de un objeto "response"
             JsonNode data = root.has("response") ? root.get("response") : root;
 
             String initPoint = data.path("init_point").asText(null);
@@ -99,9 +100,12 @@ public class MercadoPagoController {
                 initPoint = sandboxInitPoint;
             }
             if (initPoint == null) {
-                log.error("❌ Ni init_point ni sandbox_init_point recibidos de MP");
-                return ResponseEntity.status(500)
-                        .body(Map.of("error", "No se obtuvo init_point ni sandbox_init_point de MercadoPago"));
+                log.error("❌ Ni init_point ni sandbox_init_point recibidos de MP, rawJson={}", rawJson);
+                // Devuelvo también el rawJson para depurar en Postman/Front
+                Map<String, Object> err = new HashMap<>();
+                err.put("error", "No se obtuvo init_point ni sandbox_init_point de MercadoPago");
+                err.put("rawJson", rawJson);
+                return ResponseEntity.status(500).body(err);
             }
 
             // 6) Responder al frontend
