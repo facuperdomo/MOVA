@@ -1,4 +1,3 @@
-// src/main/java/com/movauy/mova/config/SecurityConfig.java
 package com.movauy.mova.config;
 
 import com.movauy.mova.Jwt.JwtAuthenticationFilter;
@@ -17,7 +16,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 @Configuration
 @EnableWebSecurity
@@ -29,62 +27,60 @@ public class SecurityConfig {
     private final AuthenticationProvider authProvider;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
         http
-            // 1) Nada de CSRF
-            .csrf(csrf -> csrf.disable())
-
-            // 2) CORS general
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-            // 3) 401/403 personalizados
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, e) ->
-                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
-                .accessDeniedHandler((req, res, e) ->
-                    res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
-            )
-
-            // 4) Reglas de acceso
-            .authorizeHttpRequests(auth -> auth
-                // 4.1) Preflight
+                // 1) Stateles & CSRF off
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // 2) CORS
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // 3) Errores 401/403 custom
+                .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e)
+                        -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
+                .accessDeniedHandler((req, res, e)
+                        -> res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
+                )
+                // 4) Autorizar rutas
+                .authorizeHttpRequests(auth -> auth
+                // 4.1) Preflight CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // 4.2) Login / register
-                .requestMatchers(HttpMethod.POST,
-                    "/auth/loginUser",
-                    "/auth/loginCompany",
-                    "/auth/loginBranch",
-                    "/auth/refresh-token",
-                    "/auth/register"
-                ).permitAll()
-
-                // 4.3) Otros públicos
+                // 4.2) Webhook de MercadoPago (sin JWT)
                 .requestMatchers(
-                    "/actuator/health",
-                    "/actuator/info",
-                    "/api/branches",
-                    "/ws/**",
-                    "/ws-sockjs/**",
-                    "/api/mercadopago/**"
+                        "/api/webhooks/mercadopago",
+                        "/api/webhooks/mercadopago/**"
                 ).permitAll()
-
-                // 4.4) /auth/** sí requiere JWT
+                // 4.3) Dispatcher de errores (Spring ErrorController)
+                .requestMatchers(
+                        "/error",
+                        "/error/**"
+                ).permitAll()
+                // 4.4) Login / register públicos
+                .requestMatchers(HttpMethod.POST,
+                        "/auth/loginUser",
+                        "/auth/loginCompany",
+                        "/auth/loginBranch",
+                        "/auth/refresh-token",
+                        "/auth/register"
+                ).permitAll()
+                // 4.5) Otros públicos
+                .requestMatchers(
+                        "/actuator/health",
+                        "/actuator/info",
+                        "/api/branches",
+                        "/ws/**",
+                        "/ws-sockjs/**",
+                        "/api/mercadopago/**" // create-preference
+                ).permitAll()
+                // 4.6) /auth/** sí requiere JWT
                 .requestMatchers("/auth/**").authenticated()
-
-                // 4.5) Todo lo demás: JWT o Bridge‐Token
+                // 4.7) Resto: JWT o Bridge‐Token
                 .anyRequest().authenticated()
-            )
-
-            // 5) Stateless
-            .sessionManagement(sm ->
-                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-
-            // 6) Filtros y provider
-            .authenticationProvider(authProvider)
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
+                )
+                // 5) Añadir filtros de JWT / Bridge-Token
+                .authenticationProvider(authProvider)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -93,12 +89,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "https://movauy.top",
-            "https://www.movauy.top",
-            "https://movauy.top:8443"
+                "http://localhost:3000",
+                "https://movauy.top",
+                "https://www.movauy.top",
+                "https://movauy.top:8443"
         ));
-        cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);
 
