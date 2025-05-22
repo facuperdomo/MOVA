@@ -87,17 +87,19 @@ public class MercadoPagoController {
 
             // 4) Parsear con Jackson para extraer los campos
             JsonNode root = mapper.readTree(rawJson);
-            String initPoint = root.path("init_point").asText(null);
-            String sandboxInitPoint = root.path("sandbox_init_point").asText(null);
+            JsonNode data = root.has("response") ? root.get("response") : root;
+
+            String initPoint = data.path("init_point").asText(null);
+            String sandboxInitPoint = data.path("sandbox_init_point").asText(null);
             log.debug("▶︎ init_point='{}', sandbox_init_point='{}'", initPoint, sandboxInitPoint);
 
-            // 5) Fallback a sandbox si falta init_point
+            // 5) Fallback a sandbox si hace falta init_point
             if (initPoint == null && sandboxInitPoint != null) {
                 log.warn("⚠️ init_point nulo, usando sandbox_init_point");
                 initPoint = sandboxInitPoint;
             }
             if (initPoint == null) {
-                log.error("❌ Ni init_point ni sandbox_init_point en MP JSON");
+                log.error("❌ Ni init_point ni sandbox_init_point recibidos de MP");
                 return ResponseEntity.status(500)
                         .body(Map.of("error", "No se obtuvo init_point ni sandbox_init_point de MercadoPago"));
             }
