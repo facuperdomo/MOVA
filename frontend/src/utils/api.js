@@ -59,7 +59,7 @@ export const customFetch = async (path, options = {}) => {
     return body;
 
   } catch (err) {
-    console.error("❌ customFetch error:", err, err.data);
+    console.error("❌ customFetch error completo:", err, "err.data=", err.data);
     throw err;
   }
 };

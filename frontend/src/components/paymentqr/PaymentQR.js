@@ -18,36 +18,41 @@ const PaymentQR = ({ amount }) => {
 
     customFetch(`/api/mercadopago/create-preference/${branchId}`, {
       method: "POST",
-      body: JSON.stringify({ amount })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount }),
     })
-    .then(data => {
-      console.log("🚀 create-preference response:", data);
-      // fallback sandbox si hace falta
-      const url = data.init_point || data.sandbox_init_point;
-      if (!url) {
-        throw new Error(`No init_point ni sandbox_init_point:\n${JSON.stringify(data)}`);
-      }
-      setQrUrl(url);
-    })
-    .catch(err => {
-      console.error("💥 Error generando QR:", err);
-      setErrorMessage(err.message || "Error al generar el QR.");
-    })
-    .finally(() => setLoading(false));
+      .then((data) => {
+        console.log("💾 Respuesta create-preference:", data);
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        setQrUrl(data.init_point);
+      })
+      .catch((err) => {
+        console.error("💥 Error generando QR:", err);
+        // si el backend retorna { error: '...' } lo vemos en err.data o err.message
+        setErrorMessage(
+          err.data?.error || err.message || "Error al generar el QR."
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [amount]);
 
   return (
     <div className="payment-qr-container">
-      {loading
-        ? <p className="loading-message">Generando código QR…</p>
-        : errorMessage
-          ? <p className="error-message">{errorMessage}</p>
-          : (
-            qrUrl
-              ? <QRCodeCanvas className="qr-canvas" value={qrUrl} size={256} />
-              : <p className="error-message">Ocurrió un error al generar el código QR.</p>
-          )
-      }
+      {loading ? (
+        <p className="loading-message">Generando código QR...</p>
+      ) : errorMessage ? (
+        <p className="error-message">{errorMessage}</p>
+      ) : qrUrl ? (
+        <div className="qr-content">
+          <QRCodeCanvas className="qr-canvas" value={qrUrl} size={256} />
+        </div>
+      ) : (
+        <p className="error-message">Ocurrió un error al generar el código QR.</p>
+      )}
     </div>
   );
 };
