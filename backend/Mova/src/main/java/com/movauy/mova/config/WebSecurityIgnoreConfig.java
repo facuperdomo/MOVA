@@ -12,7 +12,7 @@ public class WebSecurityIgnoreConfig {
      * (incluyendo JWT, BridgeToken, etc.) en /api/mercadopago/**
      */
     @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
+    public WebSecurityCustomizer webSecurityIgnoreCustomizer() {
         return (web) -> web
             .ignoring()
             .requestMatchers("/api/mercadopago/**");
