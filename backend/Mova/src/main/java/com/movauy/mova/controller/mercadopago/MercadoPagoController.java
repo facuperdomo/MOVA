@@ -1,5 +1,6 @@
 package com.movauy.mova.controller.mercadopago;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mercadopago.MercadoPago;
 import com.mercadopago.exceptions.MPConfException;
@@ -51,7 +52,7 @@ public class MercadoPagoController {
     ) {
         log.info("🔔 createPreference invoked for branchId={} amount={}", branchId, request.getAmount());
 
-        // 1) Validar sucursal y su token MP
+        // 1) Validar sucursal y token MP
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
         String accessToken = branch.getMercadoPagoAccessToken();
@@ -61,9 +62,8 @@ public class MercadoPagoController {
         }
 
         try {
+            // 2) Configurar SDK y crear preferencia
             MercadoPago.SDK.setAccessToken(accessToken);
-
-            // 2) Construir la preferencia
             Preference pref = new Preference()
                     .setPayer(new Payer().setEmail("anonymous@movauy.com"))
                     .appendItem(new Item()
@@ -77,30 +77,32 @@ public class MercadoPagoController {
                             .setFailure(baseUrl + "/failure"))
                     .setAutoReturn(AutoReturn.approved)
                     .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
-
-            // 3) Guardar en MP y obtener JSON bruto
             pref.save();
+
+            // 3) Leer JSON bruto de la respuesta MP
             String rawJson = pref.getLastApiResponse()
                     .getJsonElementResponse()
                     .toString();
             log.debug("🎯 MP RAW JSON response:\n{}", rawJson);
 
-            // 4) Extraer init_point (o sandbox_init_point)
-            String initPoint = pref.getInitPoint();
-            String sandboxInitPoint = pref.getSandboxInitPoint();
+            // 4) Parsear con Jackson para extraer los campos
+            JsonNode root = mapper.readTree(rawJson);
+            String initPoint = root.path("init_point").asText(null);
+            String sandboxInitPoint = root.path("sandbox_init_point").asText(null);
             log.debug("▶︎ init_point='{}', sandbox_init_point='{}'", initPoint, sandboxInitPoint);
 
+            // 5) Fallback a sandbox si falta init_point
             if (initPoint == null && sandboxInitPoint != null) {
                 log.warn("⚠️ init_point nulo, usando sandbox_init_point");
                 initPoint = sandboxInitPoint;
             }
             if (initPoint == null) {
-                log.error("❌ Ni init_point ni sandbox_init_point recibidos de MP");
+                log.error("❌ Ni init_point ni sandbox_init_point en MP JSON");
                 return ResponseEntity.status(500)
                         .body(Map.of("error", "No se obtuvo init_point ni sandbox_init_point de MercadoPago"));
             }
 
-            // 5) Responder al frontend
+            // 6) Responder al frontend
             return ResponseEntity.ok(Map.of("init_point", initPoint));
 
         } catch (MPConfException e) {
