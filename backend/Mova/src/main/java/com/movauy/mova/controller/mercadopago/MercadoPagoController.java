@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -78,7 +79,17 @@ public class MercadoPagoController {
                     .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
 
             pref.save();
-            return ResponseEntity.ok(Map.of("init_point", pref.getInitPoint()));
+            
+            String initPoint = pref.getInitPoint();
+            if (initPoint == null) {
+                Map<String, Object> err = new HashMap<>();
+                err.put("error", "No se obtuvo init_point de MercadoPago");
+                return ResponseEntity.status(500).body(err);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("init_point", initPoint);
+            return ResponseEntity.ok(response);
 
         } catch (MPConfException e) {
             log.error("❌ Error de configuración de MercadoPago: {}", e.getMessage(), e);
