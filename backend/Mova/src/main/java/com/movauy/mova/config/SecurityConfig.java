@@ -35,11 +35,12 @@ public class SecurityConfig {
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return web -> web.ignoring()
-            .requestMatchers(
-                new AntPathRequestMatcher("/ws/**"),
-                new AntPathRequestMatcher("/ws-sockjs/**"),
-                new AntPathRequestMatcher("/api/mercadopago/**")
-            );
+                .requestMatchers(
+                        new AntPathRequestMatcher("/ws/**"),
+                        new AntPathRequestMatcher("/ws-sockjs/**"),
+                        new AntPathRequestMatcher("/api/mercadopago/**"),
+                        new AntPathRequestMatcher("/api/webhooks/mercadopago")
+                );
     }
 
     /**
@@ -48,53 +49,47 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, e) ->
-                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
-                .accessDeniedHandler((req, res, e) ->
-                    res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
-            )
-            .authorizeHttpRequests(auth -> auth
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e)
+                        -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
+                .accessDeniedHandler((req, res, e)
+                        -> res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
+                )
+                .authorizeHttpRequests(auth -> auth
                 // CORS preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
                 // Public Auth endpoints
                 .requestMatchers(HttpMethod.POST,
-                    "/auth/loginUser",
-                    "/auth/loginCompany",
-                    "/auth/loginBranch",
-                    "/auth/refresh-token",
-                    "/auth/register"
+                        "/auth/loginUser",
+                        "/auth/loginCompany",
+                        "/auth/loginBranch",
+                        "/auth/refresh-token",
+                        "/auth/register"
                 ).permitAll()
-
                 // Otros públicos
                 .requestMatchers(
-                    "/error/**",
-                    "/api/webhooks/mercadopago",
-                    "/actuator/health",
-                    "/actuator/info",
-                    "/api/branches"
+                        "/error/**",
+                        "/api/webhooks/mercadopago",
+                        "/actuator/health",
+                        "/actuator/info",
+                        "/api/branches"
                 ).permitAll()
-
                 // Asegurarnos de no bloquear tampoco los WS/SockJS en HttpSecurity
                 .requestMatchers("/ws/**", "/ws-sockjs/**", "/api/mercadopago/**").permitAll()
-
                 // /auth/** requiere JWT
                 .requestMatchers("/auth/**").authenticated()
-
                 // Todo lo demás: JWT ó Bridge‐Token
                 .anyRequest().authenticated()
-            )
-            .sessionManagement(sm ->
-                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authenticationProvider(authProvider)
-            // filtros de seguridad
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class)
-        ;
+                )
+                .sessionManagement(sm
+                        -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .authenticationProvider(authProvider)
+                // filtros de seguridad
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -106,10 +101,10 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of(
-            "http://localhost:3000",
-            "https://movauy.top",
-            "https://www.movauy.top",
-            "https://movauy.top:8443"
+                "http://localhost:3000",
+                "https://movauy.top",
+                "https://www.movauy.top",
+                "https://movauy.top:8443"
         ));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
