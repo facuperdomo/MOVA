@@ -51,6 +51,7 @@ public class MercadoPagoController {
     ) {
         log.info("🔔 createPreference invoked for branchId={} amount={}", branchId, request.getAmount());
 
+        // 1) Validar sucursal y su token MP
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
         String accessToken = branch.getMercadoPagoAccessToken();
@@ -62,32 +63,33 @@ public class MercadoPagoController {
         try {
             MercadoPago.SDK.setAccessToken(accessToken);
 
+            // 2) Construir la preferencia
             Preference pref = new Preference()
-                .setPayer(new Payer().setEmail("anonymous@movauy.com"))
-                .appendItem(new Item()
-                    .setTitle("Servicio en el bar")
-                    .setQuantity(1)
-                    .setCurrencyId("UYU")
-                    .setUnitPrice(request.getAmount()))
-                .setBackUrls(new BackUrls()
-                    .setSuccess(baseUrl + "/success")
-                    .setPending(baseUrl + "/pending")
-                    .setFailure(baseUrl + "/failure"))
-                .setAutoReturn(AutoReturn.approved)
-                .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
+                    .setPayer(new Payer().setEmail("anonymous@movauy.com"))
+                    .appendItem(new Item()
+                            .setTitle("Servicio en el bar")
+                            .setQuantity(1)
+                            .setCurrencyId("UYU")
+                            .setUnitPrice(request.getAmount()))
+                    .setBackUrls(new BackUrls()
+                            .setSuccess(baseUrl + "/success")
+                            .setPending(baseUrl + "/pending")
+                            .setFailure(baseUrl + "/failure"))
+                    .setAutoReturn(AutoReturn.approved)
+                    .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
 
+            // 3) Guardar en MP y obtener JSON bruto
             pref.save();
+            String rawJson = pref.getLastApiResponse()
+                    .getJsonElementResponse()
+                    .toString();
+            log.debug("🎯 MP RAW JSON response:\n{}", rawJson);
 
-            // ——— LOG RAW JSON DE MP ———
-            String fullJson = mapper.writeValueAsString(pref);
-            log.debug("🎯 MP Preference RAW JSON:\n{}", fullJson);
-            // ————————————————————————
-
-            String initPoint         = pref.getInitPoint();
-            String sandboxInitPoint  = pref.getSandboxInitPoint();
+            // 4) Extraer init_point (o sandbox_init_point)
+            String initPoint = pref.getInitPoint();
+            String sandboxInitPoint = pref.getSandboxInitPoint();
             log.debug("▶︎ init_point='{}', sandbox_init_point='{}'", initPoint, sandboxInitPoint);
 
-            // fallback a sandbox si falta initPoint
             if (initPoint == null && sandboxInitPoint != null) {
                 log.warn("⚠️ init_point nulo, usando sandbox_init_point");
                 initPoint = sandboxInitPoint;
@@ -95,9 +97,10 @@ public class MercadoPagoController {
             if (initPoint == null) {
                 log.error("❌ Ni init_point ni sandbox_init_point recibidos de MP");
                 return ResponseEntity.status(500)
-                    .body(Map.of("error", "No se obtuvo init_point ni sandbox_init_point de MercadoPago"));
+                        .body(Map.of("error", "No se obtuvo init_point ni sandbox_init_point de MercadoPago"));
             }
 
+            // 5) Responder al frontend
             return ResponseEntity.ok(Map.of("init_point", initPoint));
 
         } catch (MPConfException e) {
@@ -116,8 +119,15 @@ public class MercadoPagoController {
     }
 
     public static class PaymentRequest {
+
         private Float amount;
-        public Float getAmount() { return amount; }
-        public void setAmount(Float amount) { this.amount = amount; }
+
+        public Float getAmount() {
+            return amount;
+        }
+
+        public void setAmount(Float amount) {
+            this.amount = amount;
+        }
     }
 }
