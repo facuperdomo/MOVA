@@ -70,6 +70,7 @@ public class SecurityConfig {
                 ).permitAll()
                 // Otros públicos
                 .requestMatchers(
+                        "/error",
                         "/error/**",
                         "/api/webhooks/mercadopago",
                         "/actuator/health",
