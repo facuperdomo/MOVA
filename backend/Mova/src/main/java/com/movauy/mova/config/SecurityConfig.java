@@ -4,15 +4,14 @@ import com.movauy.mova.Jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,83 +28,61 @@ public class SecurityConfig {
     private final AuthenticationProvider authProvider;
     private final BridgeTokenFilter bridgeTokenFilter;
 
-    /**
-     * 1) Ignorar por completo estos endpoints
-     */
     @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> web.ignoring()
-                .requestMatchers(
-                        new AntPathRequestMatcher("/ws/**"),
-                        new AntPathRequestMatcher("/ws-sockjs/**"),
-                        new AntPathRequestMatcher("/api/mercadopago/**"),
-                        new AntPathRequestMatcher("/api/webhooks/mercadopago")
-                );
-    }
-
-    /**
-     * 2) Filter‐chain principal
-     */
-    @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, e)
-                        -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
-                .accessDeniedHandler((req, res, e)
-                        -> res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
-                )
-                .authorizeHttpRequests(auth -> auth
-                // CORS preflight
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) ->
+                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
+                .accessDeniedHandler((req, res, e) ->
+                    res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
+            )
+            .authorizeHttpRequests(auth -> auth
+                // 1) Preflight CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Public Auth endpoints
+                // 2) Auth públicos
                 .requestMatchers(HttpMethod.POST,
-                        "/auth/loginUser",
-                        "/auth/loginCompany",
-                        "/auth/loginBranch",
-                        "/auth/refresh-token",
-                        "/auth/register"
+                    "/auth/loginUser",
+                    "/auth/loginCompany",
+                    "/auth/loginBranch",
+                    "/auth/refresh-token",
+                    "/auth/register"
                 ).permitAll()
-                // Otros públicos
+                // 3) Otros públicos
                 .requestMatchers(
-                        "/error",
-                        "/error/**",
-                        "/api/webhooks/mercadopago",
-                        "/actuator/health",
-                        "/actuator/info",
-                        "/api/branches"
+                    "/error/**",
+                    "/actuator/health",
+                    "/actuator/info",
+                    "/api/branches"
                 ).permitAll()
-                // Asegurarnos de no bloquear tampoco los WS/SockJS en HttpSecurity
+                // 4) WS y MP REST (el webhook ya lo capturó el filter‐chain 1)
                 .requestMatchers("/ws/**", "/ws-sockjs/**", "/api/mercadopago/**").permitAll()
-                // /auth/** requiere JWT
+                // 5) Resto de /auth/** necesita JWT
                 .requestMatchers("/auth/**").authenticated()
-                // Todo lo demás: JWT ó Bridge‐Token
+                // 6) Todo lo demás necesita JWT o Bridge‐Token
                 .anyRequest().authenticated()
-                )
-                .sessionManagement(sm
-                        -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .authenticationProvider(authProvider)
-                // filtros de seguridad
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
+            )
+            .sessionManagement(sm ->
+                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .authenticationProvider(authProvider)
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Configuración de CORS
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "https://movauy.top",
-                "https://www.movauy.top",
-                "https://movauy.top:8443"
+            "http://localhost:3000",
+            "https://movauy.top",
+            "https://www.movauy.top",
+            "https://movauy.top:8443"
         ));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
