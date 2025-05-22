@@ -11,6 +11,7 @@ import PaymentQR from "../paymentqr/PaymentQR";
 import { API_URL, WS_URL } from "../../config/apiConfig";
 import PrintButton from '../impression/PrintButton';
 import { printOrder } from "../../utils/print";
+import PaymentStatusNotifier from '../paymentqr/PaymentStatusNotifier';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -120,8 +121,6 @@ const Dashboard = () => {
             setLastSale(response);
             setCart([]);
             setTotal(0);
-            setShowPopup(false);
-            setShowQR(false);
 
             setIsPrinting(true);
             setPrintError(false);
@@ -133,6 +132,8 @@ const Dashboard = () => {
             } finally {
               setIsPrinting(false);
             }
+            setShowQR(false);
+            setShowPopup(false);
           } catch (err) {
             console.error("Error al guardar venta QR:", err);
             alert("Ocurrió un error guardando la venta QR.");
@@ -479,13 +480,9 @@ const Dashboard = () => {
       </div>
     );
 
-  const exampleOrder = {
-    id: 'ABC-123',
-    totalAmount: '199'
-  };
-
   return (
     <div className="app-container">
+
       {isAdmin && (
         <div className="dashboard-sidebar" onClick={() => navigate("/admin-options")}>
           <ArrowLeft size={40} className="back-icon" />
