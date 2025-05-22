@@ -1,3 +1,4 @@
+// src/main/java/com/movauy/mova/config/SecurityConfig.java
 package com.movauy.mova.config;
 
 import com.movauy.mova.Jwt.JwtAuthenticationFilter;
@@ -23,20 +24,20 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter        jwtAuthenticationFilter;
-    private final BridgeTokenFilter              bridgeTokenFilter;
-    private final AuthenticationProvider         authProvider;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final BridgeTokenFilter bridgeTokenFilter;
+    private final AuthenticationProvider authProvider;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 1) Nada de CSRF (usas token para todo)
+            // 1) Nada de CSRF
             .csrf(csrf -> csrf.disable())
 
             // 2) CORS general
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // 3) Manejo customizado de 401 / 403
+            // 3) 401/403 personalizados
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) ->
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
@@ -44,11 +45,12 @@ public class SecurityConfig {
                     res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
             )
 
-            // 4) Reglas de quién puede entrar donde
+            // 4) Reglas de acceso
             .authorizeHttpRequests(auth -> auth
-                // 4.1) CORS‐preflight
+                // 4.1) Preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // 4.2) Auth públicos
+
+                // 4.2) Login / register
                 .requestMatchers(HttpMethod.POST,
                     "/auth/loginUser",
                     "/auth/loginCompany",
@@ -56,19 +58,21 @@ public class SecurityConfig {
                     "/auth/refresh-token",
                     "/auth/register"
                 ).permitAll()
+
                 // 4.3) Otros públicos
                 .requestMatchers(
                     "/actuator/health",
                     "/actuator/info",
                     "/api/branches",
-                    // WebSockets y creación de preferencias MP
                     "/ws/**",
                     "/ws-sockjs/**",
                     "/api/mercadopago/**"
                 ).permitAll()
-                // 4.4) /auth/** con JWT
+
+                // 4.4) /auth/** sí requiere JWT
                 .requestMatchers("/auth/**").authenticated()
-                // 4.5) El resto requiere JWT o BridgeToken
+
+                // 4.5) Todo lo demás: JWT o Bridge‐Token
                 .anyRequest().authenticated()
             )
 
@@ -77,7 +81,7 @@ public class SecurityConfig {
                 sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // 6) Tus filtros / proveedores
+            // 6) Filtros y provider
             .authenticationProvider(authProvider)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
