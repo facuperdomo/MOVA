@@ -7,7 +7,7 @@ const PaymentStatusNotifier = () => {
   const [paymentStatus, setPaymentStatus] = useState('');
 
   useEffect(() => {
-    const socket = new SockJS(`${API_URL}/ws`); // O usa tu URL pública de ngrok
+    const socket = new SockJS(`${API_URL}/ws-sockjs`);
     const stompClient = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 5000,

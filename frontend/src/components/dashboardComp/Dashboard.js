@@ -75,68 +75,66 @@ const Dashboard = () => {
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
     if (offline) {
-      console.log("Offline: no inicializo STOMP/WebSocket");
+      console.log("Offline: no inicializo STOMP/SockJS");
       return;
     }
-    console.log("Iniciando STOMP sobre WebSocket a:", WS_URL);
-    const brokerURL = WS_URL.replace(/^http/, "ws") + "/ws";
+    console.log("Iniciando STOMP/SockJS a:", WS_URL);
+  
     const client = new Client({
-      brokerURL,
+      // 1) Creamos la conexión SockJS
+      webSocketFactory: () => new SockJS(`${WS_URL}/ws-sockjs`),
       reconnectDelay: 5000,
-      debug: (str) => console.log("STOMP DEBUG:", str),
+      debug: (str) => console.log("STOMP/SockJS DEBUG:", str),
     });
-
+  
     client.onConnect = () => {
-      client.subscribe(
-        "/topic/payment-status",
-        async (msg) => {
-          const raw = msg.body.toLowerCase();
-          if (!["approved", "rejected"].includes(raw)) return;
-          const translated = raw === "approved" ? "Aprobado" : "Rechazado";
-          setPaymentStatus(translated);
-
-          if (raw === "approved") {
-            const saleData = {
-              totalAmount: totalRef.current,
-              paymentMethod: "QR",
-              dateTime: new Date().toISOString(),
-              items: cartRef.current.map(item => ({
-                productId: item.id,
-                quantity: item.quantity,
-                unitPrice: item.price,
-                ingredientIds: item.ingredients?.map(i => i.id) ?? []
-              }))
-            };
-
-            try {
-              const response = await customFetch(
-                `${API_URL}/api/sales`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(saleData)
-                }
-              );
-              setLastSale(response);
-              setCart([]);
-              setTotal(0);
-              setShowPopup(false);
-              setShowQR(false);
-            } catch (err) {
-              console.error("Error al guardar venta QR:", err);
-              alert("Ocurrió un error guardando la venta QR.");
-            }
+      // 2) Nos suscribimos al topic de estado de pago
+      client.subscribe("/topic/payment-status", async (msg) => {
+        const raw = msg.body.toLowerCase();
+        if (!["approved", "rejected"].includes(raw)) return;
+  
+        const translated = raw === "approved" ? "Aprobado" : "Rechazado";
+        setPaymentStatus(translated);
+  
+        if (raw === "approved") {
+          const saleData = {
+            totalAmount: totalRef.current,
+            paymentMethod: "QR",
+            dateTime: new Date().toISOString(),
+            items: cartRef.current.map(item => ({
+              productId: item.id,
+              quantity: item.quantity,
+              unitPrice: item.price,
+              ingredientIds: item.ingredients?.map(i => i.id) ?? []
+            }))
+          };
+          try {
+            const response = await customFetch(
+              `${API_URL}/api/sales`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(saleData)
+              }
+            );
+            setLastSale(response);
+            setCart([]);
+            setTotal(0);
+            setShowPopup(false);
+            setShowQR(false);
+          } catch (err) {
+            console.error("Error al guardar venta QR:", err);
+            alert("Ocurrió un error guardando la venta QR.");
           }
-        },
-        { id: "payment-status-sub" }
-      );
+        }
+      }, { id: "payment-status-sub" });
     };
-
+  
     client.onStompError = frame => console.error("Error STOMP:", frame.body);
     client.activate();
+  
     return () => client.deactivate();
   }, [offline]);
-
 
   // Si se recibe un estado de pago, se oculta automáticamente después de 5 segundos
   useEffect(() => {
