@@ -30,6 +30,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOriginPatterns(
                     "http://localhost:3000",
                     "https://movauy.top",
+                    "https://movauy.top:8443", 
                     "https://www.movauy.top"
                 )
                 .withSockJS();
