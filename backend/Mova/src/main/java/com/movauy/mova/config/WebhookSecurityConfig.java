@@ -9,17 +9,26 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class WebhookSecurityConfig {
 
+    /**
+     * Este filter‐chain se evalúa primero (Order(1)). 
+     * Sólo afecta a /api/webhooks/mercadopago/** y lo deja 100% libre de seguridad.
+     */
     @Bean
     @Order(1)
     public SecurityFilterChain webhookFilterChain(HttpSecurity http) throws Exception {
         http
-          // Solo matchea este path y lo deja libre de filtros
-          .securityMatcher("/api/webhooks/mercadopago")
+          // 1) Sólo matchea TODO lo que empiece con /api/webhooks/mercadopago/
+          .securityMatcher("/api/webhooks/mercadopago/**")
+
+          // 2) Deshabilitamos CSRF y CORS aquí (no queremos que nos metas cabeceras extrañas)
           .csrf(csrf -> csrf.disable())
           .cors(cors -> cors.disable())
-          .authorizeHttpRequests(auth -> auth
+
+          // 3) Y finalmente: PERMIT ALL
+          .authorizeHttpRequests(a -> a
               .anyRequest().permitAll()
           );
+
         return http.build();
     }
 }

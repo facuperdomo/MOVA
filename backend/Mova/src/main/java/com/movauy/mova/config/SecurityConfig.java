@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -17,36 +16,27 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final AuthenticationProvider authProvider;
-    private final BridgeTokenFilter bridgeTokenFilter;
-
-    /**
-     * Excluye del filter chain tu webhook y el dispatcher de /error
-     */
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> web.ignoring()
-            .requestMatchers("/api/webhooks/mercadopago")
-            .requestMatchers("/error", "/error/**");
-    }
+    private final JwtAuthenticationFilter        jwtAuthenticationFilter;
+    private final BridgeTokenFilter              bridgeTokenFilter;
+    private final AuthenticationProvider         authProvider;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 1) CSRF deshabilitado (porque usas tokens)
+            // 1) Nada de CSRF (usas token para todo)
             .csrf(csrf -> csrf.disable())
 
-            // 2) CORS aplicado sólo aquí
+            // 2) CORS general
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // 3) Manejo de errores personalizado (401 / 403)
+            // 3) Manejo customizado de 401 / 403
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((req, res, e) ->
                     res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
@@ -54,15 +44,11 @@ public class SecurityConfig {
                     res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
             )
 
-            // 4) Reglas de acceso
+            // 4) Reglas de quién puede entrar donde
             .authorizeHttpRequests(auth -> auth
-                // 4.1) CORS preflight
+                // 4.1) CORS‐preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                // 4.2) Tu webhook (ya ignorado por WebSecurityCustomizer) 
-                //      y el dispatcher de errores también (ignored)
-
-                // 4.3) Endpoints públicos de autenticación
+                // 4.2) Auth públicos
                 .requestMatchers(HttpMethod.POST,
                     "/auth/loginUser",
                     "/auth/loginCompany",
@@ -70,45 +56,35 @@ public class SecurityConfig {
                     "/auth/refresh-token",
                     "/auth/register"
                 ).permitAll()
-
-                // 4.4) Otros públicos
+                // 4.3) Otros públicos
                 .requestMatchers(
                     "/actuator/health",
                     "/actuator/info",
-                    "/api/branches"
-                ).permitAll()
-
-                // 4.5) WebSocket/SockJS y creación de preference MP
-                .requestMatchers(
+                    "/api/branches",
+                    // WebSockets y creación de preferencias MP
                     "/ws/**",
                     "/ws-sockjs/**",
                     "/api/mercadopago/**"
                 ).permitAll()
-
-                // 4.6) `/auth/**` sí requiere JWT
+                // 4.4) /auth/** con JWT
                 .requestMatchers("/auth/**").authenticated()
-
-                // 4.7) El resto (API privadas) requieren JWT o Bridge‐Token
+                // 4.5) El resto requiere JWT o BridgeToken
                 .anyRequest().authenticated()
             )
 
-            // 5) Stateless session
+            // 5) Stateless
             .sessionManagement(sm ->
                 sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // 6) Tus proveedores / filtros
+            // 6) Tus filtros / proveedores
             .authenticationProvider(authProvider)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class)
-        ;
+            .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Configuración de CORS global
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
@@ -122,8 +98,8 @@ public class SecurityConfig {
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cfg);
-        return source;
+        UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
+        src.registerCorsConfiguration("/**", cfg);
+        return src;
     }
 }
