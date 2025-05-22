@@ -50,19 +50,19 @@ public class MercadoPagoController {
     ) {
         log.info("🔔 createPreference invoked for branchId={} amount={}", branchId, request.getAmount());
 
-        // 1) Validar sucursal
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
-
         String accessToken = branch.getMercadoPagoAccessToken();
         if (accessToken == null || accessToken.isBlank()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(Map.of("error", "La sucursal no tiene configurado un Access Token de MercadoPago"));
+            log.warn("🛑 No hay MP accessToken para branchId={}", branchId);
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "La sucursal no tiene configurado un Access Token"));
         }
 
         try {
+            // seteamos el token de MP
             MercadoPago.SDK.setAccessToken(accessToken);
+            log.debug("🔑 MP SDK configurado con token de sucursal");
 
             Preference pref = new Preference()
                     .setPayer(new Payer().setEmail("anonymous@movauy.com"))
@@ -77,35 +77,36 @@ public class MercadoPagoController {
                             .setFailure(baseUrl + "/failure"))
                     .setAutoReturn(AutoReturn.approved)
                     .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
-
             pref.save();
-            
-            String initPoint = pref.getInitPoint();
+
+            log.debug("🔔 Preference saved: id={} init_point={} sandbox_init_point={}",
+                    pref.getId(), pref.getInitPoint(), pref.getSandboxInitPoint());
+
+            // fallback a sandbox
+            String initPoint = pref.getInitPoint() != null
+                    ? pref.getInitPoint()
+                    : pref.getSandboxInitPoint();
+
             if (initPoint == null) {
-                Map<String, Object> err = new HashMap<>();
-                err.put("error", "No se obtuvo init_point de MercadoPago");
-                return ResponseEntity.status(500).body(err);
+                log.error("❌ Ni init_point ni sandbox_init_point vinieron en la respuesta de MP");
+                return ResponseEntity.status(500)
+                        .body(Map.of("error", "No se obtuvo init_point de MercadoPago"));
             }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("init_point", initPoint);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(Map.of("init_point", initPoint));
 
         } catch (MPConfException e) {
-            log.error("❌ Error de configuración de MercadoPago: {}", e.getMessage(), e);
-            return ResponseEntity
-                    .status(500)
-                    .body(Map.of("error", "Error de configuración de MercadoPago: " + e.getMessage()));
+            log.error("❌ MPConfException: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error",
+                    "Error de configuración de MercadoPago: " + e.getMessage()));
         } catch (MPException e) {
-            log.error("❌ MPException al crear preferencia: {}", e.getMessage(), e);
-            return ResponseEntity
-                    .status(500)
-                    .body(Map.of("error", "Error al crear preferencia: " + e.getMessage()));
+            log.error("❌ MPException: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error",
+                    "Error al crear preferencia: " + e.getMessage()));
         } catch (Exception e) {
-            log.error("❌ Excepción inesperada al crear preferencia: {}", e.getMessage(), e);
-            return ResponseEntity
-                    .status(500)
-                    .body(Map.of("error", "Error inesperado: " + e.getMessage()));
+            log.error("❌ Excepción inesperada: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error",
+                    "Error inesperado: " + e.getMessage()));
         }
     }
 
