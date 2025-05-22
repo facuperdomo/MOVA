@@ -4,22 +4,21 @@ import com.movauy.mova.Jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
-import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -31,72 +30,85 @@ public class SecurityConfig {
     private final BridgeTokenFilter bridgeTokenFilter;
 
     /**
-     * <-- Aquí indicamos a Spring Security que IGNORE completamente
-     *     estas rutas de WebSocket/SockJS, ni siquiera pasarán por el filter‐chain.
+     * 1) Ignorar por completo estos endpoints
      */
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return web -> web.ignoring()
             .requestMatchers(
                 new AntPathRequestMatcher("/ws/**"),
-                new AntPathRequestMatcher("/ws-sockjs/**")
+                new AntPathRequestMatcher("/ws-sockjs/**"),
+                new AntPathRequestMatcher("/api/mercadopago/**")
             );
     }
 
+    /**
+     * 2) Filter‐chain principal
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .exceptionHandling(ex -> ex
-                .authenticationEntryPoint((req, res, e)
-                    -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
-                .accessDeniedHandler((req, res, e)
-                    -> res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
+                .authenticationEntryPoint((req, res, e) ->
+                    res.sendError(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
+                .accessDeniedHandler((req, res, e) ->
+                    res.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage()))
             )
             .authorizeHttpRequests(auth -> auth
-                // 1) Preflight CORS
+                // CORS preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // 2) Endpoints públicos de auth
+
+                // Public Auth endpoints
                 .requestMatchers(HttpMethod.POST,
                     "/auth/loginUser",
                     "/auth/loginCompany",
                     "/auth/loginBranch",
-                    "/auth/refresh-token"
+                    "/auth/refresh-token",
+                    "/auth/register"
                 ).permitAll()
-                // 3) Registrar usuario
-                .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
-                // 4) Otros públicos
+
+                // Otros públicos
                 .requestMatchers(
                     "/error/**",
-                    "/api/mercadopago/**",
                     "/api/webhooks/mercadopago",
                     "/actuator/health",
                     "/actuator/info",
                     "/api/branches"
                 ).permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/print/jobs/next").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/print/jobs/*/ack").permitAll()
-                // 5) Rutas de /auth/** deben llevar JWT
+
+                // Asegurarnos de no bloquear tampoco los WS/SockJS en HttpSecurity
+                .requestMatchers("/ws/**", "/ws-sockjs/**", "/api/mercadopago/**").permitAll()
+
+                // /auth/** requiere JWT
                 .requestMatchers("/auth/**").authenticated()
-                // 6) Todo lo demás requiere Bridge‐Token o JWT
+
+                // Todo lo demás: JWT ó Bridge‐Token
                 .anyRequest().authenticated()
             )
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(sm ->
+                sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
             .authenticationProvider(authProvider)
-            // Insertamos los filtros de JWT y Bridge‐Token
+            // filtros de seguridad
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class);
+            .addFilterBefore(bridgeTokenFilter, JwtAuthenticationFilter.class)
+        ;
 
         return http.build();
     }
 
+    /**
+     * Configuración de CORS
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of(
             "http://localhost:3000",
             "https://movauy.top",
+            "https://www.movauy.top",
             "https://movauy.top:8443"
         ));
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
