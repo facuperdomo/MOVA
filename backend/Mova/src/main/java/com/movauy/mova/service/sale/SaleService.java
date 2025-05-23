@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
 @Service
@@ -125,7 +126,7 @@ public class SaleService {
                             .stream()
                             .map(link -> link.getIngredientId())
                             .collect(Collectors.toList());
-                    return new SaleItemResponseDTO(                           
+                    return new SaleItemResponseDTO(
                             si.getProduct().getId(),
                             si.getProduct().getName(),
                             si.getQuantity(),
@@ -192,7 +193,7 @@ public class SaleService {
 
     public SaleResponseDTO getById(Long saleId) {
         Sale sale = saleRepository.findById(saleId)
-            .orElseThrow(() -> new RuntimeException("Venta no encontrada: " + saleId));
+                .orElseThrow(() -> new RuntimeException("Venta no encontrada: " + saleId));
         return toResponseDTO(sale);
     }
 }

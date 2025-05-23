@@ -1,41 +1,53 @@
-/* src/components/paymentqr/PaymentQR.css */
 .payment-qr-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    background-color: #222;
-    border-radius: 16px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    margin: 20px;
-  }
-  
-  .loading-message {
-    font-size: 20px;
-    color: #ccc;
-    margin: 20px;
-  }
-  
-  .qr-content {
-    text-align: center;
-  }
-  
-  .qr-instruction {
-    font-size: 22px;
-    margin-bottom: 20px;
-    color: #ffcc00;
-  }
-  
-  .qr-canvas {
-    border: 5px solid #007bff;
-    border-radius: 12px;
-    padding: 10px;
-    background-color: #fff;
-  }
-  
-  .error-message {
-    font-size: 18px;
-    color: red;
-  }
-  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* menos padding para no forzar scroll */
+  padding: 10px;
+  background-color: #222;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  /* quitamos margin para que ocupe todo el ancho del modal */
+  margin: 0;
+  max-width: 100%; /* no exceder el ancho del popup-content */
+}
+
+/* Mensajes de carga o error compactos */
+.loading-message,
+.error-message {
+  font-size: 0.9rem;
+  margin: 10px 0;
+}
+
+/* Contenido del QR */
+.qr-content {
+  text-align: center;
+  /* no dejar que crezca demasiado */
+  max-width: 100%;
+}
+
+/* Borde y tamaño del canvas más pequeño */
+.qr-canvas {
+  border: 3px solid #007bff;
+  border-radius: 8px;
+  padding: 6px;
+  background-color: #fff;
+  width: 100% !important;
+  max-width: 180px;
+  height: auto !important;
+}
+
+/* Etiqueta de monto más discreta */
+.amount-label {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-top: 8px;
+}
+
+/* Reduce el tamaño del título sólo dentro del modal QR */
+.popup-content .qr-popup-container .qr-popup-title {
+  font-size: 18px;       /* o el tamaño que prefieras, p.ej. 12px */
+  line-height: 1.2;      /* para mantener buena legibilidad */
+  margin-bottom: 12px;   /* ajusta el espacio si lo necesitas */
+}

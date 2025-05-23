@@ -49,7 +49,7 @@ const KitchenDashboard = () => {
 
       // 3) Conecta al WS
       const token = localStorage.getItem('token');
-      const socketUrl = `${WS_URL.replace(/\/$/, "")}/ws?token=${token}`;
+      const socketUrl = `${WS_URL.replace(/\/$/, "")}/ws-sockjs?token=${token}`;
       const socket = new SockJS(socketUrl);
       stompClient = new Client({
         webSocketFactory: () => socket,

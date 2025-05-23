@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './loginCompanyStyle.css';
 import { API_URL } from '../../config/apiConfig';
+import logo from '../../assets/logo-login.png';
 
 export default function LoginCompany() {
   const [username, setUsername] = useState('');
@@ -64,6 +65,7 @@ export default function LoginCompany() {
 
   return (
     <div className='login-form'>
+      <img src={logo} alt="Logo" className="logo-login" />
       <form id='containerLoginForm'>
         <label id='login'>Ingresar Empresa</label>
         <input 

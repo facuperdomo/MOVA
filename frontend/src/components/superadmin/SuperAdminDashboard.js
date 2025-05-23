@@ -980,8 +980,9 @@ const SuperAdminDashboard = () => {
                             onChange={handleChange}
                         />
                         <select name="role" value={userForm.role} onChange={handleChange}>
-                            <option value="USER">USER</option>
-                            <option value="ADMIN">ADMIN</option>
+                            <option value="USER">Usuario</option>
+                            <option value="ADMIN">Administrador</option>
+                            <option value="KITCHEN">Cocina</option>
                         </select>
                         <div className="popup-buttons">
                             <button className="popup-btn popup-btn-save" onClick={submitUser}>

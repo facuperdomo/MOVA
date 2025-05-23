@@ -58,7 +58,7 @@ const PaymentQR = ({ amount }) => {
 
       {!loading && !errorMessage && qrUrl && (
         <div className="qr-content">
-          <QRCodeCanvas className="qr-canvas" value={qrUrl} size={256} />
+          <QRCodeCanvas className="qr-canvas" value={qrUrl} size={200} />
           <p className="amount-label">Total a pagar: ${amount}</p>
         </div>
       )}

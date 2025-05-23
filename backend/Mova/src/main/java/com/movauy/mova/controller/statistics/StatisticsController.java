@@ -1,10 +1,13 @@
 package com.movauy.mova.controller.statistics;
 
 import com.movauy.mova.dto.CompanyStatisticsDTO;
+import com.movauy.mova.dto.SaleResponseDTO;
+import com.movauy.mova.service.sale.SaleService;
 import com.movauy.mova.service.statistics.StatisticsService;
 import com.movauy.mova.service.user.AuthService;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +24,7 @@ public class StatisticsController {
 
     private final StatisticsService statisticsService;
     private final AuthService authService;
+    private final SaleService saleService;
 
     /**
      * Devuelve estadísticas de ventas filtradas por día, semana, mes o año. Se
@@ -120,5 +124,14 @@ public class StatisticsController {
             @RequestParam(required = false) String endDate
     ) {
         return statisticsService.getTopSellingProductsByBranch(branchId, filter, startDate, endDate);
+    }
+
+    @GetMapping("/sales/{id}")
+    public ResponseEntity<?> getSaleById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(saleService.getById(id));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

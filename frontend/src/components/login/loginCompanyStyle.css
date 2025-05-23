@@ -124,3 +124,10 @@ input:focus {
     border: 2px solid #aaa;
     background-color: #fff;
 }
+
+.logo-login {
+    max-width: 35%;
+    height: auto;
+    margin-bottom: 10px;
+    margin-top: 10px;
+}

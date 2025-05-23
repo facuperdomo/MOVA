@@ -8,6 +8,7 @@ import { customFetch } from "../../utils/api";
 import "./statisticsStyle.css";
 import { API_URL } from '../../config/apiConfig';
 import { exportStatisticsToExcel } from "../../utils/exportStatisticsExcel";
+import { printOrder } from "../../utils/print";
 
 Chart.register(...registerables);
 
@@ -26,6 +27,8 @@ const Statistics = () => {
   const [saleToCancel, setSaleToCancel] = useState(null);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [saleDetail, setSaleDetail] = useState(null);
 
   useEffect(() => {
     if (!customStart && !customEnd) {
@@ -42,7 +45,7 @@ const Statistics = () => {
       if (selectedOption === "top-products") fetchTopProducts();
       if (selectedOption === "cash-register") fetchCashRegisterHistory();
     }
-  
+
     // Si alguna está vacía, limpiar los datos para no mantener anteriores
     if ((customStart && !customEnd) || (!customStart && customEnd)) {
       setSalesData([]);
@@ -200,6 +203,25 @@ const Statistics = () => {
     }
   };
 
+  const handleViewDetail = async (sale) => {
+    try {
+      const response = await customFetch(`/api/statistics/sales/${sale.id}`); // endpoint que devuelva Sale con sus items
+      setSaleDetail(response);
+      setShowDetailModal(true);
+    } catch (err) {
+      console.error("Error al obtener detalle de venta", err);
+    }
+  };
+
+  const groupedItems = saleDetail?.items?.reduce((acc, item) => {
+    const key = item.productId;
+    if (!acc[key]) {
+      acc[key] = { ...item, quantity: 0 };
+    }
+    acc[key].quantity += item.quantity;
+    return acc;
+  }, {});
+
   return (
     <div className="statistics-page">
       <nav className="sidebar">
@@ -212,7 +234,7 @@ const Statistics = () => {
           <li className={selectedOption === "cash-register" ? "active" : ""} onClick={() => setSelectedOption("cash-register")}>💰</li>
         </ul>
       </nav>
-  
+
       <div className="statistics-content">
         <div className="filter-container">
           <div className="custom-date-filters">
@@ -249,16 +271,16 @@ const Statistics = () => {
             </button>
           ))}
         </div>
-  
+
         {error && <div className="error-message">{error}</div>}
-  
+
         <button
           className="floating-export-btn"
           onClick={() => exportStatisticsToExcel({ sales: salesData, topProducts, history: cashRegisterHistory })}
         >
           <Download size={20} /> Exportar
         </button>
-  
+
         {selectedOption === "sales" && (
           <>
             {salesData.length === 0 && !loading && (
@@ -286,6 +308,7 @@ const Statistics = () => {
                       {sale.estado !== "CANCELADA" && (
                         <button className="cancel-button" onClick={() => handleCancelSale(sale)}>❌ Cancelar</button>
                       )}
+                      <button className="info-button" onClick={() => handleViewDetail(sale)}>📄 Info</button>
                     </td>
                   </tr>
                 ))}
@@ -293,7 +316,7 @@ const Statistics = () => {
             </table>
           </>
         )}
-  
+
         {selectedOption === "top-products" && (
           <>
             {topProducts.length === 0 && !loading && (
@@ -304,7 +327,7 @@ const Statistics = () => {
             </div>
           </>
         )}
-  
+
         {selectedOption === "cash-register" && (
           <>
             {cashRegisterHistory.length === 0 && !loading && (
@@ -344,7 +367,7 @@ const Statistics = () => {
             </table>
           </>
         )}
-  
+
         {showPopup && (
           <div className="popup-overlay">
             <div className="popup-content">
@@ -359,10 +382,48 @@ const Statistics = () => {
             </div>
           </div>
         )}
+
+        {showDetailModal && (
+          <div className="popup-overlay">
+            <div className="popup-content">
+              <X className="popup-close" size={32} onClick={() => setShowDetailModal(false)} />
+              <h2>Detalle de Venta</h2>
+              <p><strong>Fecha:</strong> {formatDate(saleDetail?.dateTime)}</p>
+              <p><strong>Total:</strong> ${saleDetail?.totalAmount}</p>
+              <p><strong>Estado:</strong> {saleDetail?.estado}</p>
+
+              <table className="popup-sale-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.values(groupedItems || {}).map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.name}</td>
+                      <td>{item.quantity}</td>
+                      <td>${(item.unitPrice * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <button
+                className="popup-btn"
+                onClick={() => printOrder(saleDetail)}
+              >
+                🖨️ Imprimir
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-  
+
 };
 
 export default Statistics;
