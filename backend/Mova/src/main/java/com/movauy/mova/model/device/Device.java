@@ -32,7 +32,4 @@ public class Device {
     @OneToMany(mappedBy = "device", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("device-printers")
     private List<Printer> printers = new ArrayList<>();
-
-    @Column(unique = true, nullable = false)
-    private String uuid;
 }
