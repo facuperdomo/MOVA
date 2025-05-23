@@ -143,6 +143,20 @@ const Statistics = () => {
     return dateString.replace("T", " ").replace(/-/g, "/");
   };
 
+  const formatFullDateTime = (isoString) => {
+    if (!isoString) return "Fecha no disponible";
+    const date = new Date(isoString);
+    return date.toLocaleString("es-ES", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  };
+
+  
   // Datos para gráfico de ventas activas
   const salesChartData = {
     labels: salesData
@@ -388,7 +402,7 @@ const Statistics = () => {
             <div className="popup-content">
               <X className="popup-close" size={32} onClick={() => setShowDetailModal(false)} />
               <h2>Detalle de Venta</h2>
-              <p><strong>Fecha:</strong> {formatDate(saleDetail?.dateTime)}</p>
+              <p><strong>Fecha:</strong> {formatFullDateTime(saleDetail?.dateTime)}</p>
               <p><strong>Total:</strong> ${saleDetail?.totalAmount}</p>
               <p><strong>Estado:</strong> {saleDetail?.estado}</p>
 

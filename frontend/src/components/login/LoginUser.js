@@ -3,6 +3,7 @@ import './loginUserStyle.css';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../config/apiConfig';
 import { customFetch } from '../../utils/api';
+import logo from '../../assets/logo-login.png';
 
 export default function LoginUser() {
   const [username, setUsername] = useState('');
@@ -90,6 +91,7 @@ export default function LoginUser() {
 
   return (
     <div className='login-form'>
+      <img src={logo} alt="Logo" className="logo-login" />
       <form id='containerLoginForm'>
         <label id='login'>Ingresar Usuario</label>
         <input

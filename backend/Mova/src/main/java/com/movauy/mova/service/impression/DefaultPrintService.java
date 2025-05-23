@@ -8,6 +8,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class DefaultPrintService implements PrintService {
@@ -35,9 +37,13 @@ public class DefaultPrintService implements PrintService {
         out.write(new byte[]{0x1B, 'a', 0x00});     // left
 
         // 4) Datos de sucursal, fecha/hora, ticket
-        String[] parts = o.getDateTime().split("T");
-        String datePart = parts[0];
-        String timePart = parts.length > 1 ? parts[1] : "";
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+        LocalDateTime dateTime = LocalDateTime.parse(o.getDateTime()); // asegúrate que sea ISO-8601
+        String datePart = dateTime.format(dateFormatter);
+        String timePart = dateTime.format(timeFormatter);
+        
         out.write(("Sucursal: " + o.getBranchName() + "\n").getBytes("CP850"));
         out.write(("Hora:     " + timePart + "\n").getBytes("CP850"));
         out.write(("Fecha:    " + datePart + "\n").getBytes("CP850"));

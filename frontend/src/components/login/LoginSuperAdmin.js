@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../../config/apiConfig';
 import './loginUserStyle.css';
+import logo from '../../assets/logo-login.png';
 
 const LoginSuperAdmin = () => {
   const [username, setUsername] = useState('');
@@ -39,6 +40,7 @@ const LoginSuperAdmin = () => {
 
   return (
     <div className="login-form">
+      <img src={logo} alt="Logo" className="logo-login" />
       <form id="containerLoginForm">
         <label id="login">Login SuperAdmin</label>
         <input

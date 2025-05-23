@@ -12,5 +12,4 @@ public class DeviceDTO {
   private String name;
   private String bridgeUrl;
   private Long branchId;
-  private String uuid;
 }
