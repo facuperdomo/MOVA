@@ -145,7 +145,7 @@ public class AccountController {
     }
 
     // ——— Pago parcial (split) + recibo ———
-    @PostMapping("/{id}/payments")
+    @PostMapping("/{id}/payments/split")
     public ResponseEntity<OrderDTO> payPartial(
             @PathVariable Long id,
             @RequestBody PaymentRequestDTO body
