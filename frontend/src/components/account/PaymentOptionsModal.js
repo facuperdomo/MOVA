@@ -116,7 +116,7 @@ export default function PaymentOptionsModal({
     const handlePartialPay = async () => {
         // 1) Envía el pago parcial y recibe un OrderDTO del backend
         const orderDTO = await customFetch(
-            `${API_URL}/api/accounts/${accountId}/payments`,
+            `${API_URL}/api/accounts/${accountId}/payments/split`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -224,7 +224,7 @@ export default function PaymentOptionsModal({
     // —————————————————————————————————————————————————————————————————————
     const cancelCloseAccount = async () => {
         try {
-            await customFetch(`${API_URL}/api/accounts/${accountId}/payments`, {
+            await customFetch(`${API_URL}/api/accounts/${accountId}/payments/split`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–" }),
