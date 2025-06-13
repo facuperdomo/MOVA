@@ -135,7 +135,7 @@ public class AccountController {
     }
 
     // ——— Pago de productos sueltos + recibo ———
-    @PostMapping("/{id}/payments/items")
+    @PostMapping("/{id}/payments/items/receipt")
     public ResponseEntity<OrderDTO> payItems(
             @PathVariable Long id,
             @RequestBody PayItemsRequestDTO body

@@ -164,7 +164,7 @@ export default function PaymentOptionsModal({
 
             // 2) Envía el pago por productos sueltos y recibe un OrderDTO
             const orderDTO = await customFetch(
-                `${API_URL}/api/accounts/${accountId}/payments/items`,
+                `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
