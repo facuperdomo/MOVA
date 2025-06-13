@@ -10,10 +10,14 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class DefaultPrintService implements PrintService {
 
+    private final PrinterGateway gateway;
+    
     @Override
     public byte[] buildEscPosTicket(OrderDTO o) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -43,7 +47,7 @@ public class DefaultPrintService implements PrintService {
         LocalDateTime dateTime = LocalDateTime.parse(o.getDateTime()); // asegúrate que sea ISO-8601
         String datePart = dateTime.format(dateFormatter);
         String timePart = dateTime.format(timeFormatter);
-        
+
         out.write(("Sucursal: " + o.getBranchName() + "\n").getBytes("CP850"));
         out.write(("Hora:     " + timePart + "\n").getBytes("CP850"));
         out.write(("Fecha:    " + datePart + "\n").getBytes("CP850"));
@@ -85,5 +89,15 @@ public class DefaultPrintService implements PrintService {
         out.write(new byte[]{0x1D, 'V', 1});
 
         return out.toByteArray();
+    }
+
+    @Override
+    public void printOrderDTO(OrderDTO o, String branchId, String printerId) {
+        try {
+            byte[] payload = buildEscPosTicket(o);
+            gateway.send(branchId, printerId, payload);
+        } catch (IOException e) {
+            throw new RuntimeException("Error generando ticket ESC/POS", e);
+        }
     }
 }

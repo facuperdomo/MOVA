@@ -4,7 +4,7 @@ import { customFetch } from "../../utils/api";
 import { API_URL } from "../../config/apiConfig";
 import "./paymentQRStyle.css";
 
-const PaymentQR = ({ amount }) => {
+const PaymentQR = ({ amount, onPaymentSuccess }) => {
   const [qrUrl, setQrUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -60,6 +60,14 @@ const PaymentQR = ({ amount }) => {
         <div className="qr-content">
           <QRCodeCanvas className="qr-canvas" value={qrUrl} size={200} />
           <p className="amount-label">Total a pagar: ${amount}</p>
+          {onPaymentSuccess && (
+            <button
+              className="confirm-payment-btn"
+              onClick={onPaymentSuccess}
+            >
+              ✅ Ya pagué
+            </button>
+          )}
         </div>
       )}
     </div>

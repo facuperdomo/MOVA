@@ -35,34 +35,37 @@ export async function printOrder(order, printerId = null) {
   }
 }
 
-export const printPartialOrder = async ({ items, amount, payerName }) => {
-  // construye un objeto parecido a SaleDTO, pero marca como “pago parcial”
-  const fakeSale = {
-    dateTime: new Date().toISOString(),
-    totalAmount: amount,
-    items: items.map(i => ({
-      productId:   i.productId,
-      quantity:    i.quantity,
-      unitPrice:   i.price,
-      subTotal:    (i.price * i.quantity),
-      paidPartial: true
-    })),
-    metadata: { payerName, partial: true }
-  };
-  return printOrder(fakeSale);
-};
+/**
+ * Imprime **solo** los items que vengan en el OrderDTO (payload completo)
+ * usando el endpoint /api/print/direct/receipt/items.
+ */
+export async function printItemsReceipt(orderDto, printerId = null) {
+  const token    = localStorage.getItem("token");
+  const branchId = localStorage.getItem("branchId");
+  if (!branchId) {
+    throw new Error("No se encontró el branchId en localStorage");
+  }
 
-export const printProductOrder = async ({ items, amount, payerName }) => {
-  const fakeSale = {
-    dateTime: new Date().toISOString(),
-    totalAmount: amount,
-    items: items.map(i => ({
-      productId: i.id,
-      quantity:  i.quantity,
-      unitPrice: i.price,
-      subTotal:  i.price * i.quantity
-    })),
-    metadata: { payerName, productOnly: true }
+  const headers = {
+    "Content-Type":  "application/json",
+    "Authorization": `Bearer ${token}`,
+    "X-Branch-Id":   branchId
   };
-  return printOrder(fakeSale);
-};
+  if (printerId) {
+    headers["X-Printer-Id"] = printerId;
+  }
+
+  const resp = await fetch(
+    `${API_URL}/api/print/direct/receipt/items`,
+    {
+      method:  "POST",
+      headers,
+      body:    JSON.stringify(orderDto)
+    }
+  );
+
+  if (!resp.ok) {
+    const texto = await resp.text();
+    throw new Error(`Error ${resp.status}: ${texto}`);
+  }
+}

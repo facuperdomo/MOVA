@@ -119,4 +119,14 @@ public class PrintController {
         log.info("Impresión delegada en total {} ms", t2 - t0);
         return ResponseEntity.accepted().build();
     }
+    
+    /** Imprime un recibo **solo** con los items que vienen en el DTO */
+    @PostMapping("/receipt/items")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void printItemsReceipt(@RequestBody OrderDTO dto,
+                                  @RequestHeader("X-Branch-Id") String branchId,
+                                  @RequestHeader(value="X-Printer-Id", required=false) String printerId) {
+        // aquí tu lógica interna de formateo ESC/POS usando dto.getItems(), dto.getTotalAmount(), dto.getMetadata()
+        printService.printOrderDTO(dto, branchId, printerId);
+    }
 }

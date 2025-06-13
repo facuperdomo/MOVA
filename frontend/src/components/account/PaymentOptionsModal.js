@@ -144,15 +144,16 @@ export default function PaymentOptionsModal({
     //    - Si step === “products” → enviamos array de `itemIds` seleccionados.
     //    - Si step === “split” → enviamos sólo el monto parcial.
     // —————————————————————————————————————————————————————————————————————
-    const handlePay = async (method) => {
+    const handlePay = async () => {
+        // — Paso “Pagar toda la cuenta” muestra el confirm —
         if (step === "full") {
             setShowCloseConfirm(true);
             return;
         }
 
-        // — Pagar productos sueltos —
+        // — Paso “Pagar productos sueltos” —
         if (step === "products") {
-            // 1) Prepara lista de IDs a pagar
+            // 1) Lista de IDs a pagar
             const itemIdsToPay = selectedItems
                 .map(idx => flatItems[idx]?.id)
                 .filter(id => id != null);
@@ -162,24 +163,39 @@ export default function PaymentOptionsModal({
                 return;
             }
 
-            // 2) Envía el pago por productos sueltos y recibe un OrderDTO
-            const orderDTO = await customFetch(
-                `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ itemIds: itemIdsToPay, payerName: payerName || "–" }),
-                }
-            );
+            try {
+                console.log("▶ handlePay (products): enviando IDs", itemIdsToPay);
 
-            // 3) Imprime ese OrderDTO
-            await onPrint({ type: 'PRODUCT_PAYMENT', payload: orderDTO });
+                // 2) Llamada al endpoint que devuelve un OrderDTO
+                const orderDTO = await customFetch(
+                    `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            itemIds: itemIdsToPay,
+                            payerName: payerName || "–"
+                        }),
+                    }
+                );
+                console.log("✅ handlePay: OrderDTO recibido:", orderDTO);
 
-            // 4) Actualiza la UI
-            onPaidWithoutClose();
-            onClose();
+                // 3) Imprimir sólo los ítems que pagaste
+                await onPrint({ type: 'PRODUCT_PAYMENT', payload: orderDTO });
+                console.log("✅ handlePay: impresión completada");
+
+                // 4) Actualizar UI y cerrar modal
+                onPaidWithoutClose();
+                onClose();
+            } catch (err) {
+                console.error("❌ handlePay (products) error:", err);
+                alert("Ocurrió un error al registrar el pago de productos.");
+            }
+
             return;
         }
+
+        // Si algún día agregas otro paso (QR, split, etc.), lo gestionas aquí…
     };
 
     // —————————————————————————————————————————————————————————————————————
@@ -432,7 +448,10 @@ export default function PaymentOptionsModal({
                                 </>
                             );
                         })() : (
-                            <PaymentQR amount={amountToPay} />
+                            <PaymentQR
+                                amount={amountToPay}
+                                onPaymentSuccess={() => handlePay()}
+                            />
                         )}
                     </>
                 )}
