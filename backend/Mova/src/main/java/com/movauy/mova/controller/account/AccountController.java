@@ -65,15 +65,6 @@ public class AccountController {
         return ResponseEntity.noContent().build();
     }
 
-    @PutMapping("/{id}/close")
-    public ResponseEntity<SaleDTO> closeAccount(
-            @PathVariable Long id,
-            @RequestHeader("Authorization") String rawToken
-    ) {
-        SaleDTO saleDto = accountService.closeAccount(id, rawToken);
-        return ResponseEntity.ok(saleDto);
-    }
-
     /**
      * Borra un item de cuenta por su ID
      */
