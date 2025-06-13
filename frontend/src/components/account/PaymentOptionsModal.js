@@ -188,30 +188,40 @@ export default function PaymentOptionsModal({
     // —————————————————————————————————————————————————————————————————————
     const confirmCloseAccount = async () => {
         try {
-            // 1) Envía el último pago parcial (si aplica)
-            await customFetch(
-                `${API_URL}/api/accounts/${accountId}/payments`,
+            console.log("🔔 confirmCloseAccount: iniciando flujo de cierre completo");
+            console.log("🔸 Payload de pago antes de cerrar:", { amount: amountToPay, payerName });
+
+            // 1) Enviar el último pago parcial (si aplica)
+            const paymentResponse = await customFetch(
+                `${API_URL}/api/accounts/${accountId}/payments/split`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–" }),
                 }
             );
+            console.log("✅ Pago registrado:", paymentResponse);
 
-            // 2) Cierra la cuenta y recibe un OrderDTO
+            // 2) Cerrar la cuenta y recibir un OrderDTO
+            console.log("🔸 Solicitando cierre de cuenta al endpoint /close");
             const orderDTO = await customFetch(
                 `${API_URL}/api/accounts/${accountId}/close`,
                 { method: "PUT" }
             );
+            console.log("✅ Respuesta de cierre (OrderDTO):", orderDTO);
 
-            // 3) Imprime el ticket de cierre
+            // 3) Imprimir el ticket de cierre
+            console.log("🔸 Enviando a impresión:", orderDTO);
             await onPrint({ type: 'FULL_CLOSURE', payload: orderDTO });
+            console.log("✅ onPrint completado");
 
-            // 4) Limpia la UI
+            // 4) Limpieza de UI
+            console.log("🔸 Actualizando UI tras cierre");
             onPaidAndClose();
             onClose();
+            console.log("✅ confirmCloseAccount: flujo finalizado");
         } catch (err) {
-            console.error("Error cerrando cuenta tras pago completo:", err);
+            console.error("❌ Error en confirmCloseAccount:", err);
             alert("Ocurrió un error al cerrar la cuenta.");
             onPaidAndClose();
             onClose();

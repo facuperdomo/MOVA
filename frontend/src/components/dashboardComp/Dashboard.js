@@ -981,6 +981,7 @@ const Dashboard = () => {
   };
 
   const handlePrint = async ({ type, payload }) => {
+  console.log("🚀 handlePrint recibido:", { type, payload });
   setIsPrinting(true);
   setPrintError(false);
   try {
