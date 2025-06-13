@@ -204,6 +204,7 @@ public class AccountService {
 
         // 9) Mapear la entidad Sale recién guardada a SaleDTO y devolverlo
         SaleDTO dto = new SaleDTO();
+        dto.setId(sale.getId());
         dto.setItems(mapSaleItemsToDTOs(sale.getItems()));
         dto.setTotalAmount(totalAmount);
         dto.setPaymentMethod("CUENTA");                    // o lo que uses como método de pago
@@ -697,7 +698,7 @@ public class AccountService {
         log.debug("   → items for full closure receipt: {}", items);
 
         OrderDTO result = OrderDTO.builder()
-                .id(accountId)
+                .id(sale.getId())
                 .totalAmount(sale.getTotalAmount().doubleValue())
                 .dateTime(sale.getDateTime().toString())
                 .paymentMethod(sale.getPaymentMethod())
