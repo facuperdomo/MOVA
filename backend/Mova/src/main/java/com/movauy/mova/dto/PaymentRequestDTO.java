@@ -5,9 +5,12 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
-@Getter @Setter
+@Getter
+@Setter
 public class PaymentRequestDTO {
+
     private BigDecimal amount;
     private String payerName;
+    private String paymentMethod;
     private Boolean closeAfter;
 }

@@ -40,6 +40,7 @@ export default function PaymentOptionsModal({
     const [share, setShare] = useState(0);
     const [cyclePaidPeople, setCyclePaidPeople] = useState(0);
     const [totalPeople, setTotalPeople] = useState(splitTotal);
+    const [payMethod, setPayMethod] = useState(null);
 
     const paidQtyMap = useMemo(() => {
         const m = new Map();
@@ -113,14 +114,14 @@ export default function PaymentOptionsModal({
         }
     }, [step, currentTotal, paidMoney]);
 
-    const handlePartialPay = async () => {
+    const handlePartialPay = async (method) => {
         // 1) Envía el pago parcial y recibe un OrderDTO del backend
         const orderDTO = await customFetch(
             `${API_URL}/api/accounts/${accountId}/payments/split`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–" }),
+                body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–", paymentMethod: method }),
             }
         );
 
@@ -365,8 +366,17 @@ export default function PaymentOptionsModal({
 
                         {!showQR ? (
                             <>
-                                <button onClick={handlePartialPay}>Efectivo</button>
-                                <button onClick={() => setShowQR(true)}>QR</button>
+                                <button onClick={() => handlePartialPay("CASH")}>
+                                    Efectivo
+                                </button>
+
+                                {/* 3) QR marca el método y muestra QR */}
+                                <button onClick={() => {
+                                    setPayMethod("QR");
+                                    setShowQR(true);
+                                }}>
+                                    QR
+                                </button>
                             </>
                         ) : (
                             <PaymentQR amount={share} />
@@ -450,7 +460,7 @@ export default function PaymentOptionsModal({
                         })() : (
                             <PaymentQR
                                 amount={amountToPay}
-                                onPaymentSuccess={handlePay}
+                                onPaymentSuccess={() => handlePartialPay(payMethod)}
                             />
                         )}
                     </>
