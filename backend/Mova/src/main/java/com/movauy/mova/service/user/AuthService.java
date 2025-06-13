@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -260,4 +261,38 @@ public class AuthService {
         }
     }
 
+    /**
+     * Extrae la entidad User a partir del token JWT que llega en el header
+     * "Authorization". Espera recibir el header completo, p. ej. "Bearer
+     * eyJhbGciOiJI…".
+     *
+     * @param rawToken El contenido completo del header "Authorization".
+     * @return La entidad User correspondiente al username embebido en el token.
+     * @throws ResponseStatusException HttpStatus.UNAUTHORIZED si el token no es
+     * válido o no corresponde a ningún usuario.
+     */
+    public User getUserEntityFromToken(String rawToken) {
+        // 1) Limpiar el prefijo "Bearer " (si viene) para obtener solo el JWT
+        String token = cleanToken(rawToken);
+
+        // 2) Obtener el username que quedó embebido en el JWT
+        String username;
+        try {
+            username = jwtService.getUsernameFromToken(token);
+        } catch (Exception e) {
+            // Si el token no es válido, volvemos 401
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token no válido");
+        }
+
+        // 3) Cargar el User desde la base de datos
+        User usuario = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED, "Usuario no encontrado en el token"
+        ));
+
+        // 4) (Opcional) podrías validar aquí, por ejemplo, si el token coincide con su tokenVersion,
+        //    o si su sesión aún es válida según la lógica de tu aplicación.
+        //    Por simplicidad asumimos que ya está validado en otros filtros (JwtAuthenticationFilter).
+        return usuario;
+    }
 }

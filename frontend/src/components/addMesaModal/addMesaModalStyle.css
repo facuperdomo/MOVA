@@ -1,0 +1,60 @@
+/* src/components/addMesaModal.css */
+
+.add-mesa-overlay {
+  position: fixed; top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.8);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; /* mucho más arriba */
+}
+
+.add-mesa-container {
+  background: #222;
+  padding: 1.5rem;
+  border-radius: 12px;
+  width: 320px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+  color: #fff;
+  position: relative;
+}
+
+.add-mesa-close {
+  position: absolute;
+  right: 1rem; top: 1rem;
+  background: none; border: none;
+  color: #fff; font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.add-mesa-container h2 {
+  margin-top: 0;
+  text-align: center;
+}
+
+.add-mesa-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.add-mesa-form input {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #333;
+  color: #fff;
+}
+
+.add-mesa-form button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #28a745;
+  color: #fff;
+  cursor: pointer;
+  transition: background .2s;
+}
+.add-mesa-form button:hover {
+  background: #218838;
+}

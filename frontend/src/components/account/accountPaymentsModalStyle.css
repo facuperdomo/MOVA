@@ -1,0 +1,51 @@
+/* src/components/account/accountPaymentsModalStyle.css */
+.account-payments-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+.account-payments-modal-content {
+  background: rgb(27, 27, 27);
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.payments-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.payments-table th,
+.payments-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  font-size: 0.9rem;
+}
+.payments-table th {
+  background-color: #000;
+}
+.error {
+  color: red;
+}

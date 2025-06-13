@@ -10,11 +10,20 @@ import { customFetch } from "../../utils/api";
 import PaymentQR from "../paymentqr/PaymentQR";
 import { API_URL, WS_URL } from "../../config/apiConfig";
 import PrintButton from '../impression/PrintButton';
-import { printOrder } from "../../utils/print";
+import {
+  printOrder,
+  printPartialOrder,
+  printProductOrder
+} from "../../utils/print";
 import PaymentStatusNotifier from '../paymentqr/PaymentStatusNotifier';
+import AddMesaModal from "../addMesaModal/AddMesaModal";
+import PaymentOptionsModal from "../account/PaymentOptionsModal";
+import AccountsListModal from "../account/AccountsListModal";
+import AccountPaymentsModal from "../account/AccountPaymentsModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [branchId, setBranchId] = useState(null);
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [total, setTotal] = useState(0);
@@ -51,6 +60,28 @@ const Dashboard = () => {
 
   const [enableIngredients, setEnableIngredients] = useState(false);
 
+  const [accounts, setAccounts] = useState([]);
+  const [newAccountName, setNewAccountName] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
+  const [showAccountsModal, setShowAccountsModal] = useState(false);
+
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailAccount, setDetailAccount] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const [accountItems, setAccountItems] = useState([]);
+
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  const [splitTotal, setSplitTotal] = useState(0);
+  const [splitRemaining, setSplitRemaining] = useState(0);
+  const [paidMoney, setPaidMoney] = useState(0);
+  const [currentTotal, setCurrentTotal] = useState(0);
+
+  const [itemPayments, setItemPayments] = useState([]);
+  const [showPaymentsModal, setShowPaymentsModal] = useState(false);
+  const [paymentsAccountId, setPaymentsAccountId] = useState(null);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -60,17 +91,20 @@ const Dashboard = () => {
   }, [cart, total]);
 
   useEffect(() => {
-    const branchId = localStorage.getItem("branchId");
-    if (!branchId) return;
+    const storedBranchId = localStorage.getItem("branchId");
+
+    if (!storedBranchId) return;
+    setBranchId(parseInt(storedBranchId));
     (async () => {
       try {
-        const branch = await customFetch(`${API_URL}/api/branches/${branchId}`);
+        const branch = await customFetch(`${API_URL}/api/branches/${storedBranchId}`);
         console.log("flag enableIngredients:", branch.enableIngredients);
         setEnableIngredients(branch.enableIngredients);
       } catch (err) {
         console.error("Error al cargar configuración de sucursal:", err);
       }
     })();
+    loadAccounts(storedBranchId);
   }, []);
 
   // Suscripción a WebSocket para recibir notificaciones de pago
@@ -156,6 +190,161 @@ const Dashboard = () => {
     }
   }, [paymentStatus]);
 
+  useEffect(() => {
+    if (selectedAccountId) loadAccountItems(selectedAccountId);
+    else setAccountItems([]);
+  }, [selectedAccountId, products]);
+
+  const handleAcceptSale = () => {
+    console.log("👉 handleAcceptSale fired", { selectedAccountId });
+    if (selectedAccountId) {
+      openPaymentModal();
+    } else {
+      handlePayment();
+    }
+  };
+
+  const loadAccountItems = async (accountId) => {
+    try {
+      const account = await customFetch(`${API_URL}/api/accounts/${accountId}`);
+      console.log("🔍 Raw account payload:", account);
+      console.log("🔍 Raw items array:", account.items);
+      const normalized = account.items.map(line => {
+        const prod = products.find(p => p.id === line.productId) || { name: '', ingredients: [], price: 0 };
+        return {
+          // AHORA usamos `id` igual que en el carrito local
+          id: line.id,
+          productId: line.productId,
+          productName: prod.name,
+          price: prod.price || 0,
+          quantity: line.quantity,
+          ingredients: (line.ingredientIds || []).map(ingId => {
+            const ing = prod.ingredients.find(x => x.id === ingId);
+            return { id: ingId, name: ing?.name ?? '' };
+          }),
+          paid: line.paid
+        };
+      });
+      setAccountItems(normalized);
+    } catch (err) {
+      console.error("[ERROR] loadAccountItems:", err);
+    }
+  };
+
+  const openDetailModal = (acc) => {
+    setDetailAccount(acc);
+    setShowDetailModal(true);
+  };
+
+  const closeDetailModal = () => {
+    setDetailAccount(null);
+    setShowDetailModal(false);
+  };
+
+  const handleCreate = async () => {
+    await createAccount();
+    setShowAddModal(false);
+  };
+
+  const openPaymentModal = async () => {
+    // 0) recarga items
+    await loadAccountItems(selectedAccountId);
+
+    // 2) traete también el split/status —> itemPayments
+    const status = await customFetch(
+      `${API_URL}/api/accounts/${selectedAccountId}/split/status`
+    );
+    setItemPayments(status.itemPayments || []);
+
+    // 1.a) si nunca se inicializó split, lo inicializo con 1
+    if (status.total === 0) {
+      await customFetch(
+        `${API_URL}/api/accounts/${selectedAccountId}/split?people=1`,
+        { method: "PUT" }
+      );
+      status = await customFetch(
+        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
+      );
+    }
+
+    setSplitTotal(status.total);
+    setSplitRemaining(status.remaining);
+    setPaidMoney(status.paidMoney);
+    setCurrentTotal(status.currentTotal);
+    setItemPayments(status.itemPayments || []);
+
+    // 2) abro el modal
+    setShowPaymentModal(true);
+  };
+
+
+  const loadAccounts = async (branchId) => {
+    try {
+      // 1) Traemos la lista básica de cuentas abiertas
+      const data = await customFetch(
+        `${API_URL}/api/accounts?branchId=${branchId}&closed=false`
+      );
+
+      // 2) Para cada cuenta, consultamos su estado de “split” para saber cuánto falta por pagar
+      const enriched = await Promise.all(
+        data.map(async (acc) => {
+          // a) Mapeamos los items como antes
+          const items = acc.items.map(line => {
+            const prod = products.find(p => p.id === line.productId) || {};
+            return {
+              accountItemId: line.id,
+              productId: line.productId,
+              productName: prod.name || line.productName || 'Producto',
+              quantity: line.quantity
+            };
+          });
+
+          // b) Obtenemos el estado de split para esta cuenta
+          let remainingMoney = 0;
+          try {
+            const status = await customFetch(
+              `${API_URL}/api/accounts/${acc.id}/split/status`
+            );
+            // status.currentTotal = total de la cuenta, status.paidMoney = cuánto ya se pagó
+            remainingMoney = status.currentTotal - (status.paidMoney || 0);
+          } catch (err) {
+            console.error(`Error al obtener split/status de cuenta ${acc.id}:`, err);
+          }
+
+          // c) Devolvemos el objeto “acc” enriquecido con items y remainingMoney
+          return {
+            ...acc,
+            items,
+            remainingMoney
+          };
+        })
+      );
+
+      // 3) Guardamos en el estado
+      setAccounts(enriched);
+    } catch (err) {
+      console.error("Error al cargar cuentas:", err);
+    }
+  };
+
+  // 2) Crea una cuenta y la añade al estado
+  const createAccount = async () => {
+    if (!newAccountName.trim()) return;
+    try {
+      // customFetch retorna ya el objeto creado
+      const createdAccount = await customFetch(`${API_URL}/api/accounts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ branchId, name: newAccountName })
+      });
+      setNewAccountName("");
+      // añado la nueva cuenta al array para que aparezca inmediatamente
+      setAccounts(prev => [...prev, createdAccount]);
+    } catch (err) {
+      console.error("Error creando cuenta:", err);
+    }
+  };
+
   const openCustomize = prod => {
     setCustomizingProduct(prod);
     // marcamos todos por defecto
@@ -169,6 +358,89 @@ const Dashboard = () => {
       setIsCashRegisterOpen(response);
     } catch (error) {
       console.error("Error al verificar la caja:", error);
+    }
+  };
+
+  /**
+ * Elimina una línea de cuenta por su ID interno (accountItemId)
+ */
+  const removeAccountItem = async (id) => {
+    console.log("Borrando línea con id =", id);
+    try {
+      // 1) Primero, eliminamos el ítem en el backend:
+      await customFetch(
+        `${API_URL}/api/accounts/${selectedAccountId}/items/${id}`,
+        { method: "DELETE" }
+      );
+
+      // 2) Re-cargamos la lista de ítems de la cuenta:
+      await loadAccountItems(selectedAccountId);
+
+      // 3) Consultamos nuevamente el estado del split:
+      const status = await customFetch(
+        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
+      );
+
+      // 4) Calculamos cuánto dinero queda por pagar:
+      const remainingMoney = status.currentTotal - (status.paidMoney || 0);
+
+      // 5) Si no queda nada pendiente, cerramos la cuenta automáticamente:
+      if (remainingMoney <= 0) {
+        await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/close`, {
+          method: "PUT",
+        });
+        // 6) Limpiamos el estado de cuenta seleccionada y recargamos la lista general:
+        setSelectedAccountId(null);
+        await loadAccounts(branchId);
+      }
+    } catch (err) {
+      console.error("Error eliminando item de cuenta:", err);
+      alert("No se pudo eliminar el producto de la cuenta.");
+    }
+  };
+
+  const decrementAccountItem = async (item) => {
+    try {
+      if (item.quantity > 1) {
+        // 1) Si tenía más de 1 unidad, hacemos PUT para restar 1:
+        await customFetch(
+          `${API_URL}/api/accounts/${selectedAccountId}/items/${item.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quantity: item.quantity - 1 }),
+          }
+        );
+      } else {
+        // 2) Si solo quedaba 1 unidad, lo eliminamos por completo:
+        await customFetch(
+          `${API_URL}/api/accounts/${selectedAccountId}/items/${item.id}`,
+          { method: "DELETE" }
+        );
+      }
+
+      // 3) Re-cargamos la lista de ítems de la cuenta:
+      await loadAccountItems(selectedAccountId);
+
+      // 4) Consultamos nuevamente el estado del split:
+      const status = await customFetch(
+        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
+      );
+
+      // 5) Calculamos cuánto dinero queda por pagar:
+      const remainingMoney = status.currentTotal - (status.paidMoney || 0);
+
+      // 6) Si ya no queda nada por pagar, cerramos la cuenta:
+      if (remainingMoney <= 0) {
+        await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/close`, {
+          method: "PUT",
+        });
+        setSelectedAccountId(null);
+        await loadAccounts(branchId);
+      }
+    } catch (err) {
+      console.error("Error decrementando ítem de cuenta:", err);
+      alert("No se pudo actualizar la cuenta.");
     }
   };
 
@@ -250,32 +522,79 @@ const Dashboard = () => {
 
   const addToCart = (product) => {
     setCart(prevCart => {
-      // extraemos sólo los IDs de ingredientes de la variante que queremos añadir
+      // 1) IDs de ingredientes de la variante que quiero añadir
       const thisIds = (product.ingredients || []).map(i => i.id);
 
-      // buscamos en el carrito una línea con mismo producto Y mismos ingredientes
+      // 2) Buscar en el carrito un item con mismo producto Y mismos ingredientes
       const idx = prevCart.findIndex(item => {
         if (item.id !== product.id) return false;
+        // IDs del item ya en carrito
         const itemIds = (item.ingredients || []).map(i => i.id);
+        // compara arreglos ignorando orden
         return sameIngredientSet(itemIds, thisIds);
       });
 
       if (idx !== -1) {
-        // ya existe esa variante, aumentamos quantity
+        // Ya existe esa variante, aumentamos quantity
         const updated = [...prevCart];
         updated[idx] = {
           ...updated[idx],
           quantity: updated[idx].quantity + 1
         };
         return updated;
-      } else {
-        // nueva variante → la añadimos con quantity 1
-        return [...prevCart, { ...product, quantity: 1 }];
       }
+
+      // No existe → nueva línea con quantity 1
+      return [...prevCart, { ...product, quantity: 1 }];
     });
 
-    // actualizamos el total normalmente
+    // 3) Actualizamos el total
     setTotal(prev => prev + product.price);
+  };
+
+  const handleProductClick = async (product) => {
+    if (enableIngredients && product.ingredients?.length > 0) {
+      openCustomize(product);
+      return;
+    }
+
+    if (!selectedAccountId) {
+      addToCart(product);
+      return;
+    }
+
+    // → Aquí la magia:
+    try {
+      // 1) Buscamos en accountItems si ya hay un item para este productId
+      const existing = accountItems.find(it => it.productId === product.id);
+      if (existing) {
+        // 2a) Si existe, hacemos PUT para subir +1
+        await customFetch(
+          `${API_URL}/api/accounts/${selectedAccountId}/items/${existing.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quantity: existing.quantity + 1 })
+          }
+        );
+      } else {
+        // 2b) Si no existe, hacemos POST para crear uno nuevo con qty=1
+        await customFetch(
+          `${API_URL}/api/accounts/${selectedAccountId}/items`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId: product.id, quantity: 1 })
+          }
+        );
+      }
+
+      // 3) Refrescamos la lista siempre
+      await loadAccountItems(selectedAccountId);
+    } catch (err) {
+      console.error("Error agregando a cuenta:", err);
+      alert("No se pudo actualizar la cuenta.");
+    }
   };
 
   const removeFromCart = (lineIndex) => {
@@ -480,6 +799,213 @@ const Dashboard = () => {
       </div>
     );
 
+  const groupItems = (items) => {
+    const map = {};
+    items.forEach(item => {
+      // si viene de accountItems usamos el productId, si viene del carrito usamos el id
+      const prodId = item.productId != null ? item.productId : item.id;
+      // construimos la clave también con los ingredientes para distinguir variantes
+      const ingredientsKey = (item.ingredients || [])
+        .map(i => i.id)
+        .sort()
+        .join(",");
+      const key = `${prodId}-${ingredientsKey}`;
+
+      if (map[key]) {
+        map[key].quantity += item.quantity;
+      } else {
+        // hacemos un shallow copy para no mutar el original
+        map[key] = { ...item };
+      }
+    });
+    return Object.values(map);
+  };
+
+
+  const accountTotal = groupItems(accountItems)
+    .reduce((sum, line) => {
+      const p = products.find(p => p.id === line.productId);
+      return sum + (p?.price || 0) * line.quantity;
+    }, 0);
+
+  /**
+* Se llama cuando el usuario paga TODO y elige "Sí, cerrar cuenta".
+* Aquí el backend ya habrá cerrado la cuenta, por lo que solo limpiamos estados y recargamos cuentas.
+*/
+  const handlePaidAndClose = async () => {
+    try {
+      // 1) Limpiamos la cuenta seleccionada:
+      setSelectedAccountId(null);
+      // 2) Volvemos a cargar la lista de cuentas abiertas:
+      await loadAccounts(branchId);
+      // 3) Reiniciamos estados relacionados al split:
+      setSplitTotal(0);
+      setSplitRemaining(0);
+      setPaidMoney(0);
+      setCurrentTotal(0);
+      setItemPayments([]);
+    } catch (err) {
+      console.error("Error actualizando dashboard tras cerrar cuenta:", err);
+    }
+  };
+
+  /**
+   * Se llama cuando el usuario paga TODO pero elige "No, dejarla abierta".
+   * En ese caso solo recargamos el estado del split (para forzar splitRemaining = 0),
+   * pero la cuenta sigue abierta.
+   */
+  const handlePaidWithoutClose = async () => {
+    try {
+      // 1) recarga los items desde el backend
+      await loadAccountItems(selectedAccountId);
+
+      // 2) ahora sí actualiza el estado de split
+      const status = await customFetch(
+        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
+      );
+      setSplitTotal(status.total);
+      setSplitRemaining(status.remaining);
+      setPaidMoney(status.paidMoney);
+      setCurrentTotal(status.currentTotal);
+      setItemPayments(status.itemPayments || []);
+    } catch (err) {
+      console.error("Error actualizando split tras pago completo sin cerrar:", err);
+    }
+  };
+
+
+  const handlePartialPaid = async () => {
+    // 1) Reducimos en 1 el número de porciones restantes localmente:
+    setSplitRemaining((r) => r - 1);
+
+    try {
+      // 2) Consultamos nuevamente el estado completo del split:
+      const status = await customFetch(
+        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
+      );
+
+      // 3) Calculamos cuánto dinero queda por pagar:
+      const remainingMoney = status.currentTotal - (status.paidMoney || 0);
+
+      // 4) Si no queda nada pendiente, intentamos cerrar la cuenta:
+      if (remainingMoney <= 0) {
+        try {
+          await customFetch(
+            `${API_URL}/api/accounts/${selectedAccountId}/close`,
+            { method: "PUT" }
+          );
+        } catch (err) {
+          // Si el servidor responde 400 significa “la cuenta ya estaba cerrada”,
+          // así que lo ignoramos en ese caso:
+          if (err.status === 400) {
+            console.warn("Cuenta ya estaba cerrada");
+          } else {
+            throw err;
+          }
+        }
+
+        // 5) Limpiamos la cuenta seleccionada y recargamos la lista de cuentas:
+        setSelectedAccountId(null);
+        await loadAccounts(branchId);
+
+        // 6) Aseguramos que splitRemaining quede a cero
+        setSplitRemaining(0);
+      }
+    } catch (err) {
+      console.error("❌ No se pudo cerrar la cuenta:", err);
+      alert("Error cerrando la cuenta");
+    }
+  };
+
+  const rawItems = selectedAccountId ? accountItems : cart;
+  const displayItems = groupItems(rawItems);
+  const totalUnits = displayItems.reduce((sum, it) => sum + it.quantity, 0);
+
+  const handleCloseAccount = async (accountId) => {
+    try {
+      // 1) Obtenemos estado de split para saber si falta algo por pagar
+      const status = await customFetch(
+        `${API_URL}/api/accounts/${accountId}/split/status`
+      );
+      const remainingMoney = status.currentTotal - (status.paidMoney || 0);
+
+      if (remainingMoney <= 0) {
+        // Si no falta nada, la cerramos directamente
+        await customFetch(`${API_URL}/api/accounts/${accountId}/close`, {
+          method: "PUT",
+        });
+        setSelectedAccountId(null);
+        await loadAccounts(branchId);
+      } else {
+        // Si aún falta, abrimos el modal de pago para esa cuenta
+        setSelectedAccountId(accountId);
+        const stat = await customFetch(
+          `${API_URL}/api/accounts/${accountId}/split/status`
+        );
+        setSplitTotal(stat.total);
+        setSplitRemaining(stat.remaining);
+        setPaidMoney(stat.paidMoney);
+        setCurrentTotal(stat.currentTotal);
+        setItemPayments(stat.itemPayments || []);
+        setShowPaymentModal(true);
+      }
+    } catch (err) {
+      console.error("Error al intentar cerrar la cuenta:", err);
+      alert("No se pudo procesar el cierre de la cuenta.");
+    }
+  };
+
+  // ——————————————————————————————————————————————————————————
+  // ¿Pagar? Abre directamente el modal de opciones de pago para la cuenta indicada
+  const handlePayAccount = async (accountId) => {
+    try {
+      setSelectedAccountId(accountId);
+      // 1) Obtenemos estado de split
+      const stat = await customFetch(
+        `${API_URL}/api/accounts/${accountId}/split/status`
+      );
+      setSplitTotal(stat.total);
+      setSplitRemaining(stat.remaining);
+      setPaidMoney(stat.paidMoney);
+      setCurrentTotal(stat.currentTotal);
+      setItemPayments(stat.itemPayments || []);
+
+      // 2) Abrimos el modal de PaymentOptionsModal
+      setShowPaymentModal(true);
+      // (Ya no se cierra el modal de cuentas, así que eliminamos la línea de abajo)
+      // setShowAccountsModal(false);
+    } catch (err) {
+      console.error("Error abriendo modal de pago:", err);
+      alert("No se pudo abrir el modal de pago.");
+    }
+  };
+
+  const handlePrint = async ({ type, payload }) => {
+  setIsPrinting(true);
+  setPrintError(false);
+  try {
+    switch(type) {
+      case 'FULL_CLOSURE':
+        // payload será el SaleDTO
+        await printOrder(payload);
+        break;
+      case 'PARTIAL_PAYMENT':
+        // payload puede ser { items, amount, payerName }
+        await printPartialOrder(payload);
+        break;
+      case 'PRODUCT_PAYMENT':
+        // payload puede ser { items, amount, payerName }
+        await printProductOrder(payload);
+        break;
+    }
+  } catch (err) {
+    console.error("Error imprimiendo ticket:", err);
+    setPrintError(true);
+  } finally {
+    setIsPrinting(false);
+  }
+};
+
   return (
     <div className="app-container">
 
@@ -493,8 +1019,17 @@ const Dashboard = () => {
 
       <div className="content-wrapper">
         <div className="main-content">
-          <h2>Selección de Productos</h2>
-
+          {selectedAccountId && (() => {
+            const acc = accounts.find(a => a.id === selectedAccountId);
+            return (
+              <div className="selected-account-banner">
+                🧾 Cuenta seleccionada: {acc?.name}
+                <button onClick={() => { setSelectedAccountId(null); setAccountItems([]); }} style={{ marginLeft: "1rem" }}>
+                  ❌ Quitar cuenta
+                </button>
+              </div>
+            );
+          })()}
           <div className="category-tabs-dashboard">
             <button
               className={!selectedCategory ? "active-tab-dashboard" : ""}
@@ -525,14 +1060,7 @@ const Dashboard = () => {
                   <div
                     key={product.id}
                     className="product-card"
-                    onClick={() => {
-                      // si la sucursal permite ingredientes y el producto realmente tiene ingredientes:
-                      if (enableIngredients && product.ingredients?.length > 0) {
-                        openCustomize(product);
-                      } else {
-                        addToCart(product);
-                      }
-                    }}
+                    onClick={() => handleProductClick(product)}
                   >
                     <div className="image-container">
                       {!product.imageError ? (
@@ -564,27 +1092,29 @@ const Dashboard = () => {
         <div className="cart-panel">
           <h2>Carrito</h2>
           <div className="cart-list">
-            {cart.map((item, idx) => {
-              // 1) Buscamos el producto original para obtener su lista completa de ingredientes
-              const original = products.find((p) => p.id === item.id) || { ingredients: [] };
-              const originalIds = original.ingredients.map((ing) => ing.id);
-
-              // 2) Filtramos los ingredientes que ya NO están en item.ingredients
-              const removedNames = original.ingredients
-                .filter((orig) => !item.ingredients.some((i) => i.id === orig.id))
-                .map((i) => i.name);
+            {displayItems.map((item, idx) => {
+              const key = selectedAccountId
+                ? item.id
+                : `${item.id}-${idx}`;
+              const name = selectedAccountId
+                ? item.productName
+                : item.name;
 
               return (
-                <div key={`${item.id}-${idx}`} className="cart-item">
+                <div key={key} className="cart-item">
                   <div className="cart-item-text">
-                    <span className="product-name">{item.name}</span>
-                    {/* 3) Si hay ingredientes quitados, los mostramos */}
-                    {removedNames.length > 0 && ` – sin ${removedNames.join(", ")} `}
-                    <span className="product-quantity">{" "}x{item.quantity}</span>
+                    <span className="product-name">{name}</span>
+                    <span className="product-quantity"> x{item.quantity}</span>
                   </div>
                   <button
                     className="delete-button"
-                    onClick={() => removeFromCart(idx)}
+                    onClick={() => {
+                      if (selectedAccountId) {
+                        decrementAccountItem(item);
+                      } else {
+                        removeFromCart(idx);
+                      }
+                    }}
                   >
                     <Trash2 size={18} />
                   </button>
@@ -593,10 +1123,12 @@ const Dashboard = () => {
             })}
           </div>
           <div className="cart-footer">
-            <span className="total-amount">Total: ${total}</span>
+            <span className="total-amount">
+              Total: ${selectedAccountId ? accountTotal.toFixed(2) : total.toFixed(2)}
+            </span>
             <button
               className="accept-sale"
-              onClick={handlePayment}
+              onClick={handleAcceptSale}
               disabled={!isCashRegisterOpen}
             >
               Aceptar Venta
@@ -651,6 +1183,14 @@ const Dashboard = () => {
 
       {!isAdmin && (
         <div className="logout-button-container">
+          <button className="account-button" onClick={() => {
+            if (branchId) {
+              loadAccounts(branchId);
+              setShowAccountsModal(true);
+            }
+          }}>
+            🧾
+          </button>
           <div className="logout-button" onClick={handleLogout}>
             🚪
           </div>
@@ -785,6 +1325,95 @@ const Dashboard = () => {
             </button>
           </div>
         </div>
+      )}
+      {showAccountsModal && (
+        <AccountsListModal
+          accounts={accounts}
+          selectedAccountId={selectedAccountId}
+          onClose={() => setShowAccountsModal(false)}
+
+          onSelectAccount={(id) => {
+            setSelectedAccountId(id);
+            setAccountItems([]);
+            loadAccountItems(id);
+          }}
+
+          onShowDetails={(acc) => {
+            setDetailAccount(acc);
+            setShowDetailModal(true);
+          }}
+
+          onShowPayments={(id) => {
+            // “Ver Pagos” solo abre el modal de historial, NO el modal de pago
+            setPaymentsAccountId(id);
+            setShowPaymentsModal(true);
+          }}
+
+          onPayAccount={handlePayAccount}   // <--- NUEVO: botón “Pagar” abre PaymentOptionsModal
+
+          onCreateNew={() => {
+            setShowAddModal(true);
+          }}
+
+          onCloseAccount={handleCloseAccount} // botón “Cerrar cuenta”
+        />
+      )}
+      <AddMesaModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onCreate={handleCreate}
+        newName={newAccountName}
+        setNewName={setNewAccountName}
+      />
+      {showDetailModal && detailAccount && (
+        <div className="popup-overlay table-detail-modal" onClick={e => {
+          if (e.target.classList.contains("popup-overlay")) {
+            closeDetailModal();
+          }
+        }}>
+          <div className="popup-content">
+            <X className="popup-close" size={32} onClick={closeDetailModal} />
+            <h2>{detailAccount.name} (#{detailAccount.id})</h2>
+            <ul className="full-items">
+              {detailAccount.items.map(i => (
+                <li key={i.id}>{i.productName} x{i.quantity}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+      {showPaymentModal && selectedAccountId && (
+        <PaymentOptionsModal
+          accountId={selectedAccountId}
+          items={accountItems}
+          itemPayments={itemPayments}
+          total={currentTotal}
+          onClose={() => setShowPaymentModal(false)}
+          // ——— Nuestras dos props nuevas ———
+          onPaidAndClose={handlePaidAndClose}
+          onPaidWithoutClose={handlePaidWithoutClose}
+          // ————————————————————————————
+          splitTotal={splitTotal}
+          splitRemaining={splitRemaining}
+          paidMoney={paidMoney}
+          onSplitUpdate={(total, remaining, paidMoney, currentTotal, itemPayments) => {
+            setSplitTotal(total);
+            setSplitRemaining(remaining);
+            setPaidMoney(paidMoney);
+            setCurrentTotal(currentTotal);
+            setItemPayments(itemPayments || []);
+          }}
+          onPrint={handlePrint}
+        />
+      )}
+      {showPaymentsModal && paymentsAccountId && (
+        <AccountPaymentsModal
+          accountId={paymentsAccountId}
+          onClose={() => {
+            setShowPaymentsModal(false);
+            setPaymentsAccountId(null);
+          }}
+        />
       )}
     </div>
 

@@ -85,4 +85,16 @@ public class CashRegisterService {
                 .mapToDouble(Sale::getTotalAmount)
                 .sum();
     }
+
+    /**
+     * Obtiene la caja abierta para la sucursal indicada. Lanza excepción si no
+     * existe ninguna caja abierta.
+     */
+    public CashRegister getOpenCashRegisterForBranch(Long branchId) {
+        return cashRegisterRepository
+                .findByCloseDateIsNullAndBranch_Id(branchId)
+                .orElseThrow(()
+                        -> new IllegalStateException("No hay ninguna caja abierta en la sucursal " + branchId)
+                );
+    }
 }

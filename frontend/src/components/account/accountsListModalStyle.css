@@ -1,0 +1,174 @@
+/* ===================================================
+   CuentasListModal: estilos generales y layout de botones
+   =================================================== */
+
+.accounts-modal .popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.accounts-modal .popup-content {
+  background: rgb(27, 27, 27);
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 1000px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cabecera y botón de cerrar modal */
+.accounts-modal .popup-close {
+  cursor: pointer;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: white;
+}
+
+.accounts-modal h2 {
+  text-align: center;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+/* Botón “+” para crear nueva cuenta */
+.accounts-modal .add-mesa-button {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: #28a745;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.accounts-modal .add-mesa-button:hover {
+  background: #218838;
+}
+.accounts-modal .add-mesa-button:active {
+  transform: scale(0.95);
+}
+
+/* ===================================================
+   Contenedor de tarjetas (grid responsivo)
+   =================================================== */
+.accounts-modal .account-list {
+  margin-top: 3rem; /* deja espacio para título y + */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  overflow-y: auto;
+  padding-right: 0.5rem; /* espacio para scrollbar oculto */
+}
+
+/* Estilo de cada tarjeta */
+.accounts-modal .account-item {
+  background: #2c2c2c;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  min-height: 140px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.accounts-modal .account-item.selected {
+  border-color: #1e90ff;
+  background: rgb(35, 35, 35);
+}
+
+/* Texto del nombre de la mesa */
+.accounts-modal .table-name {
+  font-weight: bold;
+  color: white;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+/* ===================================================
+   Grupo de botones en 2 columnas iguales
+   =================================================== */
+.accounts-modal .account-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+/* Todos los botones dentro de .account-buttons ocupan ancho completo */
+.accounts-modal .account-buttons button {
+  width: 100%;
+  padding: 0.4rem 0;
+  font-size: 0.9rem;
+  color: white;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.1s;
+}
+
+/* Botón “Info” */
+.accounts-modal .more-info-btn {
+  background: #1e90ff;
+}
+.accounts-modal .more-info-btn:hover {
+  opacity: 0.9;
+}
+
+/* Botón “Pagos” */
+.accounts-modal .payments-btn {
+  background: #007bff;
+}
+.accounts-modal .payments-btn:hover {
+  opacity: 0.9;
+}
+
+/* Botón “Pagar” */
+.accounts-modal .pay-account-btn {
+  background: #219653;
+}
+.accounts-modal .pay-account-btn:hover {
+  opacity: 0.9;
+}
+
+/* Botón “Cerrar” */
+.accounts-modal .close-account-btn {
+  background: #e63946;
+}
+.accounts-modal .close-account-btn:hover {
+  opacity: 0.9;
+}
+
+/* ===================================================
+   Scrollbars invisibles (solo para .account-list)
+   =================================================== */
+/* Firefox */
+.accounts-modal .account-list {
+  scrollbar-width: none;
+}
+/* WebKit */
+.accounts-modal .account-list::-webkit-scrollbar {
+  display: none;
+}
+
+.account-item.pendiente { border: 1px solid #ffae00; }
+.account-item.pagada { border: 1px solid #4caf50; }

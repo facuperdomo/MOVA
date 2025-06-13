@@ -54,7 +54,7 @@ public class SaleService {
         User currentUser = authService.getUserById(userId);
 
         Sale sale = new Sale();
-        sale.setTotalAmount(saleDTO.getTotalAmount());
+        sale.setTotalAmount(saleDTO.getTotalAmount().doubleValue());
         sale.setPaymentMethod(saleDTO.getPaymentMethod());
         sale.setDateTime(LocalDateTime.now());
         sale.setCashRegister(cashReg);

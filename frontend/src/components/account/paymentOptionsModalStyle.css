@@ -1,0 +1,128 @@
+/* src/components/account/paymentOptionsModalStyle.css */
+
+/* fondo semitransparente */
+.payment-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+/* caja blanca centrada */
+.payment-modal-content {
+    background: #2c2c2c;
+
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 360px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: fadeInScale 0.2s ease-out both;
+}
+
+/* header con flecha y X */
+.payment-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.pm-back-btn,
+.pm-close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+/* títulos */
+.payment-modal-content h2,
+.payment-modal-content h3 {
+    margin: 0 0 1rem;
+    font-weight: 600;
+}
+
+/* lista de productos */
+.pm-product-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+}
+
+.pm-product-list li {
+    margin-bottom: 0.5rem;
+}
+
+/* botones generales */
+.payment-modal-content button {
+    display: inline-block;
+    margin: 0.25rem 0.5rem 0.25rem 0;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 0.25rem;
+    background: #007bff;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.payment-modal-content button:hover:not(:disabled) {
+    background: #0056b3;
+}
+
+.payment-modal-content button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* animación */
+@keyframes fadeInScale {
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Nuevo estilo para el label/input de nombre */
+.payment-modal-content .payer-name-input {
+  display: flex;
+  flex-direction: column;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+.payment-modal-content .payer-name-input input {
+  margin-top: 0.3rem;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.pm-product-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px 0;
+}
+
+.pm-product-list li {
+  margin-bottom: 8px;
+}
+
+.pm-product-list input[type="checkbox"][disabled] {
+  accent-color: #4CAF50; /* checkbox en verde cuando está disabled y checked */
+}
+
+.pm-product-list span {
+  font-size: 0.9em;
+  font-weight: 500;
+}
