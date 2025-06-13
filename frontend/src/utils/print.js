@@ -2,6 +2,7 @@
 import { API_URL } from "../config/apiConfig";
 
 export async function printOrder(order, printerId = null) {
+  console.log("▶ Enviando impresión, payload:", order, "printerId:", printerId);
   const token    = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
 
@@ -15,7 +16,6 @@ export async function printOrder(order, printerId = null) {
     "X-Branch-Id":   branchId
   };
 
-  // Si se pasa un printerId, lo añadimos a la cabecera
   if (printerId) {
     headers["X-Printer-Id"] = printerId;
   }
@@ -36,12 +36,14 @@ export async function printOrder(order, printerId = null) {
 }
 
 /**
- * Imprime **solo** los items que vengan en el OrderDTO (payload completo)
+ * Imprime **solo** los items que vienen en el DTO completo,
  * usando el endpoint /api/print/direct/receipt/items.
  */
 export async function printItemsReceipt(orderDto, printerId = null) {
+  console.log("▶ Enviando impresión, payload:", orderDto, "printerId:", printerId);
   const token    = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
+
   if (!branchId) {
     throw new Error("No se encontró el branchId en localStorage");
   }
@@ -51,6 +53,7 @@ export async function printItemsReceipt(orderDto, printerId = null) {
     "Authorization": `Bearer ${token}`,
     "X-Branch-Id":   branchId
   };
+
   if (printerId) {
     headers["X-Printer-Id"] = printerId;
   }

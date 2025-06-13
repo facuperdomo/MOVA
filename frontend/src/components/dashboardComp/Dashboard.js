@@ -12,8 +12,7 @@ import { API_URL, WS_URL } from "../../config/apiConfig";
 import PrintButton from '../impression/PrintButton';
 import {
   printOrder,
-  printPartialOrder,
-  printProductOrder
+  printItemsReceipt
 } from "../../utils/print";
 import PaymentStatusNotifier from '../paymentqr/PaymentStatusNotifier';
 import AddMesaModal from "../addMesaModal/AddMesaModal";
@@ -981,31 +980,24 @@ const Dashboard = () => {
   };
 
   const handlePrint = async ({ type, payload }) => {
-  console.log("🚀 handlePrint recibido:", { type, payload });
-  setIsPrinting(true);
-  setPrintError(false);
-  try {
-    switch(type) {
-      case 'FULL_CLOSURE':
-        // payload será el SaleDTO
+    console.log("🚀 handlePrint recibido:", { type, payload });
+    setIsPrinting(true);
+    setPrintError(false);
+    try {
+      if (type === "PRODUCT_PAYMENT") {
+        // Pago por producto → imprimimos SOLO esos items
+        await printItemsReceipt(payload);
+      } else {
+        // Full closure o pagos parciales → imprimen con venta completa
         await printOrder(payload);
-        break;
-      case 'PARTIAL_PAYMENT':
-        // payload puede ser { items, amount, payerName }
-        await printPartialOrder(payload);
-        break;
-      case 'PRODUCT_PAYMENT':
-        // payload puede ser { items, amount, payerName }
-        await printProductOrder(payload);
-        break;
+      }
+    } catch (err) {
+      console.error("Error imprimiendo ticket:", err);
+      setPrintError(true);
+    } finally {
+      setIsPrinting(false);
     }
-  } catch (err) {
-    console.error("Error imprimiendo ticket:", err);
-    setPrintError(true);
-  } finally {
-    setIsPrinting(false);
-  }
-};
+  };
 
   return (
     <div className="app-container">

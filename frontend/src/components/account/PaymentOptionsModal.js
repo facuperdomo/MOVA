@@ -309,7 +309,7 @@ export default function PaymentOptionsModal({
                         </label>
                         {!showQR ? (
                             <>
-                                <button onClick={() => handlePay("CASH")}>Efectivo</button>
+                                <button onClick={handlePay}>Efectivo</button>
                                 <button onClick={() => setShowQR(true)}>QR</button>
                             </>
                         ) : (
@@ -450,7 +450,7 @@ export default function PaymentOptionsModal({
                         })() : (
                             <PaymentQR
                                 amount={amountToPay}
-                                onPaymentSuccess={() => handlePay()}
+                                onPaymentSuccess={handlePay}
                             />
                         )}
                     </>
