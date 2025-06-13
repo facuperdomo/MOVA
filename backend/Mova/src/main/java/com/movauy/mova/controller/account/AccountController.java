@@ -158,9 +158,10 @@ public class AccountController {
     @PutMapping("/{id}/close")
     public ResponseEntity<OrderDTO> closeAccountAndPrint(
             @PathVariable Long id,
-            @RequestHeader("Authorization") String token
+            @RequestHeader("Authorization") String token,
+            @RequestBody PaymentRequestDTO req
     ) {
-        OrderDTO receipt = accountService.closeAccountAndBuildReceipt(id, token);
+        OrderDTO receipt = accountService.closeAccountAndBuildReceipt(id, token, req);
         return ResponseEntity.ok(receipt);
     }
 

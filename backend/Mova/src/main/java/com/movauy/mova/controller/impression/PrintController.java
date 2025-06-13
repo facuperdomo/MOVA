@@ -52,8 +52,12 @@ public class PrintController {
         // 1) Consultar la venta y completar datos
         SaleResponseDTO sale = saleService.getById(orderDto.getId());
         orderDto.setDateTime(sale.getDateTime().toString());
-        orderDto.setPaymentMethod(sale.getPaymentMethod());
         orderDto.setTotalAmount(sale.getTotalAmount());
+
+        // ** SOLO ** si el paymentMethod del DTO venía null, tomo el del sale
+        if (orderDto.getPaymentMethod() == null || orderDto.getPaymentMethod().isBlank()) {
+            orderDto.setPaymentMethod(sale.getPaymentMethod());
+        }
 
         // 2) Mapear ítems
         List<SaleItemDTO> items = sale.getItems().stream()

@@ -214,7 +214,7 @@ export default function PaymentOptionsModal({
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–" }),
+                    body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–", paymentMethod: payMethod }),
                 }
             );
             console.log("✅ Pago registrado:", paymentResponse);
@@ -223,7 +223,12 @@ export default function PaymentOptionsModal({
             console.log("🔸 Solicitando cierre de cuenta al endpoint /close");
             const orderDTO = await customFetch(
                 `${API_URL}/api/accounts/${accountId}/close`,
-                { method: "PUT" }
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ paymentMethod: payMethod })
+                },
+
             );
             console.log("✅ Respuesta de cierre (OrderDTO):", orderDTO);
 

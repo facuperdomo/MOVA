@@ -126,3 +126,29 @@
   font-size: 0.9em;
   font-weight: 500;
 }
+
+/* Limita la altura del contenido completo para que no salga del viewport */
+.payment-modal-content {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+/* Oculta el scrollbar en .payment-modal-content */
+.payment-modal-content::-webkit-scrollbar {
+  display: none;
+}
+.payment-modal-content {
+  -ms-overflow-style: none;  /* IE/Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+/* Además, para el listado de productos en sí */
+.pm-product-list {
+  max-height: 40vh;      /* ajusta según necesites */
+  overflow-y: auto;
+  /* oculta scrollbar */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.pm-product-list::-webkit-scrollbar {
+  display: none;
+}
