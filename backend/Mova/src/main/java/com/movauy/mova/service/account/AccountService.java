@@ -242,49 +242,49 @@ public class AccountService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La cuenta ya está cerrada");
         }
 
-        // 1) Creación de PaymentAccount (necesitamos un constructor público en PaymentAccount)
-        PaymentAccount payment = new PaymentAccount();
-        payment.setAccount(account);
-        payment.setAmount(amount);
-        payment.setPayerName(payerName != null ? payerName : "–");
-        payment.setPaidAt(LocalDateTime.now());
-        paymentAccountRepository.save(payment);
-
-        // 2) Calcular cuánto se ha pagado hasta ahora
+        // 1) Calculamos cuánto se ha pagado hasta ahora
         BigDecimal totalPaidSoFar = paymentAccountRepository
                 .findByAccountId(accountId)
                 .stream()
                 .map(PaymentAccount::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 3) Calcular el total actual de la cuenta (suma unitPrice × quantity de cada AccountItem)
+        // 2) Calculamos el total actual de la cuenta
         BigDecimal accountTotal = account.calculateTotal();
 
-        // 4) Si closeAfter == true, y el pago cubre saldo restante, generamos Sale y cerramos la cuenta
-        if (Boolean.TRUE.equals(closeAfter)) {
-            BigDecimal remaining = accountTotal.subtract(totalPaidSoFar);
-            if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
-                // a) Generar la Sale con todos los AccountItem de esa cuenta
-                Sale sale = new Sale();
-                sale.setBranch(account.getBranch());
-                sale.setEstado(Sale.EstadoVenta.ACTIVA);
-                sale.setDateTime(LocalDateTime.now());
+        // 3) Calculamos el remaining para saber si cubre todo
+        BigDecimal remaining = accountTotal.subtract(totalPaidSoFar).subtract(amount);
 
-                for (AccountItem item : account.getItems()) {
-                    SaleItem saleItem = new SaleItem();
-                    saleItem.setSale(sale);
-                    saleItem.setProduct(item.getProduct());
-                    saleItem.setQuantity(item.getQuantity());
-                    saleItem.setUnitPrice(item.getUnitPrice());
-                    sale.getItems().add(saleItem);
-                }
-                saleRepository.save(sale);
+        // 4) Creamos el PaymentAccount y seteamos el status según corresponda
+        PaymentAccount payment = new PaymentAccount();
+        payment.setAccount(account);
+        payment.setAmount(amount);
+        payment.setPayerName(payerName != null ? payerName : "–");
+        payment.setPaidAt(LocalDateTime.now());
+        if (Boolean.TRUE.equals(closeAfter) && remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            payment.setStatus(Status.PAID_IN_FULL);
+        } else {
+            payment.setStatus(Status.PARTIALLY_PAID);
+        }
+        paymentAccountRepository.save(payment);
 
-                // b) Marcar la cuenta como cerrada
-                account.setClosed(true);
-                accountRepository.save(account);
+        // 5) Si closeAfter y cubrimos el total, cerramos la cuenta
+        if (Boolean.TRUE.equals(closeAfter) && remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            Sale sale = new Sale();
+            sale.setBranch(account.getBranch());
+            sale.setEstado(Sale.EstadoVenta.ACTIVA);
+            sale.setDateTime(LocalDateTime.now());
+            for (AccountItem item : account.getItems()) {
+                SaleItem si = new SaleItem();
+                si.setSale(sale);
+                si.setProduct(item.getProduct());
+                si.setQuantity(item.getQuantity());
+                si.setUnitPrice(item.getUnitPrice());
+                sale.getItems().add(si);
             }
-            // Si remaining > 0, el pago no cubrió todo, no cerramos
+            saleRepository.save(sale);
+            account.setClosed(true);
+            accountRepository.save(account);
         }
 
         return accountRepository.save(account);
