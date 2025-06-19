@@ -16,6 +16,7 @@ import java.util.List;
 @Builder
 public class SaleResponseDTO {
     private Long id;
+    private Long accountId;
     private double totalAmount;
     private String paymentMethod;
     private LocalDateTime dateTime;

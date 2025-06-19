@@ -10,10 +10,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(
-    name = "products",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"branch_id", "name"})
-)
+@Table(name = "products")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -49,13 +46,16 @@ public class Product {
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
-        name = "product_ingredients",
-        joinColumns = @JoinColumn(name = "product_id"),
-        inverseJoinColumns = @JoinColumn(name = "ingredient_id")
+            name = "product_ingredients",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "ingredient_id")
     )
     @Builder.Default
     private Set<Ingredient> ingredients = new HashSet<>();
 
     @Column(name = "enable_kitchen_commands", nullable = false)
     private boolean enableKitchenCommands = false;
+
+    @Column(nullable = false)
+    private boolean active = true;
 }

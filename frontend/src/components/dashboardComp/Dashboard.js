@@ -81,6 +81,9 @@ const Dashboard = () => {
   const [showPaymentsModal, setShowPaymentsModal] = useState(false);
   const [paymentsAccountId, setPaymentsAccountId] = useState(null);
 
+  const [showClosePrintModal, setShowClosePrintModal] = useState(false);
+  const [pendingCloseAccountId, setPendingCloseAccountId] = useState(null);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -360,44 +363,6 @@ const Dashboard = () => {
     }
   };
 
-  /**
- * Elimina una línea de cuenta por su ID interno (accountItemId)
- */
-  const removeAccountItem = async (id) => {
-    console.log("Borrando línea con id =", id);
-    try {
-      // 1) Primero, eliminamos el ítem en el backend:
-      await customFetch(
-        `${API_URL}/api/accounts/${selectedAccountId}/items/${id}`,
-        { method: "DELETE" }
-      );
-
-      // 2) Re-cargamos la lista de ítems de la cuenta:
-      await loadAccountItems(selectedAccountId);
-
-      // 3) Consultamos nuevamente el estado del split:
-      const status = await customFetch(
-        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
-      );
-
-      // 4) Calculamos cuánto dinero queda por pagar:
-      const remainingMoney = status.currentTotal - (status.paidMoney || 0);
-
-      // 5) Si no queda nada pendiente, cerramos la cuenta automáticamente:
-      if (remainingMoney <= 0) {
-        await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/close`, {
-          method: "PUT",
-        });
-        // 6) Limpiamos el estado de cuenta seleccionada y recargamos la lista general:
-        setSelectedAccountId(null);
-        await loadAccounts(branchId);
-      }
-    } catch (err) {
-      console.error("Error eliminando item de cuenta:", err);
-      alert("No se pudo eliminar el producto de la cuenta.");
-    }
-  };
-
   const decrementAccountItem = async (item) => {
     try {
       if (item.quantity > 1) {
@@ -418,21 +383,24 @@ const Dashboard = () => {
         );
       }
 
-      // 3) Re-cargamos la lista de ítems de la cuenta:
       await loadAccountItems(selectedAccountId);
 
-      // 4) Consultamos nuevamente el estado del split:
-      const status = await customFetch(
-        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
-      );
+      // 🔐 NUEVA VERIFICACIÓN
+      const updatedItems = await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/items`);
+      if (!updatedItems || updatedItems.length === 0) {
+        // No cerramos la cuenta, simplemente salimos
+        return;
+      }
 
-      // 5) Calculamos cuánto dinero queda por pagar:
+      // 4) Consultamos nuevamente el estado del split:
+      const status = await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/split/status`);
       const remainingMoney = status.currentTotal - (status.paidMoney || 0);
 
-      // 6) Si ya no queda nada por pagar, cerramos la cuenta:
+      // 5) Si ya no queda nada por pagar, cerramos la cuenta:
       if (remainingMoney <= 0) {
         await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/close`, {
           method: "PUT",
+          body: JSON.stringify({ amount: 0, payerName: "–", paymentMethod: "CUENTA" })
         });
         setSelectedAccountId(null);
         await loadAccounts(branchId);
@@ -872,50 +840,6 @@ const Dashboard = () => {
     }
   };
 
-
-  const handlePartialPaid = async () => {
-    // 1) Reducimos en 1 el número de porciones restantes localmente:
-    setSplitRemaining((r) => r - 1);
-
-    try {
-      // 2) Consultamos nuevamente el estado completo del split:
-      const status = await customFetch(
-        `${API_URL}/api/accounts/${selectedAccountId}/split/status`
-      );
-
-      // 3) Calculamos cuánto dinero queda por pagar:
-      const remainingMoney = status.currentTotal - (status.paidMoney || 0);
-
-      // 4) Si no queda nada pendiente, intentamos cerrar la cuenta:
-      if (remainingMoney <= 0) {
-        try {
-          await customFetch(
-            `${API_URL}/api/accounts/${selectedAccountId}/close`,
-            { method: "PUT" }
-          );
-        } catch (err) {
-          // Si el servidor responde 400 significa “la cuenta ya estaba cerrada”,
-          // así que lo ignoramos en ese caso:
-          if (err.status === 400) {
-            console.warn("Cuenta ya estaba cerrada");
-          } else {
-            throw err;
-          }
-        }
-
-        // 5) Limpiamos la cuenta seleccionada y recargamos la lista de cuentas:
-        setSelectedAccountId(null);
-        await loadAccounts(branchId);
-
-        // 6) Aseguramos que splitRemaining quede a cero
-        setSplitRemaining(0);
-      }
-    } catch (err) {
-      console.error("❌ No se pudo cerrar la cuenta:", err);
-      alert("Error cerrando la cuenta");
-    }
-  };
-
   const rawItems = selectedAccountId ? accountItems : cart;
   const displayItems = groupItems(rawItems);
   const totalUnits = displayItems.reduce((sum, it) => sum + it.quantity, 0);
@@ -929,12 +853,8 @@ const Dashboard = () => {
       const remainingMoney = status.currentTotal - (status.paidMoney || 0);
 
       if (remainingMoney <= 0) {
-        // Si no falta nada, la cerramos directamente
-        await customFetch(`${API_URL}/api/accounts/${accountId}/close`, {
-          method: "PUT",
-        });
-        setSelectedAccountId(null);
-        await loadAccounts(branchId);
+        setPendingCloseAccountId(accountId);
+        setShowClosePrintModal(true);
       } else {
         // Si aún falta, abrimos el modal de pago para esa cuenta
         setSelectedAccountId(accountId);
@@ -951,6 +871,52 @@ const Dashboard = () => {
     } catch (err) {
       console.error("Error al intentar cerrar la cuenta:", err);
       alert("No se pudo procesar el cierre de la cuenta.");
+    }
+  };
+
+  const confirmCloseAndPrint = async () => {
+    const accountId = pendingCloseAccountId;
+    try {
+      // 1) cerramos y recibimos el recibo
+      const receipt = await customFetch(
+        `${API_URL}/api/accounts/${accountId}/close`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
+        }
+      );
+      // 2) imprimimos TODO lo vendido
+      await printOrder(receipt);
+
+      // 3) refrescamos lista de cuentas
+      setShowClosePrintModal(false);
+      setSelectedAccountId(null);
+      await loadAccounts(branchId);
+    } catch (err) {
+      console.error("Error cerrando e imprimiendo:", err);
+      alert("No se pudo cerrar la cuenta.");
+    }
+  };
+
+  // Cierra sin imprimir
+  const confirmCloseWithoutPrint = async () => {
+    const accountId = pendingCloseAccountId;
+    try {
+      await customFetch(
+        `${API_URL}/api/accounts/${accountId}/close`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
+        }
+      );
+      setShowClosePrintModal(false);
+      setSelectedAccountId(null);
+      await loadAccounts(branchId);
+    } catch (err) {
+      console.error("Error cerrando sin imprimir:", err);
+      alert("No se pudo cerrar la cuenta.");
     }
   };
 
@@ -1174,6 +1140,22 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {showClosePrintModal && (
+        <div className="confirm-close-overlay">
+          <div className="confirm-close-modal">
+            <h2>¿Deseas imprimir lo vendido?</h2>
+            <div className="popup-buttons">
+              <button className="popup-btn popup-btn-cash" onClick={confirmCloseAndPrint}>
+                Sí, imprimir
+              </button>
+              <button className="popup-btn popup-btn-qr" onClick={confirmCloseWithoutPrint}>
+                No, sólo cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!isAdmin && (
         <div className="logout-button-container">
           <button className="account-button" onClick={() => {
@@ -1359,22 +1341,40 @@ const Dashboard = () => {
         setNewName={setNewAccountName}
       />
       {showDetailModal && detailAccount && (
-        <div className="popup-overlay table-detail-modal" onClick={e => {
-          if (e.target.classList.contains("popup-overlay")) {
-            closeDetailModal();
-          }
-        }}>
+        <div
+          className="popup-overlay table-detail-modal"
+          onClick={(e) => {
+            if (e.target.classList.contains("popup-overlay")) {
+              closeDetailModal();
+            }
+          }}
+        >
           <div className="popup-content">
             <X className="popup-close" size={32} onClick={closeDetailModal} />
-            <h2>{detailAccount.name} (#{detailAccount.id})</h2>
-            <ul className="full-items">
-              {detailAccount.items.map(i => (
-                <li key={i.id}>{i.productName} x{i.quantity}</li>
-              ))}
-            </ul>
+            <h2 className="table-detail-title">
+              {detailAccount.name} (#{detailAccount.id})
+            </h2>
+
+            <table className="detail-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailAccount.items.map((i) => (
+                  <tr key={i.id}>
+                    <td>{i.productName}</td>
+                    <td>{i.quantity}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
       {showPaymentModal && selectedAccountId && (
         <PaymentOptionsModal
           accountId={selectedAccountId}

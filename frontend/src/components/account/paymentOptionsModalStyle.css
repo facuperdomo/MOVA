@@ -1,154 +1,224 @@
-/* src/components/account/paymentOptionsModalStyle.css */
-
-/* fondo semitransparente */
+/* Fondo semitransparente del modal */
 .payment-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-}
-
-/* caja blanca centrada */
-.payment-modal-content {
-    background: #2c2c2c;
-
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    width: 90%;
-    max-width: 360px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    animation: fadeInScale 0.2s ease-out both;
-}
-
-/* header con flecha y X */
-.payment-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.pm-back-btn,
-.pm-close-btn {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 0.25rem;
-}
-
-/* títulos */
-.payment-modal-content h2,
-.payment-modal-content h3 {
-    margin: 0 0 1rem;
-    font-weight: 600;
-}
-
-/* lista de productos */
-.pm-product-list {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 1rem;
-}
-
-.pm-product-list li {
-    margin-bottom: 0.5rem;
-}
-
-/* botones generales */
-.payment-modal-content button {
-    display: inline-block;
-    margin: 0.25rem 0.5rem 0.25rem 0;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    border: none;
-    border-radius: 0.25rem;
-    background: #007bff;
-    color: #fff;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.payment-modal-content button:hover:not(:disabled) {
-    background: #0056b3;
-}
-
-.payment-modal-content button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* animación */
-@keyframes fadeInScale {
-    from {
-        transform: scale(0.95);
-        opacity: 0;
-    }
-
-    to {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-/* Nuevo estilo para el label/input de nombre */
-.payment-modal-content .payer-name-input {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
-  flex-direction: column;
-  margin: 0.5rem 0;
-  font-size: 0.9rem;
-}
-.payment-modal-content .payer-name-input input {
-  margin-top: 0.3rem;
-  padding: 0.5rem;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
 }
 
-.pm-product-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 16px 0;
-}
-
-.pm-product-list li {
-  margin-bottom: 8px;
-}
-
-.pm-product-list input[type="checkbox"][disabled] {
-  accent-color: #4CAF50; /* checkbox en verde cuando está disabled y checked */
-}
-
-.pm-product-list span {
-  font-size: 0.9em;
-  font-weight: 500;
-}
-
-/* Limita la altura del contenido completo para que no salga del viewport */
+/* Contenido centrado del modal */
 .payment-modal-content {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 2rem 1.5rem 1.5rem;
+  width: 90%;
+  max-width: 400px;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  position: relative;
+  animation: fadeInScale 0.2s ease-out both;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-/* Oculta el scrollbar en .payment-modal-content */
 .payment-modal-content::-webkit-scrollbar {
   display: none;
 }
-.payment-modal-content {
-  -ms-overflow-style: none;  /* IE/Edge */
-  scrollbar-width: none;     /* Firefox */
+
+/* Animación de entrada */
+@keyframes fadeInScale {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
-/* Además, para el listado de productos en sí */
+/* Header con botones e ícono */
+.payment-modal-header-row {
+  position: relative;
+  height: 56px;
+  margin-bottom: 1rem;
+}
+
+.pm-back-btn,
+.popup-close {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) !important;
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: auto;
+  height: auto;
+  cursor: pointer;
+  color: #fff;
+}
+
+.pm-back-btn {
+  left: 15px;
+}
+
+.popup-close {
+  right: 15px;
+}
+
+.icon-wrapper {
+  display: block;
+  transition: transform 0.1s ease;
+}
+
+.pm-back-btn .icon-wrapper {
+  display: block;
+  transition: transform 0.1s ease;
+}
+
+.popup-close .icon-wrapper {
+  display: block;
+  transition: transform 0.1s ease;
+  margin-top: 25px; /* <-- este valor lo ajustás a gusto */
+}
+
+.popup-close:hover .icon-wrapper {
+  transform: scale(1.2) !important;
+}
+
+.pm-back-btn:hover .icon-wrapper {
+  transform: scale(1.2);
+}
+
+.modal-title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: white;
+  margin: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Títulos generales */
+.payment-modal-content h2 {
+  font-size: 1.4rem;
+  color: #fff;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 1.8rem;
+}
+
+.payment-modal-content h3 {
+  font-size: 1.1rem;
+  color: #fff;
+  margin-bottom: 1rem;
+}
+
+/* Botones principales */
+.payment-modal-content button:not(.pm-back-btn):not(.popup-close) {
+  width: 100%;
+  padding: 12px;
+  margin: 0.4rem 0;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  background: #007bff;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.payment-modal-content button:active {
+  transform: scale(0.97);
+}
+
+.payment-modal-content button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.payment-modal-content button.cancel-btn {
+  background: #d9534f;
+}
+
+.payment-modal-content button.cancel-btn:hover {
+  background: #c9302c;
+}
+
+/* Inputs */
+.payer-name-input {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #ddd;
+}
+
+.payer-name-input input {
+  margin-top: 0.3rem;
+  padding: 0.6rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* Lista de productos */
 .pm-product-list {
-  max-height: 40vh;      /* ajusta según necesites */
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  max-height: 40vh;
   overflow-y: auto;
-  /* oculta scrollbar */
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 .pm-product-list::-webkit-scrollbar {
   display: none;
+}
+.pm-product-list li {
+  margin-bottom: 0.5rem;
+}
+.pm-product-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+}
+.pm-product-list input[type="checkbox"][disabled] {
+  accent-color: #4CAF50;
+}
+.pm-product-list span {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #4CAF50;
+}
+
+/* Confirmación de cierre */
+.close-confirm-container {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+.close-confirm-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.payment-modal-content h2 {
+  font-size: 1.4rem;
+  color: #fff;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 1.8rem;
 }

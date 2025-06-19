@@ -17,4 +17,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     boolean existsByCategoryId(Long categoryId);
     
     Optional<Product> findByBranchIdAndName(Long branchId, String name);
+    
+    List<Product> findAllByBranchIdAndActiveTrue(Long branchId);
+    
+    Optional<Product> findByBranchIdAndNameAndActiveTrue(Long branchId, String name);
 }

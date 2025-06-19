@@ -29,14 +29,19 @@ export default function AccountPaymentsModal({ accountId, onClose }) {
   }, [accountId]);
 
   return (
-    <div className="account-payments-modal-overlay">
+    <div
+      className="account-payments-modal-overlay"
+      onClick={(e) => {
+        if (e.target.classList.contains("account-payments-modal-overlay")) {
+          onClose();
+        }
+      }}
+    >
       <div className="account-payments-modal-content">
         {/* Cabecera con botón de cerrar */}
         <div className="modal-header">
           <h2>Historial de Pagos</h2>
-          <button className="close-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <X className="popup-close" size={32} onClick={onClose} />
         </div>
 
         {loading && <p>Cargando pagos...</p>}

@@ -55,7 +55,7 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Product> addProduct(
+    public ResponseEntity<ProductDTO> addProduct(
             @RequestHeader("Authorization") String token,
             @RequestParam("name") String name,
             @RequestParam("price") double price,
@@ -80,17 +80,20 @@ public class ProductController {
                         .name(name.trim())
                         .price(price)
                         .image(imageBytes)
+                        .active(true)
                         .branch(productService.getBranch(branchId))
                         .build(),
                 categoryId,
                 ingredientIds
         );
-        return ResponseEntity.ok(created);
+
+        ProductDTO dto = productService.convertToDTO(created);
+        return ResponseEntity.ok(dto);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Product> updateProduct(
+    public ResponseEntity<ProductDTO> updateProduct(
             @RequestHeader("Authorization") String token,
             @PathVariable Long id,
             @RequestParam("name") String name,
@@ -112,7 +115,8 @@ public class ProductController {
         byte[] imageBytes = (imageFile != null && !imageFile.isEmpty()) ? imageFile.getBytes() : null;
 
         Product updated = productService.updateProduct(id, name.trim(), price, imageBytes, branchId, categoryId, ingredientIds);
-        return ResponseEntity.ok(updated);
+        ProductDTO dto = productService.convertToDTO(updated);
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/{id}")

@@ -3,7 +3,7 @@ import { API_URL } from "../config/apiConfig";
 
 export async function printOrder(order, printerId = null) {
   console.log("▶ Enviando impresión, payload:", order, "printerId:", printerId);
-  const token    = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
 
   if (!branchId) {
@@ -11,22 +11,24 @@ export async function printOrder(order, printerId = null) {
   }
 
   const headers = {
-    "Content-Type":  "application/json",
+    "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
-    "X-Branch-Id":   branchId
+    "X-Branch-Id": branchId
   };
 
   if (printerId) {
     headers["X-Printer-Id"] = printerId;
   }
 
+  const payload = {
+    id: order.id,
+    totalAmount: order.totalAmount,
+    paymentMethod: order.paymentMethod
+  };
   const resp = await fetch(`${API_URL}/api/print/direct`, {
-    method:  "POST",
+    method: "POST",
     headers,
-    body:    JSON.stringify({
-      id:          order.id,
-      totalAmount: order.totalAmount
-    })
+    body: JSON.stringify(payload)
   });
 
   if (!resp.ok) {
@@ -41,7 +43,7 @@ export async function printOrder(order, printerId = null) {
  */
 export async function printItemsReceipt(orderDto, printerId = null) {
   console.log("▶ Enviando impresión, payload:", orderDto, "printerId:", printerId);
-  const token    = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
 
   if (!branchId) {
@@ -49,9 +51,9 @@ export async function printItemsReceipt(orderDto, printerId = null) {
   }
 
   const headers = {
-    "Content-Type":  "application/json",
+    "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
-    "X-Branch-Id":   branchId
+    "X-Branch-Id": branchId
   };
 
   if (printerId) {
@@ -61,9 +63,9 @@ export async function printItemsReceipt(orderDto, printerId = null) {
   const resp = await fetch(
     `${API_URL}/api/print/direct/receipt/items`,
     {
-      method:  "POST",
+      method: "POST",
       headers,
-      body:    JSON.stringify(orderDto)
+      body: JSON.stringify(orderDto)
     }
   );
 

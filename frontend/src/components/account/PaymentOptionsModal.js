@@ -270,33 +270,43 @@ export default function PaymentOptionsModal({
     };
 
     return (
-        <div className="payment-modal">
+        <div className="payment-modal" onClick={(e) => {
+            // Si se hace clic fuera del contenido, cerrar el modal
+            if (e.target.classList.contains("payment-modal")) {
+                onClose();
+            }
+        }}>
             <div className="payment-modal-content">
-                <div className="payment-modal-header">
-                    {step !== "choose" && !showCloseConfirm && (
-                        <button
-                            className="pm-back-btn"
-                            onClick={() => {
-                                setStep("choose");
-                                setShowQR(false);
-                            }}
-                        >
-                            <ArrowLeft size={20} />
+                <div className="payment-modal-header-row">
+                    {step !== "choose" && (
+                        <button className="pm-back-btn" onClick={() => {
+                            setStep("choose");
+                            setShowQR(false);
+                        }}>
+                            <span className="icon-wrapper"><ArrowLeft size={26} /></span>
                         </button>
                     )}
-                    <button className="pm-close-btn" onClick={onClose}>
-                        <X size={20} />
+
+                    <h3 className="modal-title">
+                        {step === "split" && "Dividir cuenta"}
+                        {step === "full" && "Pagar todo"}
+                        {step === "products" && "Pagar productos"}
+                        {step === "choose" && "¿Cómo quieres pagar?"}
+                    </h3>
+
+                    <button className="popup-close" onClick={onClose}>
+                        <span className="icon-wrapper">
+                            <X size={26} />
+                        </span>
                     </button>
                 </div>
 
                 {/* — PASO 1: Elegir modalidad de pago — */}
                 {step === "choose" && (
                     <>
-                        <h2>¿Cómo quieres pagar?</h2>
                         <button onClick={() => setStep("full")}>Pagar toda la cuenta</button>
                         <button onClick={() => setStep("split")}>Repartir entre...</button>
                         <button onClick={() => setStep("products")}>Pagar productos</button>
-                        <button onClick={onClose}>Cancelar</button>
                     </>
                 )}
 
@@ -338,6 +348,7 @@ export default function PaymentOptionsModal({
                 {/* — PASO 3: “Repartir entre ‘people’ personas” — */}
                 {step === "split" && (
                     <>
+
                         <label className="payer-name-input">
                             Personas:
                             <input

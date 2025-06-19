@@ -49,3 +49,20 @@
 .error {
   color: red;
 }
+
+.popup-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 32px;
+  transition: transform 0.1s;
+}
+.popup-close:hover {
+  transform: scale(1.2);
+}
+
+.account-payments-modal-content {
+  position: relative; /* ← ESTA LÍNEA ES CLAVE */
+}

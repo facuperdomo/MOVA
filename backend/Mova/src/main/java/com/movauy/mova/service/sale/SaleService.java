@@ -137,6 +137,7 @@ public class SaleService {
 
         return new SaleResponseDTO(
                 sale.getId(),
+                sale.getAccount()   != null ? sale.getAccount().getId() : null,
                 sale.getTotalAmount(),
                 sale.getPaymentMethod(),
                 sale.getDateTime(),

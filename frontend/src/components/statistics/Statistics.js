@@ -29,6 +29,8 @@ const Statistics = () => {
   const [customEnd, setCustomEnd] = useState("");
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [saleDetail, setSaleDetail] = useState(null);
+  const [showPaymentsModal, setShowPaymentsModal] = useState(false);
+  const [paymentsData, setPaymentsData] = useState([]);
 
   useEffect(() => {
     if (!customStart && !customEnd) {
@@ -156,7 +158,7 @@ const Statistics = () => {
     });
   };
 
-  
+
   // Datos para gráfico de ventas activas
   const salesChartData = {
     labels: salesData
@@ -224,6 +226,17 @@ const Statistics = () => {
       setShowDetailModal(true);
     } catch (err) {
       console.error("Error al obtener detalle de venta", err);
+    }
+  };
+
+  const fetchAccountPayments = async (accountId) => {
+    try {
+      const response = await customFetch(`${API_URL}/api/accounts/${accountId}/payments`);
+      setPaymentsData(response);
+      setShowPaymentsModal(true);
+    } catch (err) {
+      console.error("Error cargando pagos de cuenta:", err);
+      alert("No se pudieron cargar los pagos de la cuenta.");
     }
   };
 
@@ -323,6 +336,7 @@ const Statistics = () => {
                         <button className="cancel-button" onClick={() => handleCancelSale(sale)}>❌ Cancelar</button>
                       )}
                       <button className="info-button" onClick={() => handleViewDetail(sale)}>📄 Info</button>
+
                     </td>
                   </tr>
                 ))}
@@ -425,12 +439,49 @@ const Statistics = () => {
                 </tbody>
               </table>
 
+              {/* → AQUÍ EL NUEVO BOTÓN */}
+              {saleDetail?.accountId && (
+                <button
+                  className="popup-btn popup-btn-cash"
+                  onClick={() => fetchAccountPayments(saleDetail.accountId)}
+                >
+                  💳 Ver Pagos
+                </button>
+              )}
+
               <button
                 className="popup-btn"
                 onClick={() => printOrder(saleDetail)}
               >
                 🖨️ Imprimir
               </button>
+            </div>
+          </div>
+        )}
+
+        {showPaymentsModal && (
+          <div className="popup-overlay">
+            <div className="popup-content">
+              <X className="popup-close" size={32} onClick={() => setShowPaymentsModal(false)} />
+              <h2>Pagos de Cuenta</h2>
+              <table className="sales-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Monto</th>
+                    <th>Pagador</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentsData.map(p => (
+                    <tr key={p.id}>
+                      <td>{new Date(p.paidAt).toLocaleString()}</td>
+                      <td>${p.amount.toFixed(2)}</td>
+                      <td>{p.payerName}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

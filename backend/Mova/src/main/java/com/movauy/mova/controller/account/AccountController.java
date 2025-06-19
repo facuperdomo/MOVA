@@ -11,6 +11,7 @@ import com.movauy.mova.dto.PaymentRequestDTO;
 import com.movauy.mova.dto.SaleDTO;
 import com.movauy.mova.dto.SplitStatusDTO;
 import com.movauy.mova.model.account.Account;
+import com.movauy.mova.model.account.AccountItem;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.service.account.AccountService;
 import lombok.RequiredArgsConstructor;
@@ -165,4 +166,8 @@ public class AccountController {
         return ResponseEntity.ok(receipt);
     }
 
+    @GetMapping("/{accountId}/items")
+    public List<AccountItem> getItems(@PathVariable Long accountId) {
+        return accountService.getItemsByAccountId(accountId);
+    }
 }

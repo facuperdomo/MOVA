@@ -20,6 +20,7 @@ import com.movauy.mova.model.product.Product;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.model.sale.SaleItem;
 import com.movauy.mova.model.user.User;
+import com.movauy.mova.repository.account.AccountItemRepository;
 import com.movauy.mova.repository.account.AccountRepository;
 import com.movauy.mova.repository.account.PaymentAccountRepository;
 import com.movauy.mova.repository.branch.BranchRepository;
@@ -43,11 +44,14 @@ import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
 public class AccountService {
 
+    @Autowired
+    private AccountItemRepository accountItemRepository;
     private final AccountRepository accountRepository;
     private final PaymentAccountRepository paymentAccountRepository;
     private final BranchRepository branchRepository;
@@ -169,6 +173,7 @@ public class AccountService {
         // 4) Armar la nueva entidad Sale
         Sale sale = new Sale();
         sale.setBranch(account.getBranch());
+        sale.setAccount(account);
         sale.setEstado(Sale.EstadoVenta.ACTIVA);
         sale.setDateTime(LocalDateTime.now());
         sale.setCashRegister(cajaAbierta);
@@ -266,6 +271,10 @@ public class AccountService {
             payment.setStatus(Status.PARTIALLY_PAID);
         }
         paymentAccountRepository.save(payment);
+
+        if (account.getSplitTotal() != null && account.getSplitRemaining() != null && account.getSplitRemaining() > 0) {
+            account.setSplitRemaining(account.getSplitRemaining() - 1);
+        }
 
         // 5) Si closeAfter y cubrimos el total, cerramos la cuenta
         if (Boolean.TRUE.equals(closeAfter) && remaining.compareTo(BigDecimal.ZERO) <= 0) {
@@ -709,5 +718,9 @@ public class AccountService {
 
         log.info("◀ closeAccountAndBuildReceipt END: generated OrderDTO={}", result);
         return result;
+    }
+
+    public List<AccountItem> getItemsByAccountId(Long accountId) {
+        return accountItemRepository.findByAccountId(accountId);
     }
 }

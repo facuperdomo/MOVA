@@ -9,6 +9,7 @@ import com.movauy.mova.model.product.ProductCategory;
 import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.repository.ingredient.IngredientRepository;
 import com.movauy.mova.repository.product.ProductRepository;
+import com.movauy.mova.repository.sale.SaleItemRepository;
 import com.movauy.mova.service.product.ProductCategoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,9 +29,13 @@ public class ProductService {
     private final IngredientRepository ingredientRepository;
     private final ProductCategoryService categoryService;
     private final BranchRepository branchRepository;
+    private final SaleItemRepository saleItemRepository;
 
     public List<ProductDTO> getProductsByBranch(Long branchId) {
-        List<Product> products = productRepository.getProductsByBranch(branchId);
+        List<Product> products = productRepository.findAllByBranchIdAndActiveTrue(branchId)
+                .stream()
+                .filter(Product::isActive)
+                .toList();
         return products.stream().map(product -> {
             String base64Image = product.getImage() != null
                     ? Base64.getEncoder().encodeToString(product.getImage())
@@ -62,8 +67,8 @@ public class ProductService {
         Long branchId = product.getBranch().getId();
 
         // Validar unicidad por sucursal
-        productRepository.findByBranchIdAndName(branchId, trimmedName).ifPresent(existing -> {
-            throw new IllegalArgumentException("Ya existe un producto con ese nombre en esta sucursal.");
+        productRepository.findByBranchIdAndNameAndActiveTrue(branchId, trimmedName).ifPresent(existing -> {
+            throw new IllegalArgumentException("Ya existe un producto activo con ese nombre en esta sucursal.");
         });
 
         // Asignar categoría si corresponde
@@ -94,8 +99,8 @@ public class ProductService {
 
         // Validar si se está cambiando el nombre, y si ya existe otro con ese nombre
         if (!existing.getName().equalsIgnoreCase(trimmedName)) {
-            productRepository.findByBranchIdAndName(branchId, trimmedName).ifPresent(other -> {
-                throw new IllegalArgumentException("Ya existe otro producto con ese nombre en esta sucursal.");
+            productRepository.findByBranchIdAndNameAndActiveTrue(branchId, trimmedName).ifPresent(other -> {
+                throw new IllegalArgumentException("Ya existe otro producto activo con ese nombre en esta sucursal.");
             });
         }
 
@@ -131,7 +136,14 @@ public class ProductService {
             throw new SecurityException("No tienes permiso para eliminar este producto.");
         }
 
-        productRepository.delete(existing);
+        boolean tieneVentas = saleItemRepository.existsByProductId(id);
+
+        if (tieneVentas) {
+            existing.setActive(false);
+            productRepository.save(existing);
+        } else {
+            productRepository.delete(existing);
+        }
     }
 
     @Transactional
@@ -158,5 +170,30 @@ public class ProductService {
     public Branch getBranch(Long id) {
         return branchRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
+    }
+
+    public ProductDTO convertToDTO(Product product) {
+        String base64Image = product.getImage() != null
+                ? Base64.getEncoder().encodeToString(product.getImage())
+                : null;
+
+        List<IngredientDTO> ingredients = product.getIngredients().stream()
+                .map(i -> new IngredientDTO(i.getId(), i.getName()))
+                .collect(Collectors.toList());
+
+        Long categoryId = product.getCategory() != null ? product.getCategory().getId() : null;
+        String categoryName = product.getCategory() != null ? product.getCategory().getName() : "Sin categoría";
+
+        return ProductDTO.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .price(product.getPrice())
+                .image(base64Image)
+                .categoryId(categoryId)
+                .categoryName(categoryName)
+                .enableIngredients(product.isEnableIngredients())
+                .ingredients(ingredients)
+                .ownerCompanyId(product.getBranch().getCompany().getId())
+                .build();
     }
 }

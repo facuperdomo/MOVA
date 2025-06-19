@@ -42,13 +42,15 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
         WHERE si.sale.branch.id = :branchId
     """)
     int countTotalSaleItemsByBranch(@Param("branchId") Long branchId);
-    
-    @Query("SELECT si.product.name, SUM(si.quantity) " +
-       "FROM SaleItem si " +
-       "WHERE si.sale.branch.id = :branchId AND si.sale.dateTime BETWEEN :start AND :end " +
-       "GROUP BY si.product.name " +
-       "ORDER BY SUM(si.quantity) DESC")
-List<Object[]> findTopSellingProductsByBranch(@Param("start") LocalDateTime start,
-                                               @Param("end") LocalDateTime end,
-                                               @Param("branchId") Long branchId);
+
+    @Query("SELECT si.product.name, SUM(si.quantity) "
+            + "FROM SaleItem si "
+            + "WHERE si.sale.branch.id = :branchId AND si.sale.dateTime BETWEEN :start AND :end "
+            + "GROUP BY si.product.name "
+            + "ORDER BY SUM(si.quantity) DESC")
+    List<Object[]> findTopSellingProductsByBranch(@Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("branchId") Long branchId);
+
+    boolean existsByProductId(Long productId);
 }
