@@ -6,17 +6,18 @@ export const customFetch = async (path, options = {}) => {
   const url = path.startsWith("http") ? path : `${API_URL}${path}`;
   const isMercadoPago = url.includes("/api/mercadopago/");
 
-  const createHeaders = (authToken) => ({
-    "Content-Type": "application/json",
-    ...(!isMercadoPago && authToken
-      ? { Authorization: `Bearer ${authToken}` }
-      : {})
-  });
+  const createHeaders = (authToken) => {
+    const isFormData = fetchOptions.body instanceof FormData;
+    return {
+      ...(!isFormData && { "Content-Type": "application/json" }),
+      ...(!isMercadoPago && authToken ? { Authorization: `Bearer ${authToken}` } : {})
+    };
+  };
 
   const fetchWithToken = async (authToken) => {
     const headers = createHeaders(authToken);
     const opts = { ...fetchOptions, headers };
-    console.log(`📡 fetch → ${opts.method||"GET"} ${url}`, { headers, skipRefresh });
+    console.log(`📡 fetch → ${opts.method || "GET"} ${url}`, { headers, skipRefresh });
     return fetch(url, opts);
   };
 
@@ -42,7 +43,7 @@ export const customFetch = async (path, options = {}) => {
       }
     }
 
-    const contentType = res.headers.get("Content-Type")||"";
+    const contentType = res.headers.get("Content-Type") || "";
     const body = contentType.includes("application/json")
       ? await res.json()
       : await res.text();
@@ -76,8 +77,8 @@ const refreshToken = async () => {
     const res = await fetch(`${API_URL}/auth/refresh-token`, {
       method: "POST",
       headers: {
-        "Content-Type":"application/json",
-        Authorization:`Bearer ${token}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
       }
     });
     if (!res.ok) {

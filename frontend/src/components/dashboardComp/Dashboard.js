@@ -208,26 +208,58 @@ const Dashboard = () => {
 
   const loadAccountItems = async (accountId) => {
     try {
+      // 1️⃣ Mira qué trae el fetch en bruto
       const account = await customFetch(`${API_URL}/api/accounts/${accountId}`);
-      console.log("🔍 Raw account payload:", account);
-      console.log("🔍 Raw items array:", account.items);
+      console.log('🔍 raw account response:', account);
+
+      // 2️⃣ Inspecciona los items antes de normalizar
+      console.log('🔍 raw account.items:', account.items);
+
       const normalized = account.items.map(line => {
+        // 2.1️⃣ Qué ingredientIds vinieron
+        console.log(`  • item ${line.id} ingredientIds:`, line.ingredientIds);
+
         const prod = products.find(p => p.id === line.productId) || { name: '', ingredients: [], price: 0 };
-        return {
-          // AHORA usamos `id` igual que en el carrito local
+        console.log(`    · producto lookup:`, prod);
+
+        const hasIds = Array.isArray(line.ingredientIds);
+        const keptIds = hasIds
+          ? line.ingredientIds          // si viene [], keptIds=[] → quitar todos
+          : prod.ingredients.map(i => i.id); // sólo cuando es undefined uso todos
+        console.log(`    · keptIds after fallback:`, keptIds);
+
+        const removedNames = hasIds
+          ? prod.ingredients.filter(i => !keptIds.includes(i.id)).map(i => i.name)
+          : [];
+        const displayName = removedNames.length
+          ? `${prod.name} – sin ${removedNames.join(', ')}`
+          : prod.name;
+
+        const item = {
           id: line.id,
           productId: line.productId,
           productName: prod.name,
+          displayName,
           price: prod.price || 0,
           quantity: line.quantity,
-          ingredients: (line.ingredientIds || []).map(ingId => {
-            const ing = prod.ingredients.find(x => x.id === ingId);
-            return { id: ingId, name: ing?.name ?? '' };
+          ingredients: keptIds.map(id => {
+            const ing = prod.ingredients.find(x => x.id === id);
+            return { id, name: ing?.name ?? '' };
           }),
           paid: line.paid
         };
+        console.log(`    · normalized item:`, item);
+        return item;
       });
-      setAccountItems(normalized);
+
+      // 3️⃣ Antes de agrupar, comprueba tu array normalizado
+      console.log('🔍 normalized array:', normalized);
+
+      const grouped = groupItems(normalized);
+      console.log('🔍 grouped array:', grouped);
+
+      setAccountItems(grouped);
+      debugger;
     } catch (err) {
       console.error("[ERROR] loadAccountItems:", err);
     }
@@ -530,12 +562,18 @@ const Dashboard = () => {
       return;
     }
 
-    // → Aquí la magia:
     try {
-      // 1) Buscamos en accountItems si ya hay un item para este productId
-      const existing = accountItems.find(it => it.productId === product.id);
+      // ← Aquí definimos thisIds correctamente
+      const thisIds = product.ingredients?.map(i => i.id) || [];
+
+      // Buscamos si ya existe esa variante en la cuenta
+      const existing = accountItems.find(it =>
+        it.productId === product.id &&
+        sameIngredientSet(it.ingredients.map(i => i.id), thisIds)
+      );
+
       if (existing) {
-        // 2a) Si existe, hacemos PUT para subir +1
+        // 2a) Si existe, incrementa cantidad
         await customFetch(
           `${API_URL}/api/accounts/${selectedAccountId}/items/${existing.id}`,
           {
@@ -545,18 +583,22 @@ const Dashboard = () => {
           }
         );
       } else {
-        // 2b) Si no existe, hacemos POST para crear uno nuevo con qty=1
+        // 2b) Si no existe, crea nuevo con ingredientIds=thisIds
         await customFetch(
           `${API_URL}/api/accounts/${selectedAccountId}/items`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId: product.id, quantity: 1 })
+            body: JSON.stringify({
+              productId: product.id,
+              quantity: 1,
+              ingredientIds: thisIds
+            })
           }
         );
       }
 
-      // 3) Refrescamos la lista siempre
+      // 3) Refresca siempre la lista
       await loadAccountItems(selectedAccountId);
     } catch (err) {
       console.error("Error agregando a cuenta:", err);
@@ -776,7 +818,7 @@ const Dashboard = () => {
         .map(i => i.id)
         .sort()
         .join(",");
-      const key = `${prodId}-${ingredientsKey}`;
+      const key = `${prodId}-${ingredientsKey}-${item.displayName || ''}`;
 
       if (map[key]) {
         map[key].quantity += item.quantity;
@@ -840,9 +882,11 @@ const Dashboard = () => {
     }
   };
 
-  const rawItems = selectedAccountId ? accountItems : cart;
-  const displayItems = groupItems(rawItems);
-  const totalUnits = displayItems.reduce((sum, it) => sum + it.quantity, 0);
+  const displayItems = groupItems(
+    selectedAccountId
+      ? accountItems
+      : cart
+  );
 
   const handleCloseAccount = async (accountId) => {
     try {
@@ -1051,13 +1095,12 @@ const Dashboard = () => {
         <div className="cart-panel">
           <h2>Carrito</h2>
           <div className="cart-list">
+
             {displayItems.map((item, idx) => {
               const key = selectedAccountId
                 ? item.id
                 : `${item.id}-${idx}`;
-              const name = selectedAccountId
-                ? item.productName
-                : item.name;
+              const name = item.displayName || (selectedAccountId ? item.productName : item.name);
 
               return (
                 <div key={key} className="cart-item">
@@ -1265,7 +1308,11 @@ const Dashboard = () => {
       {customizingProduct && (
         <div className="popup-overlay">
           <div className="popup-content">
-            <X className="popup-close" onClick={() => setCustomizingProduct(null)} />
+            <X
+              className="popup-close"
+              size={32}
+              onClick={() => setCustomizingProduct(null)}
+            />
             <h2>{customizingProduct.name} – Quita Ingredientes</h2>
             <div className="ingredient-list">
               {customizingProduct.ingredients.map(ing => (
@@ -1273,11 +1320,13 @@ const Dashboard = () => {
                   <input
                     type="checkbox"
                     checked={tempIngredients.includes(ing.id)}
-                    onChange={() => {
+                    onChange={() =>
                       setTempIngredients(t =>
-                        t.includes(ing.id) ? t.filter(x => x !== ing.id) : [...t, ing.id]
-                      );
-                    }}
+                        t.includes(ing.id)
+                          ? t.filter(x => x !== ing.id)
+                          : [...t, ing.id]
+                      )
+                    }
                   />
                   {ing.name}
                 </label>
@@ -1285,14 +1334,61 @@ const Dashboard = () => {
             </div>
             <button
               className="popup-btn popup-btn-cash"
-              onClick={() => {
-                // aquí construimos un “item” modificado:
-                addToCart({
-                  ...customizingProduct,
-                  ingredients: customizingProduct.ingredients.filter(i =>
-                    tempIngredients.includes(i.id)
-                  )
-                });
+              onClick={async () => {
+                // Ingredientes escogidos y removidos
+                const kept = customizingProduct.ingredients.filter(i =>
+                  tempIngredients.includes(i.id)
+                );
+                const removedNames = customizingProduct.ingredients
+                  .filter(i => !tempIngredients.includes(i.id))
+                  .map(i => i.name);
+                // Nombre para mostrar
+                const displayName = removedNames.length
+                  ? `${customizingProduct.name} – sin ${removedNames.join(", ")}`
+                  : customizingProduct.name;
+
+                if (selectedAccountId) {
+                  try {
+                    // 1) insertamos en el back
+                    const created = await customFetch(
+                      `${API_URL}/api/accounts/${selectedAccountId}/items`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          productId: customizingProduct.id,
+                          quantity: 1,
+                          ingredientIds: kept.map(i => i.id),
+                        }),
+                      }
+                    );
+                    // 2) construimos en local nuestro nuevo ítem, con displayName
+                    const newItem = {
+                      id: created.id,                     // id que devolvió el back
+                      productId: customizingProduct.id,
+                      productName: customizingProduct.name,
+                      displayName,                        // el nombre “– sin X”
+                      price: customizingProduct.price,
+                      quantity: 1,
+                      ingredients: kept.map(i => ({ id: i.id, name: i.name })),
+                      paid: false
+                    };
+                    // 3) lo añadimos a la lista local (sin recargar toda)
+                    setAccountItems(prev => [...prev, newItem]);
+                  } catch (err) {
+                    console.error("Error agregando a cuenta:", err);
+                    alert("No se pudo agregar el producto a la cuenta.");
+                  }
+                }
+                else {
+                  // Agregar al carrito normal
+                  addToCart({
+                    ...customizingProduct,
+                    ingredients: kept,
+                    displayName,
+                  });
+                }
+
                 setCustomizingProduct(null);
               }}
             >

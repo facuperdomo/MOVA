@@ -16,6 +16,7 @@ import com.movauy.mova.model.account.PaymentAccount;
 import com.movauy.mova.model.account.PaymentAccount.Status;
 import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.finance.CashRegister;
+import com.movauy.mova.model.ingredient.Ingredient;
 import com.movauy.mova.model.product.Product;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.model.sale.SaleItem;
@@ -24,6 +25,7 @@ import com.movauy.mova.repository.account.AccountItemRepository;
 import com.movauy.mova.repository.account.AccountRepository;
 import com.movauy.mova.repository.account.PaymentAccountRepository;
 import com.movauy.mova.repository.branch.BranchRepository;
+import com.movauy.mova.repository.ingredient.IngredientRepository;
 import com.movauy.mova.repository.product.ProductRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
 import com.movauy.mova.service.finance.CashRegisterService;
@@ -37,6 +39,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -59,6 +62,7 @@ public class AccountService {
     private final SaleRepository saleRepository;
     private final CashRegisterService cashRegisterService;
     private final AuthService authService;
+    private final IngredientRepository ingredientRepository;
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
 
     public Account createAccount(AccountCreateDTO dto) {
@@ -93,7 +97,7 @@ public class AccountService {
 
         // 1) Si ya había una línea sin pagar, apilo ahí, si no la creo
         AccountItem existing = account.getItems().stream()
-                .filter(it -> it.getProduct().getId().equals(dto.getProductId()) && !it.isPaid())
+                .filter(it -> it.getProduct().getId().equals(dto.getProductId()) && !it.isPaid() && sameIngredientSet(it, dto.getIngredientIds()))
                 .findFirst().orElse(null);
 
         if (existing != null) {
@@ -104,6 +108,8 @@ public class AccountService {
             item.setProduct(product);
             item.setQuantity(dto.getQuantity());
             item.setUnitPrice(product.getPrice());
+            List<Ingredient> kept = ingredientRepository.findAllById(dto.getIngredientIds());
+            item.setIngredients(kept);
             account.getItems().add(item);
         }
 
@@ -722,5 +728,15 @@ public class AccountService {
 
     public List<AccountItem> getItemsByAccountId(Long accountId) {
         return accountItemRepository.findByAccountId(accountId);
+    }
+
+    private boolean sameIngredientSet(AccountItem it, List<Long> incomingIds) {
+        List<Long> existingIds = it.getIngredients().stream()
+                .map(Ingredient::getId)
+                .sorted()
+                .toList();
+        List<Long> newIds = new ArrayList<>(incomingIds);
+        Collections.sort(newIds);
+        return existingIds.equals(newIds);
     }
 }

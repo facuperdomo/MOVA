@@ -4,6 +4,9 @@ import com.movauy.mova.model.product.Product;
 import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.movauy.mova.model.ingredient.Ingredient;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @Entity
@@ -29,5 +32,13 @@ public class AccountItem {
     @Builder.Default
     @Column(nullable = false)
     private boolean paid = false;
+    
+    @ManyToMany
+    @JoinTable(
+            name = "account_item_ingredients",
+            joinColumns = @JoinColumn(name = "account_item_id"),
+            inverseJoinColumns = @JoinColumn(name = "ingredient_id")
+    )
+    private List<Ingredient> ingredients = new ArrayList<>();
 }
 

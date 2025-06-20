@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, X, Edit2, Trash2, List } from "lucide-react";
 import "./adminProductsStyle.css";
 import { customFetch } from "../../utils/api";
 import { API_URL } from "../../config/apiConfig";
@@ -33,6 +33,8 @@ const AdminProducts = () => {
 
   const [editingIngProductId, setEditingIngProductId] = useState(null);
   const [selectedIngredientsForEditing, setSelectedIngredientsForEditing] = useState([]);
+  const [imageRejected, setImageRejected] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     fetchProducts();
@@ -51,7 +53,7 @@ const AdminProducts = () => {
   const handleCategoryClick = (catId) => {
     const cat = categories.find(c => c.id === catId);
     setSelectedCategoryId(catId);
-  
+
     if (enableIngredients && cat?.hasIngredients) {
       if (editingId) {
         // en edición: abre el modal de ingredientes usando tu helper
@@ -71,7 +73,7 @@ const AdminProducts = () => {
   const handleFormCategoryClick = (catId) => {
     const cat = categories.find(c => c.id === catId);
     setSelectedCategoryId(catId);
-  
+
     if (enableIngredients && cat?.hasIngredients) {
       if (editingId) {
         const prod = products.find(p => p.id === editingId);
@@ -88,13 +90,11 @@ const AdminProducts = () => {
   const handleFilterCategory = (catId) => {
     setFilterCategoryId(catId);
   };
-  
+
   useEffect(() => {
     (async () => {
       try {
-        const me = await customFetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-        });
+        const me = await customFetch(`${API_URL}/auth/me`);
         console.log("👤 Me:", me);
         setEnableIngredients(me.enableIngredients);
         setEnableKitchenCommands(me.enableKitchenCommands);
@@ -169,6 +169,11 @@ const AdminProducts = () => {
       return;
     }
 
+    if (imageRejected) {
+      setFormError("La imagen seleccionada no es válida.");
+      return;
+    }
+
     // 5. Construcción del FormData
     const formData = new FormData();
     formData.append("name", nameTrimmed);
@@ -184,6 +189,10 @@ const AdminProducts = () => {
         try {
           const resp = await fetch(product.imageUrl);
           const blob = await resp.blob();
+          if (blob.size > 1 * 1024 * 1024) {
+            setFormError("La imagen actual supera el límite de 1MB.");
+            return;
+          }
           formData.append("image", blob, "currentImage.png");
         } catch {
           setFormError("Hubo un problema al cargar la imagen.");
@@ -206,18 +215,16 @@ const AdminProducts = () => {
     const method = editingId ? "PUT" : "POST";
 
     try {
-      await fetch(url, {
+      await customFetch(url, {
         method,
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+        body: formData
       });
+
       fetchProducts();
       resetForm();
-    } catch (error) {
-      console.error("❌ Error al guardar producto:", error);
-      setFormError("Error al guardar producto.");
+    } catch (err) {
+      console.error("❌ Error al guardar producto:", err);
+      setFormError(err.message || "Error inesperado al guardar producto.");
     }
   };
 
@@ -240,9 +247,8 @@ const AdminProducts = () => {
 
   const handleDelete = async () => {
     try {
-      await fetch(`${API_URL}/api/products/${productToDelete.id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      await customFetch(`${API_URL}/api/products/${productToDelete.id}`, {
+        method: "DELETE"
       });
       fetchProducts();
       setShowDeletePopup(false);
@@ -258,6 +264,8 @@ const AdminProducts = () => {
     setImage(null);
     setImageName("Seleccionar Imagen");
     setEditingId(null);
+    setImageRejected(false);
+    setImagePreview(null);
   };
 
   return (
@@ -293,13 +301,34 @@ const AdminProducts = () => {
                 type="file"
                 accept="image/*"
                 onChange={(e) => {
-                  setImage(e.target.files[0]);
-                  setImageName(e.target.files[0]?.name || "Seleccionar Imagen");
+                  const file = e.target.files[0];
+                  if (!file) return;
+
+                  const fileSizeMB = file.size / (1024 * 1024);
+                  if (fileSizeMB > 1) {
+                    setFormError("La imagen no puede superar 1MB.");
+                    setImage(null);
+                    setImageName("Seleccionar Imagen");
+                    setImageRejected(true);
+                    setImagePreview(null);
+                    return;
+                  }
+                  setImageRejected(false);
+                  setFormError("");
+                  setImage(file);
+                  setImageName(file.name || "Seleccionar Imagen");
+                  const previewUrl = URL.createObjectURL(file);
+                  setImagePreview(previewUrl);
                 }}
 
               />
             </label>
-
+            {imagePreview && (
+              <div className="image-preview">
+                <p className="preview-label">Preview de la imagen:</p>
+                <img src={imagePreview} alt="Preview" />
+              </div>
+            )}
             <button type="submit">{editingId ? "Guardar Cambios" : "Agregar"}</button>
             {formError && (
               <div className="form-error">
@@ -380,18 +409,18 @@ const AdminProducts = () => {
                     {product.category?.name || "Sin categoría"}
                   </p>
                   <div className="product-actions">
-                    <button className="edit-btn" onClick={() => handleEdit(product)}>
-                      ✏️ Editar
+                    <button className="edit-product-btn action-product-btn" onClick={() => handleEdit(product)}>
+                      ✏️
                     </button>
-                    <button className="delete-btn" onClick={() => confirmDelete(product)}>
-                      🗑️ Eliminar
+                    <button className="delete-product-btn action-product-btn" onClick={() => confirmDelete(product)}>
+                      🗑️
                     </button>
                     {enableIngredients && categories.find(c => c.id === product.category.id)?.hasIngredients && (
                       <button
-                        className="ing-btn"
+                        className="ing-product-btn action-product-btn"
                         onClick={() => openIngredientEditor(product)}
                       >
-                        🧂 Ingredientes
+                        🧂︎
                       </button>
                     )}
                   </div>
@@ -445,28 +474,24 @@ const AdminProducts = () => {
         />
       )}
 
-{ editingIngProductId !== null && (
-  <IngredientSelector
-    initial={selectedIngredientsForEditing}
-    onSave={async ings => {
-      // Patch a tu endpoint de ingredientes
-      await customFetch(
-        `${API_URL}/api/products/${editingIngProductId}/ingredients`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`
-          },
-          body: JSON.stringify(ings)
-        }
-      );
-      setEditingIngProductId(null);
-      fetchProducts();
-    }}
-    onClose={() => setEditingIngProductId(null)}
-  />
-) }
+      {editingIngProductId !== null && (
+        <IngredientSelector
+          initial={selectedIngredientsForEditing}
+          onSave={async ings => {
+            // Patch a tu endpoint de ingredientes
+            await customFetch(
+              `${API_URL}/api/products/${editingIngProductId}/ingredients`,
+              {
+                method: "PATCH",
+                body: JSON.stringify(ings)
+              }
+            );
+            setEditingIngProductId(null);
+            fetchProducts();
+          }}
+          onClose={() => setEditingIngProductId(null)}
+        />
+      )}
     </div>
   );
 };

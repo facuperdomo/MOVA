@@ -55,7 +55,7 @@ public class ProductController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ProductDTO> addProduct(
+    public ResponseEntity<?> addProduct(
             @RequestHeader("Authorization") String token,
             @RequestParam("name") String name,
             @RequestParam("price") double price,
@@ -73,6 +73,12 @@ public class ProductController {
         Long branchId = authService.getBranchIdFromToken(token);
         categoryService.getById(categoryId); // Validar existencia
 
+        final long MAX_IMAGE_SIZE = 1_048_576; // 1MB
+        if (imageFile.getSize() > MAX_IMAGE_SIZE) {
+            return ResponseEntity
+                    .badRequest()
+                    .body("La imagen no puede superar los 1MB.");
+        }
         byte[] imageBytes = imageFile.getBytes();
 
         Product created = productService.addProduct(
@@ -93,7 +99,7 @@ public class ProductController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ProductDTO> updateProduct(
+    public ResponseEntity<?> updateProduct(
             @RequestHeader("Authorization") String token,
             @PathVariable Long id,
             @RequestParam("name") String name,
@@ -111,6 +117,13 @@ public class ProductController {
 
         Long branchId = authService.getBranchIdFromToken(token);
         categoryService.getById(categoryId); // Validar existencia
+
+        final long MAX_IMAGE_SIZE = 1_048_576; // 1MB
+        if (imageFile != null && imageFile.getSize() > MAX_IMAGE_SIZE) {
+            return ResponseEntity
+                    .badRequest()
+                    .body("La imagen no puede superar los 1MB.");
+        }
 
         byte[] imageBytes = (imageFile != null && !imageFile.isEmpty()) ? imageFile.getBytes() : null;
 

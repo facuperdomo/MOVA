@@ -1,6 +1,7 @@
 package com.movauy.mova.dto;
 
 import com.movauy.mova.model.account.Account;
+import com.movauy.mova.model.ingredient.Ingredient;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.*;
@@ -17,13 +18,27 @@ public class AccountResponseDTO {
 
     public static AccountResponseDTO from(Account account) {
         List<AccountItemDTO> items = account.getItems().stream()
-                .map(item -> new AccountItemDTO(
-                item.getId(),
-                item.getProduct().getId(),
-                item.getQuantity()
-        ))
-                .collect(Collectors.toList());
+                .map(item -> {
+                    List<Long> ingrIds = item.getIngredients()
+                            .stream()
+                            .map(Ingredient::getId)
+                            .toList();
+                    return new AccountItemDTO(
+                            item.getId(),
+                            item.getProduct().getId(),
+                            item.getQuantity(),
+                            item.getIngredients().stream()
+                                    .map(Ingredient::getId)
+                                    .collect(Collectors.toList())
+                    );
+                })
+                .toList();
 
-        return new AccountResponseDTO(account.getId(), account.getName(), account.isClosed(), items);
+        return new AccountResponseDTO(
+                account.getId(),
+                account.getName(),
+                account.isClosed(),
+                items
+        );
     }
 }
