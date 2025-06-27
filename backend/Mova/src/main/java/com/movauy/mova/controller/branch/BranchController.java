@@ -112,7 +112,7 @@ public class BranchController {
     }
 
     /**
-     * Utilidad para convertir entidad a DTO.
+     * Conversión de entidad a DTO, incluyendo datos de Plan
      */
     private BranchDTO mapToDto(Branch b) {
         return BranchDTO.builder()
@@ -127,6 +127,11 @@ public class BranchController {
                 .phone(b.getPhone())
                 .rut(b.getRut())
                 .enabled(b.isEnabled())
+                // campos de Plan:
+                .planId(b.getPlan() != null ? b.getPlan().getId() : null)
+                .planName(b.getPlan() != null ? b.getPlan().getName() : null)
+                .maxCashBoxes(b.getPlan() != null ? b.getPlan().getMaxCashBoxes() : null)
+                .maxUsers(b.getPlan() != null ? b.getPlan().getMaxUsers() : null)
                 .build();
     }
 
@@ -160,4 +165,28 @@ public class BranchController {
         return ResponseEntity.ok(mapToDto(b));
     }
 
+    /**
+     * —————— ASIGNAR PLAN A LA SUCURSAL ——————
+     */
+    @PutMapping("/{branchId}/plan/{planId}")
+    public ResponseEntity<BranchDTO> assignPlanToBranch(
+            @PathVariable Long companyId,
+            @PathVariable Long branchId,
+            @PathVariable Long planId
+    ) {
+        Branch updated = branchService.assignPlan(branchId, planId);
+        return ResponseEntity.ok(mapToDto(updated));
+    }
+    
+    /**
+     * —————— DESASIGNAR PLAN DE LA SUCURSAL ——————
+     */
+    @DeleteMapping("/{branchId}/plan")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void unassignPlanFromBranch(
+            @PathVariable Long companyId,
+            @PathVariable Long branchId
+    ) {
+        branchService.unassignPlan(branchId);
+    }
 }

@@ -1,3 +1,4 @@
+// src/main/java/com/movauy/mova/dto/SaleDTO.java
 package com.movauy.mova.dto;
 
 import com.movauy.mova.model.sale.Sale.OrderStatus;
@@ -18,40 +19,31 @@ import java.util.List;
 @Builder
 public class SaleDTO {
     private Long id;
+
+    /** Línea de detalle de productos vendidos */
     private List<SaleItemDTO> items;
 
-    /**
-     * Ahora es BigDecimal para reflejar exactamente el cálculo de precios
-     * (evita el error de intentar asignar un BigDecimal a un double).
-     */
+    /** Monto total de la venta */
     private BigDecimal totalAmount;
 
-    /**
-     * Si quieres almacenar el método de pago:
-     * (puedes dejarlo null o eliminarlo si no lo usas)
-     */
+    /** Método de pago (opcional) */
     private String paymentMethod;
 
-    /**
-     * Cambiamos de String a LocalDateTime, para poder hacer:
-     *     dto.setDateTime(sale.getDateTime());
-     */
+    /** Fecha/hora de la venta (se llena en el servicio) */
     private LocalDateTime dateTime;
 
+    /** Estado de la orden (opcional para crear, útil en respuestas) */
     private OrderStatus status;
 
-    /**
-     * Si tu entidad `Sale` incluye cuándo se envió a cocina:
-     */
+    /** Fecha/hora de envío a cocina (para respuesta) */
     private LocalDateTime kitchenSentAt;
 
-    /**
-     * Datos extra (opcionales) que podrías querer devolver:
-     * - A qué sucursal pertenece la venta
-     * - En qué caja se registró
-     * - Qué usuario la generó
-     */
+    /** Sucursal donde se realiza la venta */
     private Long branchId;
-    private Long cashRegisterId;
+
+    /** Caja en la que se registra la venta (antes cashRegisterId) */
+    private Long cashBoxId;
+
+    /** Usuario que genera la venta */
     private Long userId;
 }

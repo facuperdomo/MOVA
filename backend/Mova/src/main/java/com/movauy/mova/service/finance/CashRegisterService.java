@@ -1,100 +1,129 @@
 // src/main/java/com/movauy/mova/service/finance/CashRegisterService.java
 package com.movauy.mova.service.finance;
 
-import com.movauy.mova.dto.UserBasicDTO;
+import com.movauy.mova.model.finance.CashBox;
 import com.movauy.mova.model.finance.CashRegister;
-import com.movauy.mova.model.sale.Sale;
-import com.movauy.mova.model.sale.Sale.EstadoVenta;
 import com.movauy.mova.model.user.User;
+import com.movauy.mova.repository.finance.CashBoxRepository;
 import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
 import com.movauy.mova.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CashRegisterService {
 
-    private final CashRegisterRepository cashRegisterRepository;
-    private final SaleRepository saleRepository;
+    private final CashRegisterRepository repo;
+    private final CashBoxRepository boxRepo;
     private final AuthService authService;
+    private final CashBoxService cashBoxService;
+    private final SaleRepository saleRepository;
 
-    // Obtiene la caja abierta para la sucursal autenticada
-    public Optional<CashRegister> getOpenCashRegister(String token) {
-        Long branchId = authService.getBranchIdFromToken(token);
-        return cashRegisterRepository.findByCloseDateIsNullAndBranch_Id(branchId);
-    }
-
-    // Abre una caja para el usuario autenticado si no existe ya una abierta para esa sucursal
-    public boolean openCashRegister(String token, double initialAmount) {
-        Long branchId = authService.getBranchIdFromToken(token);
-        Long userId = authService.getUserBasicFromToken(token).getId();
-
-        if (cashRegisterRepository.findByCloseDateIsNullAndBranch_Id(branchId).isPresent()) {
-            return false;
-        }
-
-        User user = authService.getUserById(userId);
-
-        CashRegister newCashRegister = CashRegister.builder()
-                .initialAmount(initialAmount)
-                .openDate(LocalDateTime.now())
-                .open(true)
-                .totalSales(0.0)
-                .branch(authService.getBranchById(branchId))
-                .user(user) // ✅ Ahora sí, seteamos el usuario
-                .build();
-
-        cashRegisterRepository.save(newCashRegister);
-        return true;
-    }
-
-    // Cierra la caja abierta para la sucursal autenticada
-    public Map<String, Object> closeCashRegister(String token) {
-        Long branchId = authService.getBranchIdFromToken(token);
-        Optional<CashRegister> openCash = cashRegisterRepository.findByCloseDateIsNullAndBranch_Id(branchId);
-
-        if (openCash.isPresent()) {
-            CashRegister cashRegister = openCash.get();
-            double totalSold = calculateTotalSoldByCashRegister(cashRegister.getId());
-            double expectedAmount = cashRegister.getInitialAmount() + totalSold;
-
-            cashRegister.setTotalSales(totalSold);
-            cashRegister.setCloseDate(LocalDateTime.now());
-            cashRegister.setOpen(false);
-
-            cashRegisterRepository.save(cashRegister);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("totalSold", totalSold);
-            result.put("expectedAmount", expectedAmount);
-
-            return result;
-        }
-        return null;
-    }
-
-    private double calculateTotalSoldByCashRegister(Long cashRegisterId) {
-        List<Sale> sales = saleRepository.findByCashRegisterId(cashRegisterId);
-        return sales.stream()
-                .filter(sale -> sale.getEstado() == EstadoVenta.ACTIVA)
-                .mapToDouble(Sale::getTotalAmount)
-                .sum();
+    /**
+     * Histórico de movimientos de una caja.
+     */
+    public List<CashRegister> getHistory(Long boxId) {
+        return repo.findByCashBoxIdOrderByOpenDateAsc(boxId);
     }
 
     /**
-     * Obtiene la caja abierta para la sucursal indicada. Lanza excepción si no
-     * existe ninguna caja abierta.
+     * Lista todas las cajas abiertas en la sucursal que además estén asignadas
+     * al usuario del token.
      */
-    public CashRegister getOpenCashRegisterForBranch(Long branchId) {
-        return cashRegisterRepository
-                .findByCloseDateIsNullAndBranch_Id(branchId)
-                .orElseThrow(()
-                        -> new IllegalStateException("No hay ninguna caja abierta en la sucursal " + branchId)
-                );
+    public List<CashBox> listCashRegisters(String token, Boolean openOnly) {
+        Long userId = authService.getUserBasicFromToken(token).getId();
+        Long branchId = authService.getUserBasicFromToken(token).getBranchId();
+
+        // Ahora usamos el flag isOpen en lugar de closedAt IS NULL
+        List<CashBox> cajas = boxRepo.findByBranchIdAndIsOpenTrue(branchId);
+
+        // Filtramos sólo las cajas en las que el usuario esté asignado
+        return cajas.stream()
+                .filter(c -> c.getAssignedUsers()
+                .stream()
+                .anyMatch(u -> u.getId().equals(userId)))
+                .collect(Collectors.toList());
     }
+
+    /**
+     * Registra la apertura de caja: - crea un CashRegister con openDate y monto
+     * inicial - marca la caja como abierta
+     */
+    @Transactional
+    public CashRegister registerOpening(String token, Long boxId, double initialAmount) {
+        // 1) Validar y cargar caja
+        CashBox box = boxRepo.findById(boxId)
+                .orElseThrow(() -> new IllegalArgumentException("CashBox no encontrada: " + boxId));
+
+        // 2) Obtener usuario que abre
+        User user = authService.getUserEntityFromToken(token);
+
+        // 3) Crear registro de apertura
+        CashRegister cr = CashRegister.builder()
+                .cashBox(box)
+                .branch(box.getBranch())
+                .code(box.getCode())
+                .initialAmount(initialAmount)
+                .openDate(LocalDateTime.now())
+                .totalSales(0.0)
+                .closingAmount(0.0)
+                .user(user)
+                .build();
+
+        // 4) Guardar
+        CashRegister saved = repo.save(cr);
+
+        // 5) Marcar la caja como abierta
+        box.setIsOpen(true);
+        boxRepo.save(box);
+
+        return saved;
+    }
+
+    /**
+     * Registra el cierre de caja: - recupera el registro de apertura (sin
+     * closeDate) - calcula totalSales a partir de la suma de todos los amounts
+     * - rellena closeDate, totalSales y closingAmount - marca la caja como
+     * cerrada
+     */
+    @Transactional
+    public CashRegister registerClosing(String token, Long boxId, double closingAmount) {
+        // 1) Traer la caja abierta
+        CashBox box = cashBoxService.getOpenCashBoxById(token, boxId);
+
+        // 2) Traer el registro de apertura pendiente
+        CashRegister opening = repo
+                .findTopByCashBoxIdAndCloseDateIsNullOrderByOpenDateDesc(boxId)
+                .orElseThrow(() -> new IllegalStateException(
+                "No existe registro de apertura para caja " + boxId));
+
+        // 3) Rango exacto entre apertura y cierre
+        LocalDateTime open = opening.getOpenDate();
+        LocalDateTime close = LocalDateTime.now();
+
+        // 4) Sumar todas las ventas hechas en ese intervalo
+        Double sum = saleRepository.sumSalesByBoxBetween(boxId, open, close);
+        double totalSales = (sum != null) ? sum : 0.0;
+        System.out.println(">>> totalSales para caja "+boxId+" entre "+open+" y "+close+" = "+totalSales);
+        
+        // 5) Rellenar campos de cierre
+        opening.setCloseDate(close);
+        opening.setTotalSales(totalSales);
+        opening.setClosingAmount(closingAmount);
+
+        // 6) Guardar y marcar caja como cerrada
+        CashRegister saved = repo.save(opening);
+        box.setIsOpen(false);
+        boxRepo.save(box);
+
+        return saved;
+    }
+    
 }

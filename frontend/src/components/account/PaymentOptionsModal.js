@@ -294,7 +294,7 @@ export default function PaymentOptionsModal({
                         {step === "choose" && "¿Cómo quieres pagar?"}
                     </h3>
 
-                    <button className="popup-close" onClick={onClose}>
+                    <button className="popup-close-payment" onClick={onClose}>
                         <span className="icon-wrapper">
                             <X size={26} />
                         </span>

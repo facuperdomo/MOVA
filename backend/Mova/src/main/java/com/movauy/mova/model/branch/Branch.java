@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import com.movauy.mova.model.company.Company;
 import com.movauy.mova.model.user.User;
+import com.movauy.mova.model.plan.Plan;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,7 +50,7 @@ public class Branch {
 
     private String location;
     private String phone;
-    
+
     private String rut;
 
     /**
@@ -67,4 +68,8 @@ public class Branch {
     @Column(nullable = false)
     @Builder.Default
     private boolean enabled = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plan_id")
+    private Plan plan;
 }

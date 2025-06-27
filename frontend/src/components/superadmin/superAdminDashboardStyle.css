@@ -76,30 +76,48 @@
     font-style: italic;
 }
 
-.logout-button-container {
+.logout-button-container-super-admin {
     position: fixed;
     bottom: 20px;
     left: 20px;
     z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    /* separación entre botones */
 }
 
-.logout-button {
+.plan-button,
+.logout-button-super-admin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+}
+
+.emoji {
+    display: block;
+    line-height: 1;
+    font-size: 40px;
+}
+
+.plan-button {
+    background-color: green;
+    color: white;
+}
+
+.logout-button-super-admin {
     background-color: #d9534f;
     color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 20px;
-    font-size: 40px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
 }
 
-.logout-button:hover {
+.logout-button-super-admin:hover {
     background-color: #c9302c;
 }
 
-.logout-button:active {
+.logout-button-super-admin:active {
     transform: scale(0.95);
 }
 
@@ -114,10 +132,6 @@
     font-weight: bold;
     cursor: pointer;
     transition: background 0.2s, transform 0.1s;
-}
-
-.add-btn:hover {
-    background-color: #1f4ba3;
 }
 
 .add-btn:active {
@@ -225,7 +239,7 @@
 /* Estilo consistente para campos del submodal */
 .popup-content input[type="text"],
 .popup-content input[type="password"],
-.popup-content input[type="email"]{
+.popup-content input[type="email"] {
     padding: 10px 15px;
     background-color: #444;
     color: white;
@@ -528,42 +542,44 @@
     -webkit-appearance: radio;
     -moz-appearance: radio;
     appearance: radio;
-  
+
     /* tamaños y espaciados igual que en el listón principal */
     width: 1rem;
     height: 1rem;
     margin-right: 0.3rem;
     accent-color: #007bff;
-  }
+}
 
 /* 1) Quitar bullets de la lista */
 .popup-content.branch-modal .printer-list {
     list-style: none;
     margin: 0;
     padding: 0;
-  }
-  
-  /* 2) Forzar tamaño fijo y apariencia sencilla */
-  .popup-content.branch-modal input[type="checkbox"] {
+}
+
+/* 2) Forzar tamaño fijo y apariencia sencilla */
+.popup-content.branch-modal input[type="checkbox"] {
     -webkit-appearance: none;
     appearance: none;
     width: 16px;
     height: 16px;
-    margin: 0 8px 0 0;       /* espacio entre casilla y texto */
+    margin: 0 8px 0 0;
+    /* espacio entre casilla y texto */
     border: 2px solid #1e90ff;
     border-radius: 4px;
     background-color: transparent;
     cursor: pointer;
     position: relative;
     vertical-align: middle;
-  }
-  
-  /* 3) Estado checked: fondo y palomita */
-  .popup-content.branch-modal input[type="checkbox"]:checked {
+}
+
+/* 3) Estado checked: fondo y palomita */
+.popup-content.branch-modal input[type="checkbox"]:checked {
     background-color: #1e90ff;
     border-color: #1e90ff;
-  }
-  .popup-content.branch-modal input[type="checkbox"]:checked::after {
+}
+
+.popup-content.branch-modal input[type="checkbox"]:checked::after {
     content: '✔';
     position: absolute;
     top: 50%;
@@ -572,11 +588,138 @@
     font-size: 12px;
     color: white;
     line-height: 1;
-  }
-  
-  /* 4) Asegurar que label esté alineado */
-  .popup-content.branch-modal label {
+}
+
+/* 4) Asegurar que label esté alineado */
+.popup-content.branch-modal label {
     display: flex;
     align-items: center;
     cursor: pointer;
-  }
+}
+
+/* Lista de planes: más ancho, con scroll si hace falta */
+.plans-list-modal {
+    max-height: 85vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+
+/* contenedor del header */
+.popup-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+/* título */
+.popup-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+/* botón + a la izquierda fuera del flujo normal */
+.popup-header .add-only-btn {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: green;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* hover/active opcionales */
+.popup-header .add-only-btn:hover {
+  background: #218838;
+}
+.popup-header .add-only-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* Formulario de plan: igual que tu popup-content, pero ancho fijo */
+.plan-form-modal {
+    width: 500px;
+}
+.popup-content.plans-list-modal {
+  width: 900px;
+  max-width: none;  /* por si acaso hubiera un max-width en alguna otra parte */
+}
+
+/* Hacemos que el header + herede de .add-btn */
+.popup-header .add-only-btn {
+  /* copiamos propiedades de .add-btn */
+  margin-bottom: 15px;
+  padding: 12px 20px;
+  font-size: 16px;
+  background-color: green;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  /* además propia posición */
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  height: auto;
+  line-height: 1;
+}
+
+/* hover / active */
+.popup-header .add-only-btn:hover {
+  background-color: #1f4ba3;
+}
+.popup-header .add-only-btn:active {
+  transform: translateY(-50%) scale(0.97);
+}
+
+/* También podemos usar .add-btn directamente en botones dentro de los modales */
+.popup-content.branch-modal .add-btn,
+.plans-list-modal .add-btn {
+  display: inline-block;
+  margin: 1rem 0;
+}
+
+/* Estilo para el dropdown de Plan dentro del modal de sucursales */
+.branch-modal .plan-select {
+  padding: 8px 22px;
+  font-size: 14px;
+  background-color: #444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  /* flecha custom */
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg width='10' height='7' viewBox='0 0 10 7' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 7 5-7z' fill='%23fff'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 7px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.2s;
+}
+
+.branch-modal .plan-select:hover {
+  background-color: #555;
+}
+
+.branch-modal .plan-select:focus {
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+}

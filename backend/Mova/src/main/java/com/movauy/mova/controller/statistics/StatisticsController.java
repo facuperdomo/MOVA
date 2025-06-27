@@ -60,14 +60,14 @@ public class StatisticsController {
      * Lista la historia de apertura y cierre de cajas, con montos y fechas.
      * Muestra también el estado actual (abierta o cerrada).
      */
-    @GetMapping("/cash-register-history")
-    public ResponseEntity<List<Map<String, Object>>> getCashRegisterHistory(
+    @GetMapping("/cash-box-history")
+    public ResponseEntity<List<Map<String, Object>>> getCashBoxHistory(
             @RequestHeader("Authorization") String token,
             @RequestParam(required = false) String filter,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         List<Map<String, Object>> history
-                = statisticsService.getCashRegisterHistory(filter, startDate, endDate, token);
+                = statisticsService.getCashBoxHistory(filter, startDate, endDate, token);
         return ResponseEntity.ok(history);
     }
 

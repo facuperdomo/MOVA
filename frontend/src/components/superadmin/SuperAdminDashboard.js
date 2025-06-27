@@ -72,6 +72,22 @@ const SuperAdminDashboard = () => {
 
     const [selectedDevice, setSelectedDevice] = useState(null);
 
+    const [plans, setPlans] = useState([]);
+    const [showPlansModal, setShowPlansModal] = useState(false);
+    const [planForm, setPlanForm] = useState({
+        name: '',
+        maxCashBoxes: 1,
+        maxUsers: 2,
+        maxPrinters: 0,
+        kitchenPrinting: false,
+        maxKitchenPrinters: 1,
+        price: 0
+    });
+    const [editingPlan, setEditingPlan] = useState(null);
+
+    const [showPlansListModal, setShowPlansListModal] = useState(false);
+    const [showPlanFormModal, setShowPlanFormModal] = useState(false);
+
     const navigate = useNavigate();
 
     const openAssignModal = async (device) => {
@@ -79,7 +95,7 @@ const SuperAdminDashboard = () => {
         await fetchAvailablePrinters();        // trae todas las impresoras de la sucursal
         await fetchAssignedPrinters(device);   // trae las ya asignadas al dispositivo
         setShowAssignModal(true);
-      };
+    };
 
     const closeAssignModal = () => {
         setShowAssignModal(false);
@@ -111,7 +127,114 @@ const SuperAdminDashboard = () => {
 
     useEffect(() => {
         fetchCompanies();
+        fetchPlans();
     }, []);
+
+    // Función para cargar planes
+    const fetchPlans = async () => {
+        try {
+            const res = await customFetch('/api/plans');
+            setPlans(Array.isArray(res) ? res : []);
+        } catch (err) {
+            console.error('Error cargando planes:', err);
+        }
+    };
+
+    // Abrir modal de planes
+    const openPlansListModal = () => {
+        setShowPlansListModal(true);
+    };
+
+    // abre el form (nuevo o editar)
+    const openPlanFormModal = (plan = null) => {
+        setEditingPlan(plan);
+        if (plan) {
+            setPlanForm({
+                name: plan.name,
+                maxCashBoxes: plan.maxCashBoxes,
+                maxUsers: plan.maxUsers,
+                maxPrinters: plan.maxPrinters,
+                kitchenPrinting: plan.kitchenPrinting,
+                maxKitchenPrinters: plan.maxKitchenPrinters,
+                price: plan.price
+            });
+        } else {
+            setPlanForm({
+                name: '',
+                maxCashBoxes: 1,
+                maxUsers: 2,
+                maxPrinters: 0,
+                kitchenPrinting: false,
+                maxKitchenPrinters: 1,
+                price: 0
+            });
+        }
+        setShowPlanFormModal(true);
+    };
+
+    // Editar un plan
+    const openEditPlan = (p) => {
+        setEditingPlan(p);
+        setPlanForm({
+            name: p.name,
+            maxCashBoxes: p.maxCashBoxes,
+            maxUsers: p.maxUsers,
+            price: p.price
+        });
+        setShowPlansModal(true);
+    };
+
+    // Borrar un plan
+    const deletePlan = async (id) => {
+        if (!window.confirm('¿Eliminar este plan?')) return;
+        try {
+            await customFetch(`/api/plans/${id}`, { method: 'DELETE' });
+            fetchPlans();
+        } catch (err) {
+            console.error('Error eliminando plan:', err);
+            alert('No se pudo eliminar el plan.');
+        }
+    };
+
+    // Guardar o crear plan
+    const submitPlan = async () => {
+        try {
+            const url = editingPlan
+                ? `/api/plans/${editingPlan.id}`
+                : '/api/plans';
+            const method = editingPlan ? 'PUT' : 'POST';
+            await customFetch(url, {
+                method,
+                body: JSON.stringify(planForm)
+            });
+            fetchPlans();
+            setShowPlanFormModal(false);
+            fetchPlans();      // recarga la lista
+        } catch (err) {
+            console.error('Error guardando plan:', err);
+            alert('No se pudo guardar el plan.');
+        }
+    };
+
+    // Manejar cambios en el form de plan
+    const handlePlanChange = e => {
+        const { name, value, type, checked } = e.target;
+        setPlanForm(prev => ({
+            ...prev,
+            [name]:
+                // checkboxes → boolean
+                type === 'checkbox'
+                    ? checked
+                    // el campo “name” → string
+                    : name === 'name'
+                        ? value
+                        // precio → float
+                        : name === 'price'
+                            ? parseFloat(value) || 0
+                            // todo lo demás → integer
+                            : parseInt(value, 10) || 0
+        }));
+    };
 
     const fetchCompanyStats = async (companyId) => {
         try {
@@ -717,6 +840,26 @@ const SuperAdminDashboard = () => {
         setAssignedPrinterIds(ids);
     };
 
+    const assignPlanToBranch = async (branchId, planId) => {
+        try {
+            let url, method;
+            if (planId) {
+                // asignar plan concreto
+                url = `/api/companies/${selectedCompany.id}/branches/${branchId}/plan/${planId}`;
+                method = 'PUT';
+            } else {
+                // desasignar plan (sin plan)
+                url = `/api/companies/${selectedCompany.id}/branches/${branchId}/plan`;
+                method = 'DELETE';
+            }
+            await customFetch(url, { method });
+            fetchBranchesForCompany(selectedCompany);
+        } catch (err) {
+            console.error('Error asignando/desasignando plan:', err);
+            alert(err.data?.message || 'No se pudo actualizar el plan.');
+        }
+    };
+
     console.log('Todas las empresas en estado:', companies);
     console.log('Empresas tras aplicar filtro:', visibleCompanies);
 
@@ -793,6 +936,7 @@ const SuperAdminDashboard = () => {
                                             >
                                                 {c.enabled ? 'Deshabilitar' : 'Habilitar'}
                                             </button>
+
                                             <button className="edit-btn" onClick={() => openEditPopup(c)}>Editar</button>
                                             <button className="delete-btn" onClick={() => confirmDeleteCompany(c)}>Eliminar</button>
                                             <button className="edit-btn" onClick={() => fetchBranchesForCompany(c)}>Ver Sucursales</button>
@@ -854,23 +998,42 @@ const SuperAdminDashboard = () => {
                 </div>
             )}
 
-            <div className="logout-button-container">
-                <div className="logout-button" onClick={handleLogout}>🚪</div>
+            <div className="logout-button-container-super-admin">
+                <div className="plan-button" onClick={openPlansListModal}>
+                    <span className="emoji">📋</span>
+                </div>
+                <div className="logout-button-super-admin" onClick={handleLogout}>
+                    <span className="emoji">🚪</span>
+                </div>
             </div>
 
-            {/* Modal Sucursales */}
+            {/* ——— Modal Sucursales ——— */}
             {showBranchesModal && (
                 <div
                     className="popup-overlay"
-                    onClick={e => e.target.classList.contains('popup-overlay') && setShowBranchesModal(false)}
+                    onClick={e =>
+                        e.target.classList.contains('popup-overlay') && setShowBranchesModal(false)
+                    }
                 >
-                    <div className="popup-content branch-modal">
-                        <h3>Sucursales de {selectedCompany.name}</h3>
+                    <div
+                        className="popup-content plans-list-modal branch-modal"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header con "+" y título */}
+                        <div className="popup-header">
+                            <button
+                                className="add-only-btn"
+                                onClick={openBranchForm}
+                                aria-label="Agregar sucursal"
+                            >
+                                Agregar Sucursal
+                            </button>
+                            <h3>Sucursales de {selectedCompany.name}</h3>
+                        </div>
 
                         {/* Filtro de sucursales */}
                         <div className="filter-bar">
                             <span>Filtros:</span>
-
                             <label>
                                 <input
                                     type="radio"
@@ -881,7 +1044,6 @@ const SuperAdminDashboard = () => {
                                 />
                                 Todas
                             </label>
-
                             <label>
                                 <input
                                     type="radio"
@@ -892,7 +1054,6 @@ const SuperAdminDashboard = () => {
                                 />
                                 Habilitadas
                             </label>
-
                             <label>
                                 <input
                                     type="radio"
@@ -903,7 +1064,6 @@ const SuperAdminDashboard = () => {
                                 />
                                 Deshabilitadas
                             </label>
-
                             <label className="search-label">
                                 Buscar por nombre:
                                 <input
@@ -915,6 +1075,7 @@ const SuperAdminDashboard = () => {
                             </label>
                         </div>
 
+                        {/* Tabla de sucursales */}
                         <table className="branch-table">
                             <thead>
                                 <tr>
@@ -931,35 +1092,36 @@ const SuperAdminDashboard = () => {
                                         <td>{b.location}</td>
                                         <td>{b.phone}</td>
                                         <td className="actions-cell">
-                                            <button
-                                                className="toggle-btn"
-                                                onClick={() => handleToggleBranch(b)}
-                                            >
+                                            <button className="toggle-btn" onClick={() => handleToggleBranch(b)}>
                                                 {b.enabled ? 'Deshabilitar' : 'Habilitar'}
                                             </button>
                                             <button className="edit-btn" onClick={() => openEditBranch(b)}>Editar</button>
                                             <button className="delete-btn" onClick={() => confirmDeleteBranch(b)}>Eliminar</button>
                                             <button className="edit-btn" onClick={() => fetchUsersForBranch(b)}>Ver Usuarios</button>
                                             <button className="edit-btn" onClick={() => navigate(`/branch-statistics/${b.id}`)}>Ver Estadísticas</button>
-                                            <button
-                                                className="edit-btn"
-                                                onClick={() => fetchPrintersForBranch(b)}
+                                            <button className="edit-btn" onClick={() => fetchPrintersForBranch(b)}>Ver Impresoras</button>
+                                            <button className="edit-btn" onClick={() => fetchDevicesForBranch(b)}>Ver Dispositivos</button>
+                                            <select
+                                                className="plan-select"
+                                                value={b.planId || ''}
+                                                onChange={e => assignPlanToBranch(b.id, e.target.value)}
                                             >
-                                                Ver Impresoras
-                                            </button>
-                                            <button className="edit-btn" onClick={() => fetchDevicesForBranch(b)}>
-                                                Ver Dispositivos
-                                            </button>
+                                                <option value="">Sin plan</option>
+                                                {plans.map(p => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-
-                        <button className="popup-btn popup-btn-save" onClick={openBranchForm}>Agregar Sucursal</button>
                     </div>
                 </div>
             )}
+
             {/* ==== Modal Usuario (nuevo/editar) ==== */}
             {showUserForm && (
                 <div className="popup-overlay user-form-overlay"
@@ -1396,6 +1558,92 @@ const SuperAdminDashboard = () => {
                             <button className="popup-btn popup-btn-cancel" onClick={closeAssignModal}>
                                 Cancelar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ——— Modal LISTADO de Planes ——— */}
+            {showPlansListModal && (
+                <div className="popup-overlay" onClick={e => e.target.classList.contains('popup-overlay') && setShowPlansListModal(false)}>
+                    <div className="popup-content plans-list-modal" onClick={e => e.stopPropagation()}>
+                        <div className="popup-header">
+                            <button
+                                className="add-only-btn"
+                                onClick={() => openPlanFormModal(null)}
+                                aria-label="Nuevo plan"
+                            >
+                                Agregar Plan
+                            </button>
+                            <h3>Planes Existentes</h3>
+                        </div>
+                        <table className="branch-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th><th>Cajas</th><th>Usuarios</th><th>Venta</th><th>Cocina</th><th>Precio</th><th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {plans.map(p => (
+                                    <tr key={p.id}>
+                                        <td>{p.name}</td>
+                                        <td>{p.maxCashBoxes}</td>
+                                        <td>{p.maxUsers}</td>
+                                        <td>{p.maxPrinters}</td>
+                                        <td>{p.kitchenPrinting ? p.maxKitchenPrinters : '—'}</td>
+                                        <td>${p.price}</td>
+                                        <td>
+                                            <button className="edit-btn" onClick={() => openPlanFormModal(p)}>✏️</button>
+                                            <button className="delete-btn" onClick={() => deletePlan(p.id)}>🗑️</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+            {/* ——— Modal FORM de Plan ——— */}
+            {showPlanFormModal && (
+                <div className="popup-overlay" onClick={e => e.target.classList.contains('popup-overlay') && setShowPlanFormModal(false)}>
+                    <div className="popup-content plan-form-modal" onClick={e => e.stopPropagation()}>
+                        <h3>{editingPlan ? 'Editar Plan' : 'Nuevo Plan'}</h3>
+
+                        <label>Nombre</label>
+                        <input name="name" value={planForm.name} onChange={handlePlanChange} />
+
+                        <label>Max Cajas</label>
+                        <input type="number" name="maxCashBoxes" value={planForm.maxCashBoxes} onChange={handlePlanChange} min="1" />
+
+                        <label>Max Usuarios</label>
+                        <input type="number" name="maxUsers" value={planForm.maxUsers} onChange={handlePlanChange} min="1" />
+
+                        <label>Max Impresoras Venta</label>
+                        <input type="number" name="maxPrinters" value={planForm.maxPrinters} onChange={handlePlanChange} min="0" />
+
+                        <label>
+                            <input
+                                type="checkbox"
+                                name="kitchenPrinting"
+                                checked={planForm.kitchenPrinting}
+                                onChange={handlePlanChange} />
+                            Impresión en Cocina
+                        </label>
+
+                        {planForm.kitchenPrinting && (
+                            <>
+                                <label>Max Impresoras Cocina</label>
+                                <input type="number" name="maxKitchenPrinters" value={planForm.maxKitchenPrinters} onChange={handlePlanChange} min="1" />
+                            </>
+                        )}
+
+                        <label>Precio</label>
+                        <input type="number" name="price" value={planForm.price} onChange={handlePlanChange} step="0.01" />
+
+                        <div className="popup-buttons">
+                            <button className="popup-btn popup-btn-save" onClick={submitPlan}>
+                                {editingPlan ? 'Guardar Cambios' : 'Crear Plan'}
+                            </button>
+                            <button className="popup-btn popup-btn-cancel" onClick={() => setShowPlanFormModal(false)}>Cancelar</button>
                         </div>
                     </div>
                 </div>

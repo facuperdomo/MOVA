@@ -6,18 +6,19 @@ import com.movauy.mova.dto.SaleItemDTO;
 import com.movauy.mova.dto.SaleItemResponseDTO;
 import com.movauy.mova.dto.SaleResponseDTO;
 import com.movauy.mova.dto.UserBasicDTO;
-import com.movauy.mova.model.finance.CashRegister;
-import com.movauy.mova.model.product.Product;
-import com.movauy.mova.model.product.ProductCategory;
+import com.movauy.mova.model.finance.CashBox;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.model.sale.Sale.OrderStatus;
 import com.movauy.mova.model.sale.SaleItem;
 import com.movauy.mova.model.sale.SaleItemIngredient;
 import com.movauy.mova.model.user.User;
+import com.movauy.mova.repository.finance.CashBoxRepository;
 import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.product.ProductRepository;
 import com.movauy.mova.repository.sale.SaleItemIngredientRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
+import com.movauy.mova.service.finance.CashBoxService;
+import com.movauy.mova.service.finance.CashRegisterService;
 import com.movauy.mova.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -25,9 +26,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -39,79 +44,86 @@ public class SaleService {
     private final SaleItemIngredientRepository saleItemIngredientRepository;
     private final AuthService authService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CashBoxService cashBoxService;
+    private final CashRegisterService cashRegisterService;
+    private final CashBoxRepository cashBoxRepository;
+    private static final Logger log = LoggerFactory.getLogger(SaleService.class);
 
     @Transactional
-    public Sale registerSale(SaleDTO saleDTO, String token) {
+    public SaleResponseDTO registerSale(SaleDTO saleDTO, String token) {
+        log.debug("→ SaleService.registerSale: recibidos DTO={}, token=[REDACTED]", saleDTO);
+
+        // 1) Contexto de usuario
         UserBasicDTO me = authService.getUserBasicFromToken(token);
-        Long userId = me.getId();
-        Long companyId = me.getCompanyId();
-
+        User currentUser = authService.getUserById(me.getId());
         Long branchId = me.getBranchId();
-        CashRegister cashReg = cashRegisterRepository
-                .findByCloseDateIsNullAndBranch_Id(branchId)
-                .orElseThrow(() -> new RuntimeException("La caja está cerrada."));
+        log.debug("   Usuario {} en sucursal {}", currentUser.getUsername(), branchId);
 
-        User currentUser = authService.getUserById(userId);
+        // 2) Validar/la caja (ya inyectada en el controller) y comprobar que sigue abierta
+        CashBox box;
+        try {
+            log.debug("   Validando caja abierta por ID={} en sucursal {}", saleDTO.getCashBoxId(), branchId);
+            box = cashBoxService.getOpenCashBoxById(token, saleDTO.getCashBoxId());
+            log.debug("   Caja OK: id={} código={}", box.getId(), box.getCode());
+        } catch (ResponseStatusException ex) {
+            log.warn("   Caja inválida o cerrada: {}", ex.getReason());
+            throw ex;
+        }
 
+        // 3) Construir la entidad Sale
         Sale sale = new Sale();
         sale.setTotalAmount(saleDTO.getTotalAmount().doubleValue());
         sale.setPaymentMethod(saleDTO.getPaymentMethod());
         sale.setDateTime(LocalDateTime.now());
-        sale.setCashRegister(cashReg);
+        sale.setCashBox(box);
         sale.setUser(currentUser);
-        sale.setKitchenStatus(OrderStatus.SENT_TO_KITCHEN);
-        sale.setKitchenSentAt(LocalDateTime.now());
         sale.setBranch(currentUser.getBranch());
 
-        List<SaleItem> items = saleDTO.getItems().stream()
-                .map(dto -> {
-                    Product product = productRepository.findById(dto.getProductId())
-                            .orElseThrow(() -> new RuntimeException("Producto no encontrado ID=" + dto.getProductId()));
-
-                    Long prodCid = product.getBranch().getCompany().getId();
-                    if (!companyId.equals(prodCid)) {
-                        throw new RuntimeException("Producto ID=" + dto.getProductId() + " no pertenece a esta empresa.");
-                    }
-
-                    SaleItem it = new SaleItem();
-                    it.setSale(sale);
-                    it.setProduct(product);
-                    it.setQuantity(dto.getQuantity());
-                    it.setUnitPrice(dto.getUnitPrice());
-                    return it;
-                })
-                .collect(Collectors.toList());
-
+        // 4) Procesar items
+        boolean toKitchen = false;
+        List<SaleItem> items = new ArrayList<>();
+        for (var dto : saleDTO.getItems()) {
+            var p = productRepository.findById(dto.getProductId())
+                    .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Producto no encontrado ID=" + dto.getProductId()
+            ));
+            if (p.getCategory().isEnableKitchenCommands()) {
+                toKitchen = true;
+            }
+            SaleItem it = new SaleItem();
+            it.setSale(sale);
+            it.setProduct(p);
+            it.setQuantity(dto.getQuantity());
+            it.setUnitPrice(dto.getUnitPrice());
+            items.add(it);
+        }
         sale.setItems(items);
+        log.debug("   {} ítems agregados. toKitchen={}", items.size(), toKitchen);
 
-        System.out.println("DEBUG - Ingredientes recibidos por producto:");
-        for (int i = 0; i < saleDTO.getItems().size(); i++) {
-            SaleItemDTO item = saleDTO.getItems().get(i);
-            System.out.println("Producto ID=" + item.getProductId() + " → Ingredientes=" + item.getIngredientIds());
-        }
-        Sale saved = saleRepository.save(sale);
-
-        boolean toKitchen = saved.getItems().stream()
-                .map(si -> si.getProduct().getCategory())
-                .anyMatch(ProductCategory::isEnableKitchenCommands);
-
+        // 5) Estado de cocina
         if (toKitchen) {
-            saved.setKitchenStatus(OrderStatus.SENT_TO_KITCHEN);
-            saved.setKitchenSentAt(LocalDateTime.now());
-            saved = saleRepository.save(saved);
+            sale.setKitchenStatus(Sale.OrderStatus.SENT_TO_KITCHEN);
+            sale.setKitchenSentAt(LocalDateTime.now());
         } else {
-            saved.setKitchenStatus(OrderStatus.COMPLETED);
-            saved = saleRepository.save(saved);
+            sale.setKitchenStatus(Sale.OrderStatus.COMPLETED);
         }
 
+        // 6) Guardar la venta
+        Sale saved = saleRepository.save(sale);
+        log.debug("   Venta persistida con ID={}", saved.getId());
+
+        // 7) Guardar ingredientes de items
         saveItemIngredients(saved, saleDTO.getItems());
+        log.debug("   Ingredientes de items guardados");
 
+        // 8) Notificar cocina si hace falta
         if (toKitchen) {
-            messagingTemplate.convertAndSend("/topic/kitchen-orders",
-                    toResponseDTO(saved));
+            messagingTemplate.convertAndSend("/topic/kitchen-orders", toResponseDTO(saved));
+            log.debug("   Notificación enviada a /topic/kitchen-orders");
         }
 
-        return saved;
+        return toResponseDTO(saved);
     }
 
     public List<Sale> getOrdersByStatus(OrderStatus status) {
@@ -137,7 +149,7 @@ public class SaleService {
 
         return new SaleResponseDTO(
                 sale.getId(),
-                sale.getAccount()   != null ? sale.getAccount().getId() : null,
+                sale.getAccount() != null ? sale.getAccount().getId() : null,
                 sale.getTotalAmount(),
                 sale.getPaymentMethod(),
                 sale.getDateTime(),

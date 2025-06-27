@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.movauy.mova.model.account.Account;
 import com.movauy.mova.model.branch.Branch;
-import com.movauy.mova.model.finance.CashRegister;
+import com.movauy.mova.model.finance.CashBox;
 import com.movauy.mova.model.user.User;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -29,9 +29,9 @@ public class Sale {
     private String paymentMethod;
     private LocalDateTime dateTime;
 
-    @ManyToOne
-    @JoinColumn(name = "cash_register_id", nullable = false)
-    private CashRegister cashRegister;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cash_box_id", nullable = false)
+    private CashBox cashBox;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

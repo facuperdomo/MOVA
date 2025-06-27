@@ -15,7 +15,7 @@ import java.util.List;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
-    List<Sale> findByCashRegisterId(Long cashRegisterId);
+    List<Sale> findByCashBox_Id(Long cashBoxId);
 
     @Query("SELECT COALESCE(SUM(s.totalAmount), 0) "
             + "FROM Sale s "
@@ -34,14 +34,26 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     List<Sale> findByBranch_IdAndDateTimeAfter(Long branchId, LocalDateTime dateTime);
 
     List<Sale> findByKitchenStatus(OrderStatus status);
-    
+
     List<Sale> findByBranchIdAndKitchenStatus(Long branchId, OrderStatus status);
-    
+
     List<Sale> findByBranchIn(List<Branch> branches);
-    
+
     List<Sale> findByBranchInAndDateTimeAfter(List<Branch> branches, LocalDateTime dateTime);
-    
+
     List<Sale> findByBranchInAndDateTimeBetween(List<Branch> branches, LocalDateTime start, LocalDateTime end);
-    
+
     List<Sale> findByBranch_IdAndDateTimeBetween(Long branchId, LocalDateTime start, LocalDateTime end);
+
+    @Query("""
+  SELECT COALESCE(SUM(s.totalAmount),0)
+    FROM Sale s
+   WHERE s.cashBox.id    = :boxId
+     AND s.dateTime BETWEEN :open AND :close
+""")
+    Double sumSalesByBoxBetween(
+            @Param("boxId") Long boxId,
+            @Param("open") LocalDateTime open,
+            @Param("close") LocalDateTime close
+    );
 }

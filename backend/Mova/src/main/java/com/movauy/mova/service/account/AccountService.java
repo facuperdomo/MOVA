@@ -15,7 +15,7 @@ import com.movauy.mova.model.account.AccountItem;
 import com.movauy.mova.model.account.PaymentAccount;
 import com.movauy.mova.model.account.PaymentAccount.Status;
 import com.movauy.mova.model.branch.Branch;
-import com.movauy.mova.model.finance.CashRegister;
+import com.movauy.mova.model.finance.CashBox;
 import com.movauy.mova.model.ingredient.Ingredient;
 import com.movauy.mova.model.product.Product;
 import com.movauy.mova.model.sale.Sale;
@@ -28,6 +28,7 @@ import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.repository.ingredient.IngredientRepository;
 import com.movauy.mova.repository.product.ProductRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
+import com.movauy.mova.service.finance.CashBoxService;
 import com.movauy.mova.service.finance.CashRegisterService;
 import com.movauy.mova.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +61,7 @@ public class AccountService {
     private final BranchRepository branchRepository;
     private final ProductRepository productRepository;
     private final SaleRepository saleRepository;
+    private final CashBoxService cashBoxService;
     private final CashRegisterService cashRegisterService;
     private final AuthService authService;
     private final IngredientRepository ingredientRepository;
@@ -138,88 +140,78 @@ public class AccountService {
     }
 
     /**
-     * Cierra la cuenta: genera una Sale a partir de todos los AccountItem, la
-     * asocia a la caja abierta y al usuario autenticado (extraído del token), y
-     * marca la entidad Account como closed=true.
+     * Cierra la cuenta: genera una Sale asociada a la caja especificada por
+     * código.
      *
-     * @param id ID de la cuenta a cerrar.
-     * @param rawToken El header "Authorization" completo (p. ej. "Bearer
-     * eyJ…").
-     * @return La entidad Sale recién creada.
+     * @param accountId ID de la cuenta a cerrar.
+     * @param rawToken Header "Authorization" completo (p.ej. "Bearer ...").
+     * @param code Código de la caja donde se registrará la venta.
+     * @return DTO de la nueva venta.
      */
-    public SaleDTO closeAccount(Long id, String rawToken) {
-        // 1) Buscamos la cuenta y validamos que no esté ya cerrada
-        Account account = accountRepository.findById(id)
+    @Transactional
+    public SaleDTO closeAccount(Long accountId, String rawToken, String code) {
+        // 1) Buscamos la cuenta y validamos estado
+        Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada: " + accountId));
         if (account.isClosed()) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "La cuenta ya está cerrada"
-            );
+                    HttpStatus.BAD_REQUEST, "La cuenta ya está cerrada");
         }
 
-        // 2) Obtenemos la caja abierta para la misma sucursal de la cuenta
-        Long branchId = account.getBranch().getId();
-        CashRegister cajaAbierta = cashRegisterService
-                .getOpenCashRegisterForBranch(branchId);
-        if (cajaAbierta == null) {
-            throw new IllegalStateException(
-                    "No hay ninguna caja abierta en la sucursal " + branchId
-            );
+        // 2) Validamos el código y obtenemos la caja abierta para ese code
+        if (code == null || code.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "El parámetro 'code' es obligatorio");
         }
+        String token = rawToken.replace("Bearer ", "");
+        CashBox box = cashBoxService.getOpenCashBox(token, code);
 
-        // 3) Extraemos al usuario autenticado del token
+        // 3) Extraemos usuario autenticado
         User usuarioActual = authService.getUserEntityFromToken(rawToken);
         if (usuarioActual == null) {
             throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED, "Usuario no válido"
-            );
+                    HttpStatus.UNAUTHORIZED, "Usuario no válido");
         }
 
-        // 4) Armar la nueva entidad Sale
+        // 4) Armamos la Sale
         Sale sale = new Sale();
         sale.setBranch(account.getBranch());
         sale.setAccount(account);
         sale.setEstado(Sale.EstadoVenta.ACTIVA);
         sale.setDateTime(LocalDateTime.now());
-        sale.setCashRegister(cajaAbierta);
+        sale.setCashBox(box);
         sale.setUser(usuarioActual);
 
-        // 5) Recorrer cada AccountItem y convertirlo en SaleItem
+        // 5) Convertimos cada AccountItem en SaleItem
         sale.setItems(new ArrayList<>());
         for (AccountItem item : account.getItems()) {
-            SaleItem saleItem = new SaleItem();
-            saleItem.setSale(sale);
-            saleItem.setProduct(item.getProduct());
-            saleItem.setQuantity(item.getQuantity());
-            saleItem.setUnitPrice(item.getUnitPrice());
-            sale.getItems().add(saleItem);
+            SaleItem si = new SaleItem();
+            si.setSale(sale);
+            si.setProduct(item.getProduct());
+            si.setQuantity(item.getQuantity());
+            si.setUnitPrice(item.getUnitPrice());
+            sale.getItems().add(si);
         }
 
-        // 6) Calcular totalAmount sumando cada (unitPrice × quantity)
-        BigDecimal totalAmount = sale.getItems().stream()
-                .map(i -> BigDecimal.valueOf(i.getUnitPrice())
-                .multiply(BigDecimal.valueOf(i.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        // —> Aquí establecemos el campo en la entidad antes de guardar:
-        sale.setTotalAmount(totalAmount.doubleValue());
+        // 6) Calculamos y seteamos totalAmount
+        double total = sale.getItems().stream()
+                .mapToDouble(i -> i.getUnitPrice() * i.getQuantity())
+                .sum();
+        sale.setTotalAmount(total);
 
-        // 7) Persistir la Sale completa (incluyendo su lista de SaleItem)
+        // 7) Persistimos la venta y cerramos la cuenta
         saleRepository.save(sale);
-
-        // 8) Marcar la cuenta como cerrada y persistir
         account.setClosed(true);
         accountRepository.save(account);
 
-        // 9) Mapear la entidad Sale recién guardada a SaleDTO y devolverlo
+        // 8) Mapeamos a DTO
         SaleDTO dto = new SaleDTO();
         dto.setId(sale.getId());
         dto.setItems(mapSaleItemsToDTOs(sale.getItems()));
-        dto.setTotalAmount(totalAmount);
-        dto.setPaymentMethod("CUENTA");                    // o lo que uses como método de pago
-        dto.setDateTime(sale.getDateTime());                // asumiendo que en tu DTO dateTime es LocalDateTime
-
-        dto.setKitchenSentAt(sale.getKitchenSentAt());      // si lo manejas así
+        dto.setTotalAmount(BigDecimal.valueOf(total));
+        dto.setPaymentMethod("CUENTA");
+        dto.setDateTime(sale.getDateTime());
         return dto;
     }
 
@@ -311,12 +303,43 @@ public class AccountService {
     @Transactional
     public void removeItemFromAccount(Long accountId, Long itemId) {
         Account account = getById(accountId);
-        account.getItems().removeIf(item -> item.getId().equals(itemId));
+
+        // Buscamos el ítem dentro de la cuenta
+        AccountItem item = account.getItems().stream()
+                .filter(it -> it.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.warn("❓ Ítem {} no encontrado en la cuenta {}", itemId, accountId);
+                    return new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Ítem no encontrado en la cuenta: " + itemId
+                    );
+                });
+
+        // Logueamos el estado de 'paid' antes de intentar borrarlo
+        log.debug("🔒 Intentando borrar ítem {} de la cuenta {} (paid={})",
+                itemId, accountId, item.isPaid());
+
+        if (item.isPaid()) {
+            log.warn("⛔ Bloqueando eliminación de ítem {} porque ya está marcado como pagado", itemId);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "No puedes eliminar un ítem que ya fue pagado"
+            );
+        }
+
+        // Si no está pagado, lo eliminamos
+        account.getItems().remove(item);
         accountRepository.save(account);
 
+        // Reiniciamos el split si existía
         if (account.getSplitTotal() != null) {
+            log.debug("♻️ Reiniciando splitRemaining para la cuenta {} tras eliminar ítem",
+                    accountId);
             initOrUpdateSplit(accountId, account.getSplitTotal());
         }
+
+        log.debug("✅ Ítem {} eliminado correctamente de la cuenta {}", itemId, accountId);
     }
 
     /**
@@ -693,23 +716,30 @@ public class AccountService {
     /**
      * Cierra la cuenta por completo y construye un OrderDTO de cierre.
      */
-    public OrderDTO closeAccountAndBuildReceipt(Long accountId, String rawToken, PaymentRequestDTO req) {
-        log.info("▶ closeAccountAndBuildReceipt START: accountId={}", accountId);
+    @Transactional
+    public OrderDTO closeAccountAndBuildReceipt(
+            Long accountId,
+            String rawToken,
+            String code,
+            PaymentRequestDTO req
+    ) {
+        log.info("▶ closeAccountAndBuildReceipt START: accountId={} code={}", accountId, code);
 
-        // 1) Invoco la lógica de cierre normal que devuelve un SaleDTO
-        SaleDTO sale = closeAccount(accountId, rawToken);
-        log.debug("   → closeAccount returned SaleDTO id={}, total={}", sale.getItems(), sale.getTotalAmount());
+        // 1) Invoco la lógica de cierre normal que devuelve un SaleDTO usando el código
+        SaleDTO sale = closeAccount(accountId, rawToken, code);
+        log.debug("   → closeAccount returned SaleDTO id={} total={}",
+                sale.getId(), sale.getTotalAmount());
 
         // 2) Recupero la cuenta cerrada para extraer sucursal y compañía
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada: " + accountId));
         Branch branch = account.getBranch();
-        log.debug("   → Loaded branch for full closure: {}", branch.getName());
 
         // 3) Convierto directamente los SaleItemDTO que trae el SaleDTO
         List<SaleItemDTO> items = sale.getItems();
-        log.debug("   → items for full closure receipt: {}", items);
 
+        // 4) Armo el OrderDTO final
         OrderDTO result = OrderDTO.builder()
                 .id(sale.getId())
                 .totalAmount(sale.getTotalAmount().doubleValue())

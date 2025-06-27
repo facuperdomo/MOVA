@@ -48,4 +48,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Devuelve true si hay al menos un usuario asociado a la sucursal.
      */
     boolean existsByBranch_Id(Long branchId);
+    
+    List<User> findByAssignedBox_Id(Long boxId);
 }

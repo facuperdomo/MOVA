@@ -16,4 +16,10 @@ public class BranchDTO {
     private String  phone;
     private String  rut;
     private boolean enabled;
+
+    // === Campos de Plan ===
+    private Long    planId;            // id del plan asociado
+    private String  planName;          // nombre del plan
+    private Integer maxCashBoxes;      // tope de cajas del plan
+    private Integer maxUsers;          // tope de usuarios del plan
 }

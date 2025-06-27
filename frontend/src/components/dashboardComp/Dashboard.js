@@ -84,6 +84,9 @@ const Dashboard = () => {
   const [showClosePrintModal, setShowClosePrintModal] = useState(false);
   const [pendingCloseAccountId, setPendingCloseAccountId] = useState(null);
 
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -172,7 +175,8 @@ const Dashboard = () => {
             setShowPopup(false);
           } catch (err) {
             console.error("Error al guardar venta QR:", err);
-            alert("Ocurrió un error guardando la venta QR.");
+            setErrorMessage("Ocurrió un error guardando la venta QR.");
+            setShowErrorModal(true);
           }
         }
       }, { id: "payment-status-sub" });
@@ -259,7 +263,6 @@ const Dashboard = () => {
       console.log('🔍 grouped array:', grouped);
 
       setAccountItems(grouped);
-      debugger;
     } catch (err) {
       console.error("[ERROR] loadAccountItems:", err);
     }
@@ -388,7 +391,7 @@ const Dashboard = () => {
   // Verificar si la caja está abierta
   const checkCashRegisterStatus = async () => {
     try {
-      const response = await customFetch(`${API_URL}/api/cash-register/status`);
+      const response = await customFetch(`${API_URL}/api/cash-box/status-for-user`);
       setIsCashRegisterOpen(response);
     } catch (error) {
       console.error("Error al verificar la caja:", error);
@@ -416,30 +419,10 @@ const Dashboard = () => {
       }
 
       await loadAccountItems(selectedAccountId);
-
-      // 🔐 NUEVA VERIFICACIÓN
-      const updatedItems = await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/items`);
-      if (!updatedItems || updatedItems.length === 0) {
-        // No cerramos la cuenta, simplemente salimos
-        return;
-      }
-
-      // 4) Consultamos nuevamente el estado del split:
-      const status = await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/split/status`);
-      const remainingMoney = status.currentTotal - (status.paidMoney || 0);
-
-      // 5) Si ya no queda nada por pagar, cerramos la cuenta:
-      if (remainingMoney <= 0) {
-        await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/close`, {
-          method: "PUT",
-          body: JSON.stringify({ amount: 0, payerName: "–", paymentMethod: "CUENTA" })
-        });
-        setSelectedAccountId(null);
-        await loadAccounts(branchId);
-      }
     } catch (err) {
       console.error("Error decrementando ítem de cuenta:", err);
-      alert("No se pudo actualizar la cuenta.");
+      setErrorMessage(err.data?.message || err.message);
+      setShowErrorModal(true);
     }
   };
 
@@ -602,7 +585,8 @@ const Dashboard = () => {
       await loadAccountItems(selectedAccountId);
     } catch (err) {
       console.error("Error agregando a cuenta:", err);
-      alert("No se pudo actualizar la cuenta.");
+      setErrorMessage("No se pudo actualizar la cuenta");
+      setShowErrorModal(true);
     }
   };
 
@@ -699,13 +683,15 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error("Error al guardar la venta:", error);
-      alert("Ocurrió un error al procesar la venta. Inténtelo de nuevo.");
+      setErrorMessage("Ocurrió un error al procesar la venta. Inténtelo de nuevo.");
+      setShowErrorModal(true);
     }
   };
 
   const undoLastSale = () => {
     if (!lastSale) {
-      alert("No hay ventas para deshacer.");
+      setErrorMessage("No hay ventas para deshacer.");
+      setShowErrorModal(true);
       return;
     }
     setSaleToUndo(lastSale);      // Guardás qué venta querés cancelar
@@ -723,7 +709,8 @@ const Dashboard = () => {
       setShowUndoPopup(false);
     } catch (error) {
       console.error("Error al deshacer la venta:", error);
-      alert("No se pudo deshacer la última venta.");
+      setErrorMessage("No se pudo deshacer la última venta.");
+      setShowErrorModal(true);
     }
   };
 
@@ -768,7 +755,8 @@ const Dashboard = () => {
           console.log(`Venta tempId=${sale.tempId} sincronizada correctamente.`);
         } catch (err) {
           if (err.status === 401) {
-            alert("La sincronización automática falló porque tu sesión expiró. Por favor, inicia sesión nuevamente.");
+            setErrorMessage("La sincronización automática falló porque tu sesión expiró. Por favor, inicia sesión nuevamente.");
+            setShowErrorModal(true);
             localStorage.removeItem("token");
             localStorage.removeItem("role");
             localStorage.removeItem("isAdmin");
@@ -914,7 +902,8 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error("Error al intentar cerrar la cuenta:", err);
-      alert("No se pudo procesar el cierre de la cuenta.");
+      setErrorMessage("No se pudo procesar el cierre de la cuenta.");
+      setShowErrorModal(true);
     }
   };
 
@@ -939,7 +928,8 @@ const Dashboard = () => {
       await loadAccounts(branchId);
     } catch (err) {
       console.error("Error cerrando e imprimiendo:", err);
-      alert("No se pudo cerrar la cuenta.");
+      setErrorMessage("No se pudo cerrar la cuenta.");
+      setShowErrorModal(true);
     }
   };
 
@@ -960,7 +950,8 @@ const Dashboard = () => {
       await loadAccounts(branchId);
     } catch (err) {
       console.error("Error cerrando sin imprimir:", err);
-      alert("No se pudo cerrar la cuenta.");
+      setErrorMessage("No se pudo cerrar la cuenta.");
+      setShowErrorModal(true);
     }
   };
 
@@ -985,7 +976,8 @@ const Dashboard = () => {
       // setShowAccountsModal(false);
     } catch (err) {
       console.error("Error abriendo modal de pago:", err);
-      alert("No se pudo abrir el modal de pago.");
+      setErrorMessage("No se pudo abrir el modal de pago.");
+      setShowErrorModal(true);
     }
   };
 
@@ -1026,8 +1018,8 @@ const Dashboard = () => {
             const acc = accounts.find(a => a.id === selectedAccountId);
             return (
               <div className="selected-account-banner">
-                🧾 Cuenta seleccionada: {acc?.name}
-                <button onClick={() => { setSelectedAccountId(null); setAccountItems([]); }} style={{ marginLeft: "1rem" }}>
+                <span>🧾 Cuenta seleccionada: {acc?.name}</span>
+                <button className="remove-account-btn" onClick={() => { setSelectedAccountId(null); setAccountItems([]); }} style={{ marginLeft: "1rem" }}>
                   ❌ Quitar cuenta
                 </button>
               </div>
@@ -1116,7 +1108,10 @@ const Dashboard = () => {
                       } else {
                         removeFromCart(idx);
                       }
+
                     }}
+                    disabled={item.paid /* no borres si ya está pagado */}
+                    title={item.paid ? "Este ítem ya fue pagado y no puede eliminarse" : ""}
                   >
                     <Trash2 size={18} />
                   </button>
@@ -1150,26 +1145,18 @@ const Dashboard = () => {
               </button>
             )}
             {offlineMessage && <div className="offline-message">{offlineMessage}</div>}
-            {lastSale && (
-              <div
-                className="sale-actions"
-                style={{
-                  display: 'flex',
-                  gap: '0.5rem',
-                  alignItems: 'center',
-                  marginTop: '1rem'
-                }}
-              >
+            {lastSale && !selectedAccountId && (
+              <div className="sale-actions">
                 <button className="undo-sale-btn" onClick={undoLastSale}>
-                  Deshacer Última Venta
+                  Deshacer venta
                 </button>
 
                 {isPrinting ? (
-                  <button className="popup-btn" disabled>
+                  <button className="popup-btn-print" disabled>
                     Imprimiendo…
                   </button>
                 ) : printError ? (
-                  <button className="popup-btn" onClick={handleRetryPrint}>
+                  <button className="popup-btn-print" onClick={handleRetryPrint}>
                     Reintentar impresión
                   </button>
                 ) : (
@@ -1313,7 +1300,7 @@ const Dashboard = () => {
               size={32}
               onClick={() => setCustomizingProduct(null)}
             />
-            <h2>{customizingProduct.name} – Quita Ingredientes</h2>
+            <h3>{customizingProduct.name} – Quita Ingredientes</h3>
             <div className="ingredient-list">
               {customizingProduct.ingredients.map(ing => (
                 <label key={ing.id} className="ingredient-item">
@@ -1377,7 +1364,8 @@ const Dashboard = () => {
                     setAccountItems(prev => [...prev, newItem]);
                   } catch (err) {
                     console.error("Error agregando a cuenta:", err);
-                    alert("No se pudo agregar el producto a la cuenta.");
+                    setErrorMessage("No se pudo agregar el producto a la cuenta.");
+                    setShowErrorModal(true);
                   }
                 }
                 else {
@@ -1503,6 +1491,26 @@ const Dashboard = () => {
             setPaymentsAccountId(null);
           }}
         />
+      )}
+
+      {showErrorModal && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={32}
+              onClick={() => setShowErrorModal(false)}
+            />
+            <h2>Error</h2>
+            <p>{errorMessage}</p>
+            <button
+              className="popup-btn popup-btn-empty"
+              onClick={() => setShowErrorModal(false)}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
       )}
     </div>
 

@@ -1,200 +1,315 @@
-/* ✅ Estilos Generales */
+/* ——— Estilos Generales ——— */
 .admin-options {
+  position: relative;
   width: 100vw;
   height: 100vh;
   display: flex;
   background-color: #1a1a1a;
-  color: white;
+  color: #fff;
   font-family: "Poppins", serif;
 }
 
-/* ✅ Menú Lateral */
+/* ——— Menú Lateral ——— */
 .sidebar {
+  position: fixed;
+  top: 0; left: 0;
   width: 100px;
   height: 100vh;
   background-color: #333;
-  color: white;
-  transition: width 0.3s ease;
-  overflow: hidden;
-  position: fixed;
-  left: 0;
-  top: 0;
+  padding: 20px 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+  transition: width 0.3s ease;
   z-index: 100;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
-  padding: 20px 0;
 }
-
 .sidebar.open {
   width: 300px;
 }
-
 .sidebar .menu-toggle {
   width: 100%;
   text-align: center;
   padding: 20px 0;
-  cursor: pointer;
   font-size: 40px;
+  cursor: pointer;
   user-select: none;
 }
-
 .sidebar ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  flex: 1;
   width: 100%;
-  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   justify-content: space-around;
-  align-items: center;
 }
-
 .sidebar ul li {
   width: 100%;
   padding: 20px 0;
-  cursor: pointer;
-  font-size: 24px;
   display: flex;
-  align-items: center;
   justify-content: center;
   gap: 15px;
-  text-align: center;
+  font-size: 24px;
+  cursor: pointer;
 }
-
 .sidebar ul li span {
   display: none;
 }
-
 .sidebar.open ul li span {
   display: inline-block;
+  max-width: 180px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
 }
 
-/* ✅ Contenedor principal */
+/* ——— Contenedor Principal ——— */
 .admin-container {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
   width: 60%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
   padding: 40px;
   box-sizing: border-box;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-
 .admin-container input {
   width: 100%;
   padding: 16px;
   margin: 10px 0;
+  background-color: #333;
   border: none;
   border-radius: 8px;
-  background-color: #333;
-  color: white;
+  color: #fff;
   font-size: 20px;
   text-align: center;
-  outline: none;
-  box-sizing: border-box;
 }
-
+.admin-container input:focus {
+  outline: none;
+  border: 2px solid #555;
+}
 .admin-container button {
   width: 100%;
   padding: 16px;
   margin-top: 10px;
   border: none;
   border-radius: 8px;
-  cursor: pointer;
+  color: #fff;
   font-size: 20px;
   font-weight: bold;
-  transition: background 0.1s ease-in-out, transform 0.1s ease-in-out;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.1s;
 }
 
+/* ——— Botones de Caja ——— */
 .open-cash-btn {
   background-color: green;
-  color: white;
 }
-
 .open-cash-btn:active {
   background-color: darkgreen;
 }
-
 .close-cash-btn {
   background-color: red;
-  color: white;
 }
-
 .close-cash-btn:active {
   background-color: darkred;
 }
 
-/* ✅ Resumen de Cierre */
+/* ——— Resumen de Cierre ——— */
 .real-amount-result {
   margin: 20px 0;
 }
-
 .real-amount-result p {
   font-size: 20px;
-  color: white;
 }
-
 .difference {
   font-size: 22px;
   margin-top: 10px;
 }
-
 .difference.correct {
   color: green;
 }
-
 .difference.incorrect {
   color: red;
 }
 
-/* ✅ Botón de calculadora */
+/* ——— Calculadora ——— */
 .calculator-btn {
   width: 100%;
   padding: 16px;
+  margin: 15px 0;
+  background-color: #007bff;
   border: none;
   border-radius: 8px;
-  cursor: pointer;
+  color: #fff;
   font-size: 20px;
   font-weight: bold;
-  background-color: #007bff;
-  color: white;
-  margin: 15px 0;
+  cursor: pointer;
 }
-
 .calculator-btn:active {
   background-color: #0056b3;
 }
-
-/* ✅ Calculadora */
 .calculator-popup input {
   width: 100%;
   padding: 16px;
   margin: 20px 0;
+  background-color: #444;
   border: none;
   border-radius: 8px;
-  background-color: #444;
-  color: white;
+  color: #fff;
   font-size: 20px;
   text-align: center;
-  outline: none;
+}
+
+/* ——— Botón “Administrar Cajas” ——— */
+.manage-boxes-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  background-color: #333;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: background 0.2s, transform 0.1s;
+  z-index: 200;
+}
+.manage-boxes-btn:hover {
+  background-color: #444;
+}
+.manage-boxes-btn:active {
+  background-color: #555;
+  transform: translateY(1px);
+}
+
+/* ——— Modal “Administrar Cajas” ——— */
+.popup-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 300;
+}
+.popup-content {
+  background-color: #222;
+  border-radius: 8px;
+  padding: 20px;
+  width: 80%;
+  max-width: 600px; /* modal más ancho */
   box-sizing: border-box;
+}
+.popup-content h3 {
+  margin-bottom: 1rem;
+  text-align: center;
+  color: #fff;
+}
+
+/* ——— Lista de cajas dentro del modal ——— */
+.popup-content ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.popup-content ul li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #444;
+}
+.popup-content ul li:last-child {
+  border-bottom: none;
+}
+.popup-content ul li strong {
+  flex: 1;
+  color: #fff;
+  font-size: 1rem;
+}
+.popup-content .box-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.popup-content .box-actions .popup-btn {
+  padding: 6px 12px;
+  background-color: #555;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.popup-content .box-actions .popup-btn:hover {
+  background-color: #666;
+}
+.popup-content .box-actions .popup-btn:active {
+  background-color: #777;
 }
 
 .admin-container input:focus {
-  background-color: #333 !important;
-  color: white !important;
-  border: 2px solid #555; /* Opcional: para mostrar foco sin cambiar el fondo */
+  outline: none;
+  border: 2px solid #555;
+  background-color: #333;
+  color: #fff;
+}
+
+.popup-content.manage-boxes-modal {
+  width: 95%;       /* o el % que prefieras */
+  max-width: 600px; /* ajústalo a tu gusto */
+}
+
+.add-btn-popup {
+    margin-bottom: 15px;
+    padding: 12px 20px;
+    font-size: 16px;
+    background-color: green;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.add-btn-popup:active {
+    transform: scale(0.97);
+}
+
+/* Header del modal: botón a la izquierda, título centrado, cierre a la derecha */
+.popup-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.popup-header .add-btn-popup {
+  position: absolute;
+  left: 1rem;
+  top: 0.1rem;        /* baja o sube según necesites */
+}
+
+.popup-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.popup-header .popup-close {
+  position: absolute;
+  right: 1rem;
 }
 

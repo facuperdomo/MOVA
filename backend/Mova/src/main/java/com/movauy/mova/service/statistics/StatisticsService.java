@@ -3,12 +3,14 @@ package com.movauy.mova.service.statistics;
 import com.movauy.mova.dto.BranchStatisticsDTO;
 import com.movauy.mova.dto.CompanyStatisticsDTO;
 import com.movauy.mova.model.branch.Branch;
+import com.movauy.mova.model.finance.CashBox;
 import com.movauy.mova.model.finance.CashRegister;
 import com.movauy.mova.model.sale.Sale;
 import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.repository.finance.CashRegisterRepository;
 import com.movauy.mova.repository.sale.SaleItemRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
+import com.movauy.mova.service.finance.CashBoxService;
 import com.movauy.mova.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +21,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import java.math.RoundingMode;
 import java.time.DayOfWeek;
@@ -32,9 +33,10 @@ public class StatisticsService {
 
     private final SaleRepository saleRepository;
     private final SaleItemRepository saleItemRepository;
-    private final CashRegisterRepository cashRegisterRepository;
+    private final CashBoxService cashBoxService;
     private final AuthService authService;
     private final BranchRepository branchRepository;
+    private final CashRegisterRepository cashRegisterRepository;
 
     private static final String NO_DATA = "Sin datos";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
@@ -104,12 +106,18 @@ public class StatisticsService {
                 .collect(Collectors.toList());
     }
 
-    public List<Map<String, Object>> getCashRegisterHistory(String filter, String startDateStr, String endDateStr, String token) {
+    public List<Map<String, Object>> getCashBoxHistory(
+            String filter,
+            String startDateStr,
+            String endDateStr,
+            String token
+    ) {
         Long branchId = authService.getUserBasicFromToken(token).getBranchId();
-        LocalDateTime start;
-        LocalDateTime end;
 
-        if (startDateStr != null && !startDateStr.isEmpty() && endDateStr != null && !endDateStr.isEmpty()) {
+        // 1) Rango de fechas
+        LocalDateTime start, end;
+        if (startDateStr != null && !startDateStr.isEmpty()
+                && endDateStr != null && !endDateStr.isEmpty()) {
             start = LocalDate.parse(startDateStr).atStartOfDay();
             end = LocalDate.parse(endDateStr).atTime(23, 59, 59);
         } else {
@@ -117,25 +125,52 @@ public class StatisticsService {
             end = LocalDateTime.now();
         }
 
-        List<CashRegister> regs = cashRegisterRepository
-                .findByBranch_IdAndOpenDateBetweenOrderByOpenDateDesc(branchId, start, end);
+        // 2) Movimientos en ese rango
+        List<CashRegister> movs = cashRegisterRepository
+                .findByCashBoxBranchIdAndOpenDateBetween(branchId, start, end);
 
-        return regs.stream().map(c -> {
-            Map<String, Object> m = new HashMap<>();
-            m.put("id", c.getId());
-            m.put("openDate", c.getOpenDate().format(DATE_FORMAT));
-            m.put("closeDate", c.getCloseDate() != null
-                    ? c.getCloseDate().format(DATE_FORMAT)
-                    : NO_DATA);
-            m.put("initialAmount", c.getInitialAmount() != 0.0
-                    ? String.valueOf(c.getInitialAmount())
-                    : NO_DATA);
-            m.put("totalSales", c.getTotalSales() != 0.0
-                    ? String.valueOf(c.getTotalSales())
-                    : NO_DATA);
-            m.put("isOpen", c.isOpen());
-            return m;
-        }).collect(Collectors.toList());
+        // 3) Agrupar por caja
+        return movs.stream()
+                .collect(Collectors.groupingBy(cr -> cr.getCashBox().getId()))
+                .entrySet().stream()
+                .map(e -> {
+                    List<CashRegister> seq = e.getValue().stream()
+                            .sorted(Comparator.comparing(CashRegister::getOpenDate))
+                            .toList();
+
+                    CashRegister apertura = seq.get(0);
+                    Optional<CashRegister> cierreOpt = seq.stream()
+                            .filter(cr -> cr.getCloseDate() != null)
+                            .findFirst();
+
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("boxId", e.getKey());
+                    m.put("openedAt", apertura.getOpenDate().format(DATE_FORMAT));
+                    m.put("initialAmount", apertura.getInitialAmount());
+                    m.put("code", apertura.getCode());
+
+                    if (cierreOpt.isPresent()) {
+                        CashRegister cierre = cierreOpt.get();
+                        m.put("closedAt", cierre.getCloseDate().format(DATE_FORMAT));
+                        m.put("closingAmount", cierre.getClosingAmount());
+                        m.put("totalSales", cierre.getTotalSales());
+                        m.put("isOpen", false);
+                    } else {
+                        m.put("closedAt", NO_DATA);
+                        m.put("closingAmount", NO_DATA);
+                        m.put("totalSales", NO_DATA);
+                        m.put("isOpen", true);
+                    }
+
+                    return m;
+                })
+                // Opcional: ordenar por apertura más reciente primero
+                .sorted(Comparator.comparing(
+                        (Map<String, Object> mm)
+                        -> LocalDateTime.parse((String) mm.get("openedAt"), DATE_FORMAT))
+                        .reversed()
+                )
+                .toList();
     }
 
     public int countSaleItems(String token) {

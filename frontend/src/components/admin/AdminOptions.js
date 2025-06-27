@@ -33,14 +33,46 @@ const AdminOptions = () => {
   const [realAmount, setRealAmount] = useState("");
   const [difference, setDifference] = useState(null);
 
+  const [cashBoxes, setCashBoxes] = useState([]);    // lista de cajas
+  const [allUsers, setAllUsers] = useState([]);    // lista de todos los vendedores
+  const [assignedUserIds, setAssignedUserIds] = useState([]); // ids asignados a la caja seleccionada
+  const [currentBox, setCurrentBox] = useState(null);  // caja que estamos gestionando
+  const [selectedBox, setSelectedBox] = useState(null); // la que abrimos / cerramos
+  const [showManageBoxesModal, setShowManageBoxesModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+
+  const [showCreateBoxModal, setShowCreateBoxModal] = useState(false);
+  const [newBoxCode, setNewBoxCode] = useState("");
+  const [newBoxName, setNewBoxName] = useState("");
+
+  // estado para mostrar el popup de error al asignar
+  const [showAssignErrorPopup, setShowAssignErrorPopup] = useState(false);
+  // mensaje de error que viene del server
+  const [assignErrorMessage, setAssignErrorMessage] = useState("");
+
+  const [canCreateBox, setCanCreateBox] = useState(null);
+  const [boxToDisable, setBoxToDisable] = useState(null);
+  const [showDisableModal, setShowDisableModal] = useState(false);
+
+  const [showLimitWarning, setShowLimitWarning] = useState(false);
+
+  useEffect(() => {
+    if (selectedBox != null) {
+      setIsCashRegisterOpen(selectedBox.isOpen);
+    }
+  }, [selectedBox]);
+
   // 1) Chequear estado de caja al montar
   useEffect(() => {
-    console.log("🎟️ Token actual:", localStorage.getItem("token"));
-    customFetch(`${API_URL}/api/cash-register/status`)
-      .then(resp => {
-        if (typeof resp !== "string") setIsCashRegisterOpen(resp);
-      })
-      .catch(err => console.error("Error al obtener estado de caja:", err));
+    // Estado simple de si hay caja abierta
+    customFetch(`${API_URL}/api/cash-box/status`)
+      .then(resp => { if (typeof resp !== "string") setIsCashRegisterOpen(resp); })
+      .catch(console.error);
+
+    // Traer cajas y usuarios
+    loadCashBoxes();
+    loadAllUsers();
+    loadCanCreateBox();
   }, []);
 
   // 2) Detectar cambios de conexión
@@ -56,6 +88,75 @@ const AdminOptions = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!currentBox || !currentBox.id) return;      // ← GUARD
+    console.log("🔍 Cargando asignados para caja:", currentBox.id);
+    loadAssignedUsers(currentBox);
+  }, [currentBox]);
+
+  // ————————————————————— Funciones de carga —————————————————————
+  async function loadCashBoxes() {
+    try {
+      const cajas = await customFetch(`${API_URL}/api/cash-box`);
+      // filtrado inmediato:
+      setCashBoxes(cajas.filter(box => box.enabled));
+      await loadCanCreateBox();
+    } catch (err) {
+      console.error("Error al cargar cajas:", err);
+    }
+  }
+
+  async function loadAllUsers() {
+    try {
+      const users = await customFetch(`${API_URL}/auth`);
+      const filtered = users.filter(u => u.role === "USER" || u.role === "ADMIN");
+      setAllUsers(filtered);
+    } catch (err) {
+      console.error("Error al cargar usuarios:", err);
+    }
+  }
+
+  async function loadCanCreateBox() {
+    try {
+      const ok = await customFetch(`${API_URL}/api/cash-box/can-create`);
+      setCanCreateBox(ok);
+    } catch (e) {
+      console.error("Error comprobando límite de cajas:", e);
+    }
+  }
+
+  async function loadAssignedUsers(box) {
+    try {
+      console.log("→ fetch /api/cash-box/" + box.id + "/users");
+      const users = await customFetch(
+        `${API_URL}/api/cash-box/${box.id}/users`
+      );
+      console.log("← assignedUsers raw:", users);
+      const ids = users.map(u => u.id);
+      console.log("← assignedUserIds:", ids);
+      setAssignedUserIds(ids);
+    } catch (err) {
+      console.error("Error al cargar asignados:", err);
+    }
+  }
+
+  // ————————————————————— Asignar / Desasignar —————————————————————
+  const toggleUserAssignment = async (userId) => {
+    try {
+      const verb = assignedUserIds.includes(userId) ? "DELETE" : "POST";
+      await customFetch(
+        `${API_URL}/api/cash-box/${currentBox.id}/users/${userId}`,
+        { method: verb }
+      );
+      // recargar lista
+      loadAssignedUsers(currentBox);
+    } catch (err) {
+      const msg = err.data?.message || err.message || "Error desconocido";
+      setAssignErrorMessage(msg);
+      setShowAssignErrorPopup(true);
+    }
+  };
+
   // 3) Abrir caja con validación
   const openCashRegister = async () => {
     if (!initialCash || initialCash <= 0) {
@@ -63,9 +164,9 @@ const AdminOptions = () => {
       return;
     }
     try {
-      await customFetch(`${API_URL}/api/cash-register/open`, {
+      await customFetch(`${API_URL}/api/cash-box/open`, {
         method: "POST",
-        body: JSON.stringify({ initialAmount: initialCash }),
+        body: JSON.stringify({ code: selectedBox.code, initialAmount: initialCash }),
       });
       setIsCashRegisterOpen(true);
     } catch (err) {
@@ -75,19 +176,45 @@ const AdminOptions = () => {
 
   // 4) Cerrar caja (requiere conexión)
   const closeCashRegister = async () => {
+    if (!selectedBox) {
+      alert("Por favor, selecciona primero la caja que deseas cerrar.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const resp = await customFetch(`${API_URL}/api/cash-register/close`, {
-        method: "POST",
-      });
-      if (resp?.totalSold != null) {
-        setCashSummary(resp);
-        setShowSummaryPopup(true);
-      }
+      // payload con el código de la caja y el monto de cierre que el backend exige
+      const payload = {
+        code: selectedBox.code,
+        closingAmount: selectedBox.initialAmount + selectedBox.totalSales
+      };
+
+      const resp = await customFetch(
+        `${API_URL}/api/cash-box/close`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      // guardamos el resumen que nos devuelve el backend
+      setCashSummary(resp);
+      setShowSummaryPopup(true);
+      // 1) forzar que la caja ya no esté abierta
       setIsCashRegisterOpen(false);
+      // 2) recargar la lista de cajas
+      await loadCashBoxes();
+      await loadCanCreateBox();
+      // 3) actualizar el selectedBox con la versión “cerrada”
+      setSelectedBox(prev => prev && ({
+        ...prev,
+        isOpen: false,
+        closedAt: new Date().toISOString()
+      }));
     } catch (err) {
-      console.error("Error al cerrar caja:", err);
-      alert(`No se pudo cerrar la caja: ${err.message}`);
+      console.error(`Error al cerrar caja "${selectedBox?.code}":`, err);
+      alert(`No se pudo cerrar la caja "${selectedBox?.code}":\n${err.data || err.message}`);
     } finally {
       setLoading(false);
       setShowClosePopup(false);
@@ -158,10 +285,18 @@ const AdminOptions = () => {
       <div className="admin-container">
         <h2>Bienvenido, Administrador</h2>
 
-        {isCashRegisterOpen == null ? (
+
+
+        {!selectedBox ? (
+          <p>🔍 Por favor, selecciona primero una caja para operar.</p>
+        ) : isCashRegisterOpen == null ? (
           <p>⌛ Cargando estado de la caja...</p>
         ) : isCashRegisterOpen ? (
           <>
+            {/* Siempre mostramos la caja seleccionada y su estado */}
+            <p>
+              📦 Caja seleccionada: <strong>{selectedBox.code}</strong>
+            </p>
             <p>✅ La caja está abierta.</p>
             <button
               className="close-cash-btn"
@@ -175,6 +310,10 @@ const AdminOptions = () => {
           </>
         ) : (
           <>
+            {/* Caja seleccionada para abrir */}
+            <p>
+              📦 Caja seleccionada: <strong>{selectedBox.code}</strong>
+            </p>
             <label>Ingrese monto inicial:</label>
             <input
               type="text"
@@ -186,13 +325,220 @@ const AdminOptions = () => {
               }}
               placeholder="$0"
             />
-            <button className="open-cash-btn" onClick={openCashRegister}>
+            <button
+              className="open-cash-btn"
+              onClick={openCashRegister}
+              disabled={!initialCash || initialCash <= 0}
+            >
               Abrir Caja
             </button>
           </>
         )}
       </div>
+      {/* Botón para gestionar cajas */}
+      <button
+        className="manage-boxes-btn"
+        onClick={() => {
+          setShowLimitWarning(false);
+          setShowManageBoxesModal(true);
+        }}
+      >
+        ⚙️ Administrar Cajas
+      </button>
+      {/* ——— Modal: Lista de cajas para gestionar ——— */}
+      {showManageBoxesModal && (
+        <div className="popup-overlay">
+          <div className="popup-content manage-boxes-modal">
+            <div className="popup-header">
+              <button
+                className="add-btn-popup"
+                onClick={async () => {
+                  try {
+                    const ok = await customFetch(`${API_URL}/api/cash-box/can-create`);
+                    setCanCreateBox(ok);
+                    if (!ok) {
+                      setShowLimitWarning(true);
+                    } else {
+                      setShowLimitWarning(false);
+                      setShowCreateBoxModal(true);
+                    }
+                  } catch (e) {
+                    console.error("Error comprobando límite:", e);
+                  }
+                }}
+              >
+                Crear Caja
+              </button>
+              <h3>Cajas abiertas</h3>
+              <X
+                className="popup-close"
+                size={24}
+                onClick={() => setShowManageBoxesModal(false)}
+              />
+            </div>
+            {showLimitWarning && (
+              <p className="alert">
+                ⚠️ Ya alcanzaste el máximo de cajas permitidas.
+              </p>
+            )}
+            {/* Botón para abrir el modal de creación */}
+            <ul className="box-list">
+              {/* Encabezado de columnas */}
+              <li className="header-row">
+                <span className="column-code">Código de caja</span>
+                <span className="column-actions">Acciones</span>
+              </li>
+              {cashBoxes
+                // sólo muestro las que siguen habilitadas
+                .filter(box => box.enabled)
+                .map(box => (
+                  <li key={box.id} className="box-row">
+                    <span className="column-code">{box.code}</span>
+                    <div className="box-actions">
+                      <button
+                        className="popup-btn"
+                        onClick={() => {
+                          setSelectedBox(box);
+                          setIsCashRegisterOpen(box.isOpen);
+                          setShowManageBoxesModal(false);
+                        }}
+                      >
+                        Seleccionar
+                      </button>
+                      <button
+                        className="popup-btn"
+                        onClick={() => {
+                          setCurrentBox(box);
+                          loadAssignedUsers(box);
+                          setShowAssignModal(true);
+                        }}
+                      >
+                        Asignar
+                      </button>
+                      <button
+                        className="popup-btn cancel"
+                        onClick={() => {
+                          setBoxToDisable(box);
+                          setShowDisableModal(true);
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
+      {/* ——— Modal: Asignar usuarios a la caja seleccionada ——— */}
+      {showAssignModal && currentBox && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowAssignModal(false)}
+            />
+            <h3>Asignar vendedores a caja {currentBox.code}</h3>
+            <div className="user-list">
+              {allUsers.map(u => (
+                <label key={u.id} style={{ display: "block", margin: "8px 0" }}>
+                  <input
+                    type="checkbox"
+                    checked={Array.isArray(assignedUserIds) && assignedUserIds.includes(u.id)}
+                    onChange={() => toggleUserAssignment(u.id)}
+                  />
+                  {u.username}
+                </label>
+              ))}
+            </div>
+            <button
+              className="popup-btn"
+              onClick={() => setShowAssignModal(false)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+      {/* ——— Modal: Crear Nueva Caja ——— */}
+      {showCreateBoxModal && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowCreateBoxModal(false)}
+            />
+            <h3>Crear Nueva Caja</h3>
+
+            <label>Código</label>
+            <input
+              type="text"
+              value={newBoxCode}
+              onChange={e => setNewBoxCode(e.target.value)}
+              placeholder="Ej: FRONT"
+            />
+
+            <label>Nombre</label>
+            <input
+              type="text"
+              value={newBoxName}
+              onChange={e => setNewBoxName(e.target.value)}
+              placeholder="Ej: Caja Principal"
+            />
+
+            <div className="popup-buttons">
+              <button
+                className="popup-btn"
+                onClick={async () => {
+                  // 3.1 Primero validamos el límite
+                  if (canCreateBox === false) {
+                    alert("No puedes crear más cajas de las permitidas por tu plan.");
+                    return;
+                  }
+
+                  // 3.2 Luego validamos inputs
+                  if (!newBoxCode.trim() || !newBoxName.trim()) {
+                    alert("Por favor ingresa código y nombre de la caja.");
+                    return;
+                  }
+
+                  // 3.3 Si todo ok, llamamos al backend
+                  try {
+                    await customFetch(`${API_URL}/api/cash-box`, {
+                      method: "POST",
+                      body: JSON.stringify({
+                        code: newBoxCode.trim(),
+                        name: newBoxName.trim()
+                      }),
+                    });
+                    await loadCashBoxes();
+                    setNewBoxCode("");
+                    setNewBoxName("");
+                    setShowCreateBoxModal(false);
+                    // refrescamos la comprobación de permiso
+                    loadCanCreateBox();
+                  } catch (err) {
+                    console.error("Error creando caja:", err);
+                    alert(err.data?.message || "No se pudo crear la caja.");
+                  }
+                }}
+              >
+                Crear
+              </button>
+              <button
+                className="popup-btn cancel"
+                onClick={() => setShowCreateBoxModal(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Popup: monto inicial inválido */}
       {showInvalidInitialPopup && (
         <div className="popup-overlay">
@@ -328,6 +674,74 @@ const AdminOptions = () => {
                 onClick={() => setShowCalculatorPopup(false)}
               >
                 ❌ Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAssignErrorPopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowAssignErrorPopup(false)}
+            />
+            <h2>⚠️ No se pudo asignar</h2>
+            <p>{assignErrorMessage}</p>
+            <button
+              className="popup-btn"
+              onClick={() => setShowAssignErrorPopup(false)}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
+      {/* ——— Modal: Confirmar eliminación de caja ——— */}
+      {showDisableModal && boxToDisable && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={24}
+              onClick={() => setShowDisableModal(false)}
+            />
+            <h3>Eliminar caja {boxToDisable.code}</h3>
+            <p>
+              ¿Seguro que deseas eliminar (deshabilitar) esta caja?<br />
+              Los registros históricos se conservarán.
+            </p>
+            <div className="popup-buttons">
+              <button
+                className="popup-btn cancel"
+                onClick={async () => {
+                  try {
+                    // Llamarás a tu nuevo endpoint PUT /api/cash-box/{id}/enabled?enabled=false
+                    await customFetch(
+                      `${API_URL}/api/cash-box/${boxToDisable.id}/enabled?enabled=false`,
+                      { method: "PUT" }
+                    );
+                    await loadCashBoxes();
+                    setShowDisableModal(false);
+                    setBoxToDisable(null);
+                  } catch (err) {
+                    console.error("Error deshabilitando caja:", err);
+                    alert(err.data?.message || "No se pudo eliminar la caja.");
+                  }
+                }}
+              >
+                Sí, eliminar
+              </button>
+              <button
+                className="popup-btn"
+                onClick={() => {
+                  setShowDisableModal(false);
+                  setBoxToDisable(null);
+                }}
+              >
+                Cancelar
               </button>
             </div>
           </div>

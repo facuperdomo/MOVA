@@ -8,17 +8,17 @@ import com.movauy.mova.dto.AccountResponseDTO;
 import com.movauy.mova.dto.OrderDTO;
 import com.movauy.mova.dto.PayItemsRequestDTO;
 import com.movauy.mova.dto.PaymentRequestDTO;
-import com.movauy.mova.dto.SaleDTO;
 import com.movauy.mova.dto.SplitStatusDTO;
 import com.movauy.mova.model.account.Account;
 import com.movauy.mova.model.account.AccountItem;
-import com.movauy.mova.model.sale.Sale;
+import com.movauy.mova.model.ingredient.Ingredient;
 import com.movauy.mova.service.account.AccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 
 @RestController
@@ -162,12 +162,26 @@ public class AccountController {
             @RequestHeader("Authorization") String token,
             @RequestBody PaymentRequestDTO req
     ) {
-        OrderDTO receipt = accountService.closeAccountAndBuildReceipt(id, token, req);
+        OrderDTO receipt = accountService.closeAccountAndBuildReceipt(id, token, req.getCode(), req);
         return ResponseEntity.ok(receipt);
     }
 
     @GetMapping("/{accountId}/items")
-    public List<AccountItem> getItems(@PathVariable Long accountId) {
-        return accountService.getItemsByAccountId(accountId);
+    public ResponseEntity<List<AccountItemDTO>> getItems(@PathVariable Long accountId) {
+        List<AccountItem> items = accountService.getItemsByAccountId(accountId);
+        List<AccountItemDTO> dtos = items.stream()
+                .map(item -> {
+                    List<Long> ingrIds = item.getIngredients().stream()
+                            .map(Ingredient::getId)
+                            .collect(Collectors.toList());
+                    return new AccountItemDTO(
+                            item.getId(),
+                            item.getProduct().getId(),
+                            item.getQuantity(),
+                            ingrIds
+                    );
+                })
+                .toList();
+        return ResponseEntity.ok(dtos);
     }
 }

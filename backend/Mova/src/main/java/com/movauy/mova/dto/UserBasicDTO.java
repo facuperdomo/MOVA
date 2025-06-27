@@ -15,4 +15,13 @@ public class UserBasicDTO {
     private String role;
     private boolean enableIngredients;
     private boolean enableKitchenCommands;
+    public UserBasicDTO(Long id, String username) {
+        this.id = id;
+        this.username = username;
+    }
+    public UserBasicDTO(Long id, String username, String role) {
+        this.id       = id;
+        this.username = username;
+        this.role     = role;
+    }
 }

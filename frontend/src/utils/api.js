@@ -50,9 +50,9 @@ export const customFetch = async (path, options = {}) => {
 
     if (!res.ok) {
       console.warn(`🚫 HTTP ${res.status} en ${url}`, body);
-      const err = new Error(body?.error || body?.message || res.statusText);
+      const err = new Error(body?.message || body?.error || res.statusText);
       err.status = res.status;
-      err.data = body;            // <-- payload completo
+      err.data = body;            
       throw err;
     }
 

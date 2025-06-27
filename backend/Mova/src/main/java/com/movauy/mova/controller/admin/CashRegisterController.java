@@ -1,15 +1,18 @@
+// src/main/java/com/movauy/mova/controller/admin/CashRegisterController.java
 package com.movauy.mova.controller.admin;
 
+import com.movauy.mova.dto.CashRegisterDTO;
+import com.movauy.mova.model.finance.CashRegister;
 import com.movauy.mova.service.finance.CashRegisterService;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.springframework.http.HttpStatus;
 
-/**
- * Controlador para la administración de caja.
- */
 @RestController
 @RequestMapping("/api/cash-register")
 @RequiredArgsConstructor
@@ -18,41 +21,63 @@ public class CashRegisterController {
 
     private final CashRegisterService cashRegisterService;
 
-    // Se requiere el token para saber a qué empresa corresponde el estado de caja
-    @GetMapping("/status")
-    public ResponseEntity<Boolean> isCashRegisterOpen(@RequestHeader("Authorization") String token) {
-        return ResponseEntity.ok(cashRegisterService.getOpenCashRegister(token).isPresent());
+    @Data
+    static class MovementRequest {
+
+        private Long boxId;
+        private Double amount;
     }
 
-    // Se utiliza el token para abrir la caja de la empresa autenticada
+    /**
+     * Registra el movimiento de apertura de caja.
+     */
     @PostMapping("/open")
-    public ResponseEntity<String> openCashRegister(
-            @RequestHeader("Authorization") String token,
-            @RequestBody Map<String, Double> request) {
-
-        Double initialAmount = request.get("initialAmount");
-        if (initialAmount == null || initialAmount <= 0) {
-            return ResponseEntity.badRequest().body("Monto inicial debe ser mayor a 0.");
-        }
-
-        // Verifica si ya hay una caja abierta para esta empresa
-        if (cashRegisterService.getOpenCashRegister(token).isPresent()) {
-            return ResponseEntity.badRequest().body("Ya hay una caja abierta para esta sucursal.");
-        }
-
-        return cashRegisterService.openCashRegister(token, initialAmount)
-                ? ResponseEntity.ok("Caja abierta correctamente.")
-                : ResponseEntity.badRequest().body("Error al abrir caja.");
+    public ResponseEntity<String> open(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody MovementRequest req
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        cashRegisterService.registerOpening(token, req.getBoxId(), req.getAmount());
+        return ResponseEntity.status(HttpStatus.CREATED).body("Apertura registrada");
     }
 
-    // Se incluye el token para cerrar la caja de la empresa autenticada
+    /**
+     * Registra el movimiento de cierre de caja.
+     */
     @PostMapping("/close")
-    public ResponseEntity<?> closeCashRegister(@RequestHeader("Authorization") String token) {
-        Map<String, Object> result = cashRegisterService.closeCashRegister(token);
-        if (result != null && !result.isEmpty()) {
-            return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.badRequest().body("No hay caja abierta para cerrar.");
-        }
+    public ResponseEntity<String> close(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody MovementRequest req
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        cashRegisterService.registerClosing(token, req.getBoxId(), req.getAmount());
+        return ResponseEntity.ok("Cierre registrado");
+    }
+
+    /**
+     * Devuelve el historial de movimientos de la caja indicada.
+     */
+    @GetMapping("/history")
+    public ResponseEntity<List<CashRegisterDTO>> history(
+            @RequestParam("boxId") Long boxId
+    ) {
+        List<CashRegister> list = cashRegisterService.getHistory(boxId);
+        List<CashRegisterDTO> dtos = list.stream()
+                .map(CashRegisterDTO::from)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    /**
+     * ¿Tiene el usuario alguna caja ABIERTA asignada?
+     */
+    @GetMapping("/status")
+    public ResponseEntity<Boolean> isCashRegisterOpenForUser(
+            @RequestHeader("Authorization") String authHeader
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        // listCashRegisters(token, true) filtra solo las abiertas Y asignadas al usuario
+        boolean anyOpenAssigned = cashRegisterService.listCashRegisters(token, true).size() > 0;
+        return ResponseEntity.ok(anyOpenAssigned);
     }
 }

@@ -2,7 +2,6 @@ package com.movauy.mova.controller.publiccontrollers;
 
 import com.movauy.mova.Jwt.JwtAuthenticationFilter;
 import com.movauy.mova.Jwt.JwtService;
-import com.movauy.mova.dto.AccountItemDTO;
 import com.movauy.mova.dto.AuthResponse;
 import com.movauy.mova.dto.LoginRequest;
 import com.movauy.mova.dto.RegisterRequest;
@@ -15,29 +14,22 @@ import com.movauy.mova.repository.user.UserRepository;
 import com.movauy.mova.service.user.AuthService;
 import com.movauy.mova.service.user.DuplicateUsernameException;
 import com.movauy.mova.service.user.UserTransactionalService;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -307,5 +299,25 @@ public class AuthController {
         }
 
         return claims;
+    }
+
+    @GetMapping
+    public List<UserBasicDTO> listAllUsers() {
+        return userRepository.findAll().stream()
+                .map(u -> {
+                    UserBasicDTO dto = new UserBasicDTO();
+                    dto.setId(u.getId());
+                    dto.setUsername(u.getUsername());
+                    dto.setBranchId(u.getBranch() != null ? u.getBranch().getId() : null);
+                    dto.setCompanyId(u.getBranch() != null && u.getBranch().getCompany() != null
+                            ? u.getBranch().getCompany().getId()
+                            : null);
+                    dto.setRole(u.getRole().name());
+                    // si no usas estos flags en la UI, déjalos false
+                    dto.setEnableIngredients(false);
+                    dto.setEnableKitchenCommands(false);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 }

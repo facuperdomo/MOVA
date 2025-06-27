@@ -48,7 +48,7 @@
 }
 
 .pm-back-btn,
-.popup-close {
+.popup-close-payment {
   position: absolute;
   top: 50%;
   transform: translateY(-50%) !important;
@@ -65,7 +65,7 @@
   left: 15px;
 }
 
-.popup-close {
+.popup-close-payment {
   right: 15px;
 }
 
@@ -79,13 +79,12 @@
   transition: transform 0.1s ease;
 }
 
-.popup-close .icon-wrapper {
+.popup-close-payment .icon-wrapper {
   display: block;
   transition: transform 0.1s ease;
-  margin-top: 25px; /* <-- este valor lo ajustás a gusto */
 }
 
-.popup-close:hover .icon-wrapper {
+.popup-close-payment:hover .icon-wrapper {
   transform: scale(1.2) !important;
 }
 
@@ -124,7 +123,7 @@
 }
 
 /* Botones principales */
-.payment-modal-content button:not(.pm-back-btn):not(.popup-close) {
+.payment-modal-content button:not(.pm-back-btn):not(.popup-close-payment) {
   width: 100%;
   padding: 12px;
   margin: 0.4rem 0;

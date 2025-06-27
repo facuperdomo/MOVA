@@ -117,7 +117,7 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      let url = `${API_URL}/api/statistics/cash-register-history`;
+      let url = `${API_URL}/api/statistics/cash-box-history`;
       if (customStart && customEnd) {
         url += `?startDate=${customStart}&endDate=${customEnd}`;
       } else {
@@ -221,7 +221,7 @@ const Statistics = () => {
 
   const handleViewDetail = async (sale) => {
     try {
-      const response = await customFetch(`/api/statistics/sales/${sale.id}`); // endpoint que devuelva Sale con sus items
+      const response = await customFetch(`${API_URL}/api/statistics/sales/${sale.id}`); // endpoint que devuelva Sale con sus items
       setSaleDetail(response);
       setShowDetailModal(true);
     } catch (err) {
