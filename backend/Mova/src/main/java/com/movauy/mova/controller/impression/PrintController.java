@@ -54,7 +54,6 @@ public class PrintController {
         SaleResponseDTO sale = saleService.getById(orderDto.getId());
         orderDto.setDateTime(sale.getDateTime().toString());
         orderDto.setTotalAmount(sale.getTotalAmount());
-
         if (orderDto.getPaymentMethod() == null || orderDto.getPaymentMethod().isBlank()) {
             orderDto.setPaymentMethod(sale.getPaymentMethod());
         }
@@ -72,28 +71,8 @@ public class PrintController {
         orderDto.setItems(items);
         orderDto.setCompanyName(b.getCompany().getName());
 
-        // 3) Generar ticket ESC/POS
-        byte[] payload;
-        try {
-            payload = printService.buildEscPosTicket(orderDto);
-        } catch (IOException e) {
-            log.error("Error generando ESC/POS ticket", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-
-        // 4) Elegir impresora a partir del deviceId
-        Printer target = printerRepo.findByDeviceId(deviceId).stream()
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No hay impresora asignada al device " + deviceId));
-
-        // 5) Publicar por WebSocket
-        String deviceUuid = target.getDevice().getBridgeUrl();
-        String b64 = Base64.getEncoder().encodeToString(payload);
-        PrintMessage msg = new PrintMessage();
-        msg.setB64(b64);
-        msg.setMacAddress(target.getMacAddress());
-
-        messaging.convertAndSend("/topic/print/" + deviceUuid, msg);
+        // 3–5) Generar ticket, loguear y enviar
+        sendAndLog(orderDto, deviceId, "printOrder");
         return ResponseEntity.accepted().build();
     }
 
@@ -137,27 +116,55 @@ public class PrintController {
                 .toList();
         dto.setItems(fixedItems);
 
-        // 3) Generar ticket ESC/POS
+        // 3–5) Generar ticket, loguear y enviar
+        sendAndLog(dto, deviceId, "printItemsReceipt");
+    }
+
+    // -----------------------------------------------
+// Helper privado para generar, loguear y enviar
+// -----------------------------------------------
+    private void sendAndLog(OrderDTO dto, Long deviceId, String context) {
         byte[] payload;
         try {
             payload = printService.buildEscPosTicket(dto);
         } catch (IOException e) {
-            log.error("Error generando ESC/POS ticket", e);
+            log.error("[{}] Error generando ESC/POS ticket", context, e);
             throw new RuntimeException(e);
         }
 
-        // 4) Elegir impresora según deviceId
+        // Log longitud y snippet del payload decodificado
+        log.info("[{}] Payload bytes: {}", context, payload.length);
+        try {
+            String asText = new String(payload, "CP850");
+            if (asText.length() > 200) {
+                log.info("[{}] Payload (CP850 decoded) snippet:\n{}…", context, asText.substring(0, 200));
+            } else {
+                log.info("[{}] Payload (CP850 decoded):\n{}", context, asText);
+            }
+        } catch (Exception e) {
+            log.warn("[{}] No pude decodificar payload a texto", context, e);
+        }
+
+        // Log snippet de Base64
+        String b64 = Base64.getEncoder().encodeToString(payload);
+        if (b64.length() > 100) {
+            log.info("[{}] Payload Base64 snippet: {}…", context, b64.substring(0, 100));
+        } else {
+            log.info("[{}] Payload Base64: {}", context, b64);
+        }
+
+        // Elegir impresora según deviceId
         Printer target = printerRepo.findByDeviceId(deviceId).stream()
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No hay impresora asignada al device " + deviceId));
+                .orElseThrow(() -> new IllegalArgumentException(
+                "[" + context + "] No hay impresora asignada al device " + deviceId));
 
-        // 5) Publicar por WebSocket
-        String deviceUuid = target.getDevice().getBridgeUrl();
-        String b64 = Base64.getEncoder().encodeToString(payload);
+        String uuid = target.getDevice().getBridgeUrl();
         PrintMessage msg = new PrintMessage();
         msg.setB64(b64);
         msg.setMacAddress(target.getMacAddress());
 
-        messaging.convertAndSend("/topic/print/" + deviceUuid, msg);
+        log.info("[{}] Enviando a /topic/print/{} (mac={})", context, uuid, target.getMacAddress());
+        messaging.convertAndSend("/topic/print/" + uuid, msg);
     }
 }

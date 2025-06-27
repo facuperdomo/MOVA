@@ -48,10 +48,13 @@ export async function printItemsReceipt(orderDto) {
   console.log("▶ Enviando impresión de ítems, payload:", orderDto);
   const token    = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
-  const deviceId = await ensureDeviceId();
+  const deviceId = localStorage.getItem("deviceId");
 
   if (!branchId) {
     throw new Error("No se encontró el branchId en localStorage");
+  }
+  if (!deviceId) {
+    throw new Error("No se encontró el deviceId en localStorage");
   }
 
   const headers = {
