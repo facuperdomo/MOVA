@@ -10,4 +10,10 @@ public interface PrinterRepository extends JpaRepository<Printer, Long> {
     List<Printer> findByBranchId(Long branchId);
     List<Printer> findByDevice_Id(Long deviceId);
     List<Printer> findAllByDeviceId(Long deviceId);
+    /**
+     * Devuelve todas las impresoras asignadas a un device concreto.
+     * @param deviceId la PK del Device
+     * @return lista (posible vacía) de Printer
+     */
+    List<Printer> findByDeviceId(Long deviceId);
 }

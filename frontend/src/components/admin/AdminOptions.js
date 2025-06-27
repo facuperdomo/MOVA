@@ -5,6 +5,7 @@ import { customFetch } from "../../utils/api";
 import { X } from "lucide-react";
 import "./adminOptionsStyle.css";
 import { API_URL } from "../../config/apiConfig";
+import SelectDeviceModal from "../common/SelectDeviceModal";
 
 const AdminOptions = () => {
   const navigate = useNavigate();
@@ -55,6 +56,26 @@ const AdminOptions = () => {
   const [showDisableModal, setShowDisableModal] = useState(false);
 
   const [showLimitWarning, setShowLimitWarning] = useState(false);
+
+  const [devices, setDevices] = useState([]);
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("deviceId")) {
+      // obtén branchId y token desde localStorage
+      const branchId = localStorage.getItem("branchId");
+      const token = localStorage.getItem("token");
+      fetch(`${API_URL}/api/branches/${branchId}/devices`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(list => {
+          setDevices(list);
+          setShowDeviceModal(true);
+        })
+        .catch(console.error);
+    }
+  }, []); // sólo una vez al montar
 
   useEffect(() => {
     if (selectedBox != null) {
@@ -254,12 +275,22 @@ const AdminOptions = () => {
       localStorage.removeItem('role');
       localStorage.removeItem('isAdmin');
       localStorage.removeItem('companyId');
+      localStorage.removeItem('deviceId');
       navigate('/login', { replace: true });
     }
   };
 
   return (
     <div className="admin-options">
+      { showDeviceModal && (
+      <SelectDeviceModal
+        devices={devices}
+        onSelect={(id) => {
+          if (id) localStorage.setItem("deviceId", id);
+          setShowDeviceModal(false);
+        }}
+      />
+    ) }
       {/* Sidebar */}
       <nav className={`sidebar ${isMenuOpen ? "open" : ""}`}>
         <div className="menu-toggle" onClick={() => setIsMenuOpen(v => !v)}>

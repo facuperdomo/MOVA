@@ -19,6 +19,7 @@ import AddMesaModal from "../addMesaModal/AddMesaModal";
 import PaymentOptionsModal from "../account/PaymentOptionsModal";
 import AccountsListModal from "../account/AccountsListModal";
 import AccountPaymentsModal from "../account/AccountPaymentsModal";
+import SelectDeviceModal from "../common/SelectDeviceModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -87,8 +88,28 @@ const Dashboard = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  const [devices, setDevices] = useState([]);
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
+
+  useEffect(() => {
+    const role = localStorage.getItem("role");
+    const branchId = localStorage.getItem("branchId");
+    if (role !== "ADMIN" && branchId && !localStorage.getItem("deviceId")) {
+      const token = localStorage.getItem("token");
+      fetch(`${API_URL}/api/branches/${branchId}/devices`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(list => {
+          setDevices(list);
+          setShowDeviceModal(true);
+        })
+        .catch(console.error);
+    }
+  }, []);
 
   useEffect(() => {
     cartRef.current = cart;
@@ -613,6 +634,7 @@ const Dashboard = () => {
       localStorage.removeItem('role');
       localStorage.removeItem('isAdmin');
       localStorage.removeItem('companyId');
+      localStorage.removeItem('deviceId');
       navigate('/login', { replace: true });
     }
   };
@@ -1003,7 +1025,15 @@ const Dashboard = () => {
 
   return (
     <div className="app-container">
-
+      { showDeviceModal && (
+      <SelectDeviceModal
+        devices={devices}
+        onSelect={(id) => {
+          if (id) localStorage.setItem("deviceId", id);
+          setShowDeviceModal(false);
+        }}
+      />
+    ) }
       {isAdmin && (
         <div className="dashboard-sidebar" onClick={() => navigate("/admin-options")}>
           <ArrowLeft size={40} className="back-icon" />
