@@ -1,6 +1,7 @@
 package com.movauy.mova.controller.admin;
 
 import com.movauy.mova.dto.CashBoxDTO;
+import com.movauy.mova.dto.CashBoxStatusDTO;
 import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.finance.CashBox;
 import com.movauy.mova.model.finance.CashRegister;
@@ -150,12 +151,21 @@ public class CashBoxController {
      * ¿Tiene el usuario alguna caja abierta asignada?
      */
     @GetMapping("/status-for-user")
-    public ResponseEntity<Boolean> isCashBoxOpenForUser(
+    public ResponseEntity<CashBoxStatusDTO> statusForUser(
             @RequestHeader("Authorization") String authHeader
     ) {
         String token = authHeader.replace("Bearer ", "");
         boolean open = cashBoxService.isCashBoxOpenForUser(token);
-        return ResponseEntity.ok(open);
+
+        // si está abierta, buscamos la caja y su código
+        String code = null;
+        if (open) {
+            CashBox box = cashBoxService.getOpenCashBoxForUser(token);
+            code = box.getCode();
+        }
+
+        CashBoxStatusDTO dto = new CashBoxStatusDTO(open, code);
+        return ResponseEntity.ok(dto);
     }
 
     // —————— ASIGNAR USUARIO ——————

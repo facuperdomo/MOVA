@@ -91,6 +91,8 @@ const Dashboard = () => {
   const [devices, setDevices] = useState([]);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
 
+  const [cashBoxCode, setCashBoxCode] = useState(null);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -412,8 +414,10 @@ const Dashboard = () => {
   // Verificar si la caja está abierta
   const checkCashRegisterStatus = async () => {
     try {
-      const response = await customFetch(`${API_URL}/api/cash-box/status-for-user`);
-      setIsCashRegisterOpen(response);
+      // Asumo que este endpoint devuelve { open: boolean, code: string, … }
+      const status = await customFetch(`${API_URL}/api/cash-box/status-for-user`);
+      setIsCashRegisterOpen(status.open);
+      setCashBoxCode(status.code);
     } catch (error) {
       console.error("Error al verificar la caja:", error);
     }
@@ -938,7 +942,7 @@ const Dashboard = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
+          body: JSON.stringify({ code: cashBoxCode, amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
         }
       );
       // 2) imprimimos TODO lo vendido
@@ -964,7 +968,7 @@ const Dashboard = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
+          body: JSON.stringify({ code: cashBoxCode, amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
         }
       );
       setShowClosePrintModal(false);
@@ -1025,15 +1029,15 @@ const Dashboard = () => {
 
   return (
     <div className="app-container">
-      { showDeviceModal && (
-      <SelectDeviceModal
-        devices={devices}
-        onSelect={(id) => {
-          if (id) localStorage.setItem("deviceId", id);
-          setShowDeviceModal(false);
-        }}
-      />
-    ) }
+      {showDeviceModal && (
+        <SelectDeviceModal
+          devices={devices}
+          onSelect={(id) => {
+            if (id) localStorage.setItem("deviceId", id);
+            setShowDeviceModal(false);
+          }}
+        />
+      )}
       {isAdmin && (
         <div className="dashboard-sidebar" onClick={() => navigate("/admin-options")}>
           <ArrowLeft size={40} className="back-icon" />
