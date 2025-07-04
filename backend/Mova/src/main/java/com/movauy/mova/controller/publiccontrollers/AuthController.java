@@ -62,7 +62,17 @@ public class AuthController {
         }
 
         String token = bearerToken.substring(7);
-        String username = jwtService.getUsernameFromToken(token);
+        String username;
+        try {
+            // Intenta extraer sujeto de un token aún válido
+            username = jwtService.getUsernameFromToken(token);
+        } catch (ExpiredJwtException ex) {
+            // Si expiró, usamos los claims caducados para sacar el subject
+            username = ex.getClaims().getSubject();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("No se pudo procesar el token");
+        }
 
         try {
             userTransactionalService.clearTokenVersionByUsername(username);
@@ -103,33 +113,31 @@ public class AuthController {
      * branch ni empresa. - Si es usuario normal: valida que no tenga sesión
      * activa, gira el token, y genera el JWT con datos de sucursal y empresa.
      */
+    /**
+     * Login general (incluye SUPERADMIN). - Autentica credenciales. - Si
+     * force=true: borra sesión anterior (tokenVersion). - Para SUPERADMIN:
+     * genera JWT sin branch. - Para usuario normal: valida única sesión (a
+     * menos que force=true), gira tokenVersion y genera JWT.
+     */
     @PostMapping("/loginUser")
     public ResponseEntity<AuthResponse> loginUser(
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+            @RequestParam(value = "forzarLogin", required = false, defaultValue = "false") boolean forzarLogin,
             @RequestBody LoginRequest request) {
 
-        String token = null;
-
-        // 👇 Intentamos extraer el token del header
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-        }
-
-        User user = authService.getUserByUsername(request.getUsername());
-
+        // 1) Autenticar credenciales
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
+        User user = authService.getUserByUsername(request.getUsername());
 
-        // ✅ Login para SUPERADMIN (no requiere branch)
+        // 2) SUPERADMIN saltea la restricción de “sesión única”
         if (user.getRole() == Role.SUPERADMIN) {
             String newVersion = authService.rotateTokenVersion(user);
             Map<String, Object> claims = new HashMap<>();
             claims.put("ver", newVersion);
             claims.put("role", user.getRole().name());
-            claims.put("authType", "USER"); // opcional
+            claims.put("authType", "USER");
             String jwt = jwtService.generateToken(claims, user);
-
             return ResponseEntity.ok(
                     AuthResponse.builder()
                             .token(jwt)
@@ -140,34 +148,40 @@ public class AuthController {
             );
         }
 
-        // 👇 Validación de sesión activa para usuarios normales
-        if (user.getTokenVersion() != null && !user.getTokenVersion().isBlank()) {
-            boolean tokenSigueActivo = false;
-
-            try {
-                if (token != null && jwtService.isTokenValid(token, user)) {
-                    tokenSigueActivo = true;
-                    logger.warn("🛑 Token aún válido para '{}', se bloquea nuevo login", user.getUsername());
-                } else {
-                    logger.warn("💥 Token vencido o inválido para '{}', limpiando tokenVersion", user.getUsername());
-                    userTransactionalService.clearTokenVersionByUsername(user.getUsername());
-                }
-            } catch (Exception e) {
-                logger.warn("⚠️ Error al validar token de '{}': {}. Se limpia por precaución.", user.getUsername(), e.getMessage());
-                userTransactionalService.clearTokenVersionByUsername(user.getUsername());
-            }
-
-            if (tokenSigueActivo) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(AuthResponse.builder()
-                                .message("Ya existe una sesión activa con este usuario")
-                                .build());
-            }
+        // 3) Si piden forzar login, invalido la sesión anterior
+        if (forzarLogin) {
+            userTransactionalService.clearTokenVersionByUsername(user.getUsername());
+            logger.warn("🔄 Sesión forzada: tokenVersion limpiado para '{}'", user.getUsername());
         }
 
-        // ✅ Continuar con login normal
-        AuthResponse resp = authService.loginUser(request, token);
-        return ResponseEntity.ok(resp);
+        // 4) Para usuarios normales, rechazamos el login si ya hay tokenVersion activo (y no forzado)
+        if (!forzarLogin && user.getTokenVersion() != null && !user.getTokenVersion().isBlank()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(AuthResponse.builder()
+                            .message("Ya hay una sesión activa con este usuario")
+                            .build());
+        }
+
+        // 5) Rotar la versión, generar el JWT y devolverlo
+        String newVersion = authService.rotateTokenVersion(user);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("ver", newVersion);
+        claims.put("role", user.getRole().name());
+        claims.put("authType", "USER");
+        if (user.getBranch() != null) {
+            claims.put("branchId", user.getBranch().getId());
+            claims.put("companyId", user.getBranch().getCompany().getId());
+        }
+        String jwt = jwtService.generateToken(claims, user);
+
+        return ResponseEntity.ok(
+                AuthResponse.builder()
+                        .token(jwt)
+                        .role(user.getRole().name())
+                        .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
+                        .companyId(user.getBranch() != null ? user.getBranch().getCompany().getId() : null)
+                        .build()
+        );
     }
 
     /**
@@ -218,35 +232,26 @@ public class AuthController {
      * fuerza nuevo login.
      */
     @PostMapping("/refresh-token")
-    public ResponseEntity<?> refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED).body("Falta token");
+    public ResponseEntity<?> refreshToken(HttpServletRequest req) {
+        String auth = req.getHeader(HttpHeaders.AUTHORIZATION);
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("Falta token");
         }
-
-        String token = authHeader.substring(7);
+        String token = auth.substring(7);
         String username;
-
         try {
             username = jwtService.getUsernameFromToken(token);
         } catch (ExpiredJwtException e) {
             username = e.getClaims().getSubject();
-            logger.warn("⚠️ Token expirado para usuario: {}", username);
         } catch (Exception e) {
-            logger.warn("❌ Token inválido en refresh: {}", e.getMessage());
-            return ResponseEntity.status(HttpServletResponse.SC_UNAUTHORIZED).body("Token inválido");
+            return ResponseEntity.status(401).body("Token inválido");
         }
 
-        logger.warn("🧹 Limpiando tokenVersion de '{}'.", username);
-        userTransactionalService.clearTokenVersionByUsername(username); // ✅ ESTO FUNCIONA
-
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
-
-        logger.warn("🔁 Intentando refrescar token de usuario: {}", username);
-        String newToken = jwtService.generateToken(user);
-
-        logger.warn("✅ Nuevo token generado para {}", username);
+        // YA no hace falta distinguir expirado o no: siempre generas nuevo
+        String newToken = jwtService.generateToken(
+                jwtService.getAllClaimsAllowExpired(token),
+                username
+        );
         return ResponseEntity.ok(Map.of("token", newToken));
     }
 

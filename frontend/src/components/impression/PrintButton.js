@@ -1,18 +1,23 @@
-// src/components/impression/PrintButton.jsx
 import React, { useState } from "react";
 import { printOrder } from "../../utils/print";
 
-export default function PrintButton({ order }) {
+export default function PrintButton({ order, onError, onSuccess }) {
   const [loading, setLoading] = useState(false);
 
   const handlePrint = async () => {
     setLoading(true);
     try {
       await printOrder(order);
-      alert("✅ Ticket enviado a imprimir");
-    } catch (e) {
-      console.error(e);
-      alert("❌ " + e.message);
+      // Llama al callback de éxito si se provee
+      if (typeof onSuccess === 'function') {
+        onSuccess();
+      }
+    } catch (err) {
+      console.error("Error imprimiendo ticket:", err);
+      // Llama al callback de error para mostrar modal
+      if (typeof onError === 'function') {
+        onError(err);
+      }
     } finally {
       setLoading(false);
     }

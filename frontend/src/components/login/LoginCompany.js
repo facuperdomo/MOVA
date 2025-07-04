@@ -1,7 +1,8 @@
+// src/components/login/LoginCompany.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './loginCompanyStyle.css';
-import { API_URL } from '../../config/apiConfig';
+import { customFetch } from '../../utils/api';
 import logo from '../../assets/logo-login.png';
 
 export default function LoginCompany() {
@@ -10,6 +11,7 @@ export default function LoginCompany() {
   const [err, setErr] = useState(false);
   const [msg, setMsg] = useState('');
   const [isPressed, setIsPressed] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const showError = (message) => {
@@ -26,30 +28,39 @@ export default function LoginCompany() {
   const handleMouseUp = () => setIsPressed(false);
 
   const loginAction = async (e) => {
-    hideError();
     e.preventDefault();
+    hideError();
 
     if (!username.trim()) {
       showError('El usuario ingresado no puede ser vacío.');
       return;
     }
 
+    // Limpiar cualquier sesión previa
+    [
+      'token',
+      'role',
+      'companyId',
+      'isAdmin',
+      'deviceId',
+      'selectedCashBoxId',
+      'branchId'
+    ].forEach(key => localStorage.removeItem(key));
+
     try {
-      const response = await fetch(`${API_URL}/auth/loginBranch`, {
+      setLoading(true);
+      const data = await customFetch('/auth/loginBranch', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
+        skipRefresh: true
       });
 
-      if (!response.ok) throw new Error('Usuario o contraseña incorrectos.');
-      
-      const data = await response.json();
-      const token = data.token;
-      console.log("📦 LoginCompany respuesta:", data);
-      localStorage.setItem('token', token); // Guarda el token del usuario
-      
+      // Guardar token de branch
+      localStorage.setItem('token', data.token);
+
+      // Extraer y guardar branchId
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
         if (payload.branchId) {
           localStorage.setItem('branchId', payload.branchId.toString());
         }
@@ -57,9 +68,14 @@ export default function LoginCompany() {
         console.warn('No se pudo extraer branchId del token de empresa.');
       }
 
-      navigate('/loginUser'); // Redirige al login de usuario
+      // Redirigir al login de usuario
+      navigate('/loginUser', { replace: true });
+
     } catch (err) {
       showError(err.message);
+    } finally {
+      setLoading(false);
+      setIsPressed(false);
     }
   };
 
@@ -68,22 +84,24 @@ export default function LoginCompany() {
       <img src={logo} alt="Logo" className="logo-login" />
       <form id='containerLoginForm'>
         <label id='login'>Ingresar Empresa</label>
-        <input 
-          className='username' 
-          type='text' 
-          id='username' 
-          value={username} 
-          onChange={(e) => setUsername(e.target.value)} 
-          placeholder='Usuario de la Empresa' 
-          required 
+        <input
+          className='username'
+          type='text'
+          id='username'
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder='Usuario de la Empresa'
+          required
+          disabled={loading}
         />
-        <input 
-          className='password' 
-          type='password' 
-          id='password' 
-          value={password} 
-          placeholder='Contraseña' 
-          onChange={(e) => setPassword(e.target.value)} 
+        <input
+          className='password'
+          type='password'
+          id='password'
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder='Contraseña'
+          disabled={loading}
         />
         <input
           className={`loginButton ${isPressed ? 'pressed' : ''}`}
@@ -92,7 +110,8 @@ export default function LoginCompany() {
           onClick={loginAction}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
-          value='Ingresar'
+          value={loading ? 'Ingresando…' : 'Ingresar'}
+          disabled={loading}
         />
       </form>
       {err && (

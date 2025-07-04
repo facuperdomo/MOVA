@@ -12,10 +12,19 @@ export default function CategoryManager({ onClose }) {
   const [newEnableKitchenCommands, setNewEnableKitchenCommands] = useState(false);
   const [error, setError] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [branchFeatures, setBranchFeatures] = useState({
+    enableIngredients: false,
+    enableKitchenCommands: false,
+  });
 
   useEffect(() => {
     fetchCategories();
+    fetchBranchConfig();
   }, []);
+
+  useEffect(() => {
+    console.log("🧩 branchFeatures actual:", branchFeatures);
+  }, [branchFeatures]);
 
   const fetchCategories = async () => {
     try {
@@ -23,6 +32,19 @@ export default function CategoryManager({ onClose }) {
       setCategories(Array.isArray(res) ? res : []);
     } catch {
       setError("No se pudieron cargar las categorías.");
+    }
+  };
+
+  const fetchBranchConfig = async () => {
+    try {
+      const res = await customFetch(`${API_URL}/api/branch/me`);
+      console.log("🟢 Branch config recibida:", res); // 🔍 DEBUG
+      setBranchFeatures({
+        enableIngredients: res.enableIngredients,
+        enableKitchenCommands: res.enableKitchenCommands,
+      });
+    } catch (err) {
+      console.warn("❌ No se pudo obtener la config de la sucursal:", err);
     }
   };
 
@@ -118,22 +140,28 @@ export default function CategoryManager({ onClose }) {
             value={newCategory}
             onChange={e => setNewCategory(e.target.value)}
           />
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={newHasIngredients}
-              onChange={e => setNewHasIngredients(e.target.checked)}
-            />
-            Maneja ingredientes
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={newEnableKitchenCommands}
-              onChange={e => setNewEnableKitchenCommands(e.target.checked)}
-            />
-            Requiere comandería
-          </label>
+
+          {branchFeatures.enableIngredients && (
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={newHasIngredients}
+                onChange={e => setNewHasIngredients(e.target.checked)}
+              />
+              Maneja ingredientes
+            </label>
+          )}
+
+          {branchFeatures.enableKitchenCommands && (
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={newEnableKitchenCommands}
+                onChange={e => setNewEnableKitchenCommands(e.target.checked)}
+              />
+              Requiere comandería
+            </label>
+          )}
           <button
             className="popup-btn popup-btn-cash"
             onClick={createCategory}
@@ -155,22 +183,27 @@ export default function CategoryManager({ onClose }) {
             <li key={cat.id} className="category-item">
               <span className="category-name">{cat.name}</span>
               <div className="actions-row">
-                <label className="inline-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={cat.hasIngredients}
-                    onChange={() => toggleHasIngredients(cat)}
-                  />
-                  Ingred.
-                </label>
-                <label className="inline-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={cat.enableKitchenCommands}
-                    onChange={() => toggleKitchenCommands(cat)}
-                  />
-                  Comand.
-                </label>
+                {branchFeatures.enableIngredients && (
+                  <label className="inline-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={cat.hasIngredients}
+                      onChange={() => toggleHasIngredients(cat)}
+                    />
+                    Ingred.
+                  </label>
+                )}
+
+                {branchFeatures.enableKitchenCommands && (
+                  <label className="inline-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={cat.enableKitchenCommands}
+                      onChange={() => toggleKitchenCommands(cat)}
+                    />
+                    Comand.
+                  </label>
+                )}
                 <button
                   className="delete-btn"
                   onClick={() => handleDeleteClick(cat)}

@@ -18,6 +18,7 @@ export default function PaymentOptionsModal({
     // El total actual de la cuenta
     total: currentTotal,
     onClose,
+    cashBoxCode,
     // Nuevas props:
     onPaidAndClose,     // se llama si paga todo y cierra la cuenta
     onPaidWithoutClose, // se llama si paga todo pero deja abierta
@@ -41,6 +42,9 @@ export default function PaymentOptionsModal({
     const [cyclePaidPeople, setCyclePaidPeople] = useState(0);
     const [totalPeople, setTotalPeople] = useState(splitTotal);
     const [payMethod, setPayMethod] = useState(null);
+
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
 
     const paidQtyMap = useMemo(() => {
         const m = new Map();
@@ -88,11 +92,8 @@ export default function PaymentOptionsModal({
 
 
     const fetchSplitStatus = async () => {
-        const s = await customFetch(`${API_URL}/api/accounts/${accountId}/split/status`);
-        const total = Number(s.total);
-        const remaining = Number(s.remaining);
+        const { total, remaining, share } = await getSplitStatus();
         const paidCount = total - remaining;
-        const share = Number(s.share);
         setPeople(remaining);
         setShare(share);
         setCyclePaidPeople(paidCount);
@@ -114,24 +115,121 @@ export default function PaymentOptionsModal({
         }
     }, [step, currentTotal, paidMoney]);
 
-    const handlePartialPay = async (method) => {
-        // 1) Envía el pago parcial y recibe un OrderDTO del backend
+     useEffect(() => {
+    if (step === "products") {
+      const unpaid = flatItems.filter(i => !i.paid).length;
+      if (unpaid === 0 && flatItems.length > 0) {
+        setShowCloseConfirm(true);
+      }
+    }
+  }, [flatItems, step]);
+    // ——————————————————————————————
+    // 5bis) Pago “full” (total) (sin cerrar)
+    // ——————————————————————————————
+    const handleFullPay = async (method) => {
+        // 1) Registro del pago total
         const orderDTO = await customFetch(
             `${API_URL}/api/accounts/${accountId}/payments/split`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–", paymentMethod: method }),
+                body: JSON.stringify({
+                    amount: amountToPay,
+                    payerName: payerName || "–",
+                    paymentMethod: method
+                }),
             }
         );
 
-        // 2) Imprime usando ese OrderDTO
+        // 2) Imprimimos el cierre de cuenta (FULL_CLOSURE mantiene tu ticket de cierre)
+        await onPrint({ type: 'FULL_CLOSURE', payload: orderDTO });
+
+        // 3) Ejecutamos callback “pago sin cerrar”
+        onPaidWithoutClose();
+
+        setShowCloseConfirm(true);
+
+        // 4) Mostramos modal de éxito
+        setSuccessMessage("Pago total realizado con éxito");
+        setShowSuccess(true);
+    };
+
+    const handlePartialPay = async (method) => {
+        // 1) Envías el pago
+        const orderDTO = await customFetch(
+            `${API_URL}/api/accounts/${accountId}/payments/split`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amount: amountToPay,
+                    payerName: payerName || "–",
+                    paymentMethod: method
+                }),
+            }
+        );
+
+        // 2) Imprimes el ticket de pago parcial
         await onPrint({ type: 'PARTIAL_PAYMENT', payload: orderDTO });
 
-        // 3) Actualiza la UI
-        onPaidWithoutClose();
+        // 3) Lees el nuevo estado
+        const { remaining } = await getSplitStatus();
         await fetchSplitStatus();
-        onClose();
+
+        // 4) Si ya no queda nadie → muestro confirm
+        if (remaining === 0) {
+            setShowCloseConfirm(true);
+        }
+
+        // 5) Muestro modal de éxito
+        setSuccessMessage("Pago parcial realizado con éxito");
+        setShowSuccess(true);
+    };
+
+    const getSplitStatus = async () => {
+        const s = await customFetch(`${API_URL}/api/accounts/${accountId}/split/status`);
+        return {
+            total: Number(s.total),
+            remaining: Number(s.remaining),
+            share: Number(s.share),
+        };
+    };
+
+    const handleProductsPay = async (method) => {
+        const itemIdsToPay = selectedItems.map(idx => flatItems[idx]?.id).filter(Boolean);
+        if (itemIdsToPay.length === 0) return;
+
+        // 1) Envías el pago de ítems
+        const orderDTO = await customFetch(
+            `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ itemIds: itemIdsToPay, payerName: payerName || "–", paymentMethod: method }),
+            }
+        );
+
+        // 2) Imprimes el ticket de pago de productos
+        await onPrint({ type: 'PRODUCT_PAYMENT', payload: orderDTO });
+
+        // 3) Actualizas UI
+        onPaidWithoutClose();
+
+        // 4) Compruebas si quedó algún producto sin pagar
+        const unpaidCount = flatItems.filter(i => !i.paid).length;
+        await fetchSplitStatus();
+
+        setSelectedItems([]);
+        setAmountToPay(0);
+
+        // 5) Si ya no queda ninguno, muestro confirm
+        if (unpaidCount === itemIdsToPay.length) {
+            setShowCloseConfirm(true);
+        }
+
+        // 6) Muestro modal de éxito
+        setSuccessMessage("Pago de productos realizado con éxito");
+        setShowSuccess(true);
     };
 
     const handlePeopleChange = async (n) => {
@@ -145,58 +243,26 @@ export default function PaymentOptionsModal({
     //    - Si step === “products” → enviamos array de `itemIds` seleccionados.
     //    - Si step === “split” → enviamos sólo el monto parcial.
     // —————————————————————————————————————————————————————————————————————
-    const handlePay = async () => {
-        // — Paso “Pagar toda la cuenta” muestra el confirm —
+    // ——————————————————————————————
+    // 6) Handler genérico para “Pagar”
+    // ——————————————————————————————
+    const handlePay = async (method) => {
         if (step === "full") {
-            setShowCloseConfirm(true);
+            // Antes: abríamos el modal de cierre.
+            // Ahora: hacemos el pago total inmediato
+            await handleFullPay(method);
             return;
         }
 
-        // — Paso “Pagar productos sueltos” —
         if (step === "products") {
-            // 1) Lista de IDs a pagar
-            const itemIdsToPay = selectedItems
-                .map(idx => flatItems[idx]?.id)
-                .filter(id => id != null);
-
-            if (itemIdsToPay.length === 0) {
-                alert("No seleccionaste ningún ítem válido para pagar.");
-                return;
-            }
-
-            try {
-                console.log("▶ handlePay (products): enviando IDs", itemIdsToPay);
-
-                // 2) Llamada al endpoint que devuelve un OrderDTO
-                const orderDTO = await customFetch(
-                    `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            itemIds: itemIdsToPay,
-                            payerName: payerName || "–"
-                        }),
-                    }
-                );
-                console.log("✅ handlePay: OrderDTO recibido:", orderDTO);
-
-                // 3) Imprimir sólo los ítems que pagaste
-                await onPrint({ type: 'PRODUCT_PAYMENT', payload: orderDTO });
-                console.log("✅ handlePay: impresión completada");
-
-                // 4) Actualizar UI y cerrar modal
-                onPaidWithoutClose();
-                onClose();
-            } catch (err) {
-                console.error("❌ handlePay (products) error:", err);
-                alert("Ocurrió un error al registrar el pago de productos.");
-            }
-
+            await handleProductsPay(method);
             return;
         }
 
-        // Si algún día agregas otro paso (QR, split, etc.), lo gestionas aquí…
+        if (step === "split") {
+            await handlePartialPay(method);
+            return;
+        }
     };
 
     // —————————————————————————————————————————————————————————————————————
@@ -226,7 +292,7 @@ export default function PaymentOptionsModal({
                 {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ paymentMethod: payMethod })
+                    body: JSON.stringify({ code: cashBoxCode, paymentMethod: payMethod })
                 },
 
             );
@@ -269,219 +335,226 @@ export default function PaymentOptionsModal({
         onClose();
     };
 
+    function ConfirmCloseModal({ onConfirm, onCancel }) {
+        return (
+            <div className="confirm-close-overlay-a">
+                <div className="confirm-close-modal-a">
+                    <h3>¿Deseas cerrar la cuenta?</h3>
+                    <div className="close-confirm-buttons">
+                        <button onClick={onConfirm}>Sí, cerrar cuenta</button>
+                        <button onClick={onCancel}>No, dejarla abierta</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    function SuccessModal({ message, onClose }) {
+        return (
+            <div className="success-overlay">
+                <div className="success-modal">
+                    <h3>{message}</h3>
+                    <button onClick={onClose}>OK</button>
+                </div>
+            </div>
+        );
+    }
+
     return (
+
         <div className="payment-modal" onClick={(e) => {
             // Si se hace clic fuera del contenido, cerrar el modal
             if (e.target.classList.contains("payment-modal")) {
                 onClose();
             }
         }}>
+            {showSuccess && (
+                <SuccessModal
+                    message={successMessage}
+                    onClose={() => {
+                        setShowSuccess(false);
+                    }}
+                />
+            )}
             <div className="payment-modal-content">
-                <div className="payment-modal-header-row">
-                    {step !== "choose" && (
-                        <button className="pm-back-btn" onClick={() => {
-                            setStep("choose");
-                            setShowQR(false);
-                        }}>
-                            <span className="icon-wrapper"><ArrowLeft size={26} /></span>
-                        </button>
-                    )}
-
-                    <h3 className="modal-title">
-                        {step === "split" && "Dividir cuenta"}
-                        {step === "full" && "Pagar todo"}
-                        {step === "products" && "Pagar productos"}
-                        {step === "choose" && "¿Cómo quieres pagar?"}
-                    </h3>
-
-                    <button className="popup-close-payment" onClick={onClose}>
-                        <span className="icon-wrapper">
-                            <X size={26} />
-                        </span>
-                    </button>
-                </div>
-
-                {/* — PASO 1: Elegir modalidad de pago — */}
-                {step === "choose" && (
-                    <>
-                        <button onClick={() => setStep("full")}>Pagar toda la cuenta</button>
-                        <button onClick={() => setStep("split")}>Repartir entre...</button>
-                        <button onClick={() => setStep("products")}>Pagar productos</button>
-                    </>
-                )}
-
-                {/* — PASO 2: “Pagar toda la cuenta” — */}
-                {step === "full" && !showCloseConfirm && (
-                    <>
-                        <h3>Importe restante: ${amountToPay.toFixed(2)}</h3>
-                        <label className="payer-name-input">
-                            Nombre del pagador:
-                            <input
-                                type="text"
-                                value={payerName}
-                                onChange={(e) => setPayerName(e.target.value)}
-                                placeholder="Ej. Juan Pérez"
-                            />
-                        </label>
-                        {!showQR ? (
-                            <>
-                                <button onClick={handlePay}>Efectivo</button>
-                                <button onClick={() => setShowQR(true)}>QR</button>
-                            </>
-                        ) : (
-                            <PaymentQR amount={amountToPay} />
-                        )}
-                    </>
-                )}
-
-                {/* — CONFIRMATORIO: “¿Cerrar cuenta después de este pago?” — */}
                 {showCloseConfirm && (
-                    <div className="close-confirm-container">
-                        <h3>¿Deseas cerrar la cuenta después de este pago?</h3>
-                        <div className="close-confirm-buttons">
-                            <button onClick={confirmCloseAccount}>Sí, cerrar cuenta</button>
-                            <button onClick={cancelCloseAccount}>No, dejarla abierta</button>
+                    <ConfirmCloseModal
+                        onConfirm={confirmCloseAccount}
+                        onCancel={cancelCloseAccount}
+                    />
+                )}
+                {!showCloseConfirm && (
+                    <>
+                        <div className="payment-modal-header-row">
+                            {!showCloseConfirm && (
+                                <div className="payment-modal-header-row">
+                                    {step !== "choose" && (
+                                        <button className="pm-back-btn" onClick={() => { setStep("choose"); setShowQR(false); }}>
+                                            <ArrowLeft size={26} />
+                                        </button>
+                                    )}
+                                    <h3 className="modal-title">
+                                        {step === "split" && "Dividir cuenta"}
+                                        {step === "full" && "Pagar todo"}
+                                        {step === "products" && "Pagar productos"}
+                                        {step === "choose" && "¿Cómo quieres pagar?"}
+                                    </h3>
+                                    <button className="popup-close-payment" onClick={onClose}>
+                                        <X size={26} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                )}
 
-                {/* — PASO 3: “Repartir entre ‘people’ personas” — */}
-                {step === "split" && (
-                    <>
-
-                        <label className="payer-name-input">
-                            Personas:
-                            <input
-                                type="number"
-                                min={1}
-                                value={people}
-                                onChange={e => {
-                                    // actualiza solo el state local
-                                    const v = Number(e.target.value);
-                                    setPeople(v > 0 ? v : 1);
-                                }}
-                                onBlur={() => {
-                                    // cuando el usuario sale del campo, confirmamos el cambio
-                                    handlePeopleChange(people);
-                                }}
-                            />
-                        </label>
-
-                        <p>Cada uno paga: ${share.toFixed(2)}</p>
-                        <p>Pagadas: <strong>{cyclePaidPeople}</strong> / <strong>{totalPeople}</strong> personas</p>
-
-                        <label className="payer-name-input">
-                            Nombre del pagador:
-                            <input
-                                type="text"
-                                value={payerName}
-                                onChange={e => setPayerName(e.target.value)}
-                                placeholder="Ej. Ana López"
-                            />
-                        </label>
-
-                        {!showQR ? (
+                        {/* — PASO 1: Elegir modalidad de pago — */}
+                        {step === "choose" && (
                             <>
-                                <button onClick={() => handlePartialPay("CASH")}>
-                                    Efectivo
-                                </button>
-
-                                {/* 3) QR marca el método y muestra QR */}
-                                <button onClick={() => {
-                                    setPayMethod("QR");
-                                    setShowQR(true);
-                                }}>
-                                    QR
-                                </button>
+                                <button onClick={() => setStep("full")}>Pagar toda la cuenta</button>
+                                <button onClick={() => setStep("split")}>Repartir entre...</button>
+                                <button onClick={() => setStep("products")}>Pagar productos</button>
                             </>
-                        ) : (
-                            <PaymentQR amount={share} />
                         )}
-                    </>
-                )}
 
-                {/* — PASO 4: “Pagar productos sueltos” — */}
-                {step === "products" && (
-                    <>
-                        <label className="payer-name-input">
-                            Nombre del pagador:
-                            <input
-                                type="text"
-                                value={payerName}
-                                onChange={e => setPayerName(e.target.value)}
-                                placeholder="Ej. Juan Pérez"
+                        {step === "full" && !showCloseConfirm && (
+                            <>
+                                <h3>Importe restante: ${amountToPay.toFixed(2)}</h3>
+                                <label className="payer-name-input">
+                                    Nombre del pagador:
+                                    <input
+                                        type="text"
+                                        value={payerName}
+                                        onChange={(e) => setPayerName(e.target.value)}
+                                        placeholder="Ej. Juan Pérez"
+                                    />
+                                </label>
+
+                                {amountToPay <= 0 ? (
+                                    <button disabled>No hay saldo pendiente</button>
+                                ) : (
+                                    <>
+                                        <button onClick={() => handlePay("CASH")}>Efectivo</button>
+                                        <button onClick={() => { setPayMethod("QR"); setShowQR(true); }}>QR</button>
+                                    </>
+                                )}
+                            </>
+                        )}
+
+                        {step === "full" && showCloseConfirm && (
+                            <ConfirmCloseModal
+                                onConfirm={confirmCloseAccount}
+                                onCancel={cancelCloseAccount}
                             />
-                        </label>
-                        <ul className="pm-product-list">
-                            {flatItems.map((i, idx) => (
-                                <li key={`${i.id}-${idx}`}>
-                                    <label>
-                                        <input
-                                            type="checkbox"
-                                            checked={i.paid || selectedItems.includes(idx)}
-                                            disabled={i.paid}
-                                            onChange={() => {
-                                                if (i.paid) return;
-                                                setSelectedItems((prev) =>
-                                                    prev.includes(idx)
-                                                        ? prev.filter((x) => x !== idx)
-                                                        : [...prev, idx]
-                                                );
-                                            }}
-                                        />
-                                        {i.productName} = ${i.price.toFixed(2)}{" "}
-                                        {i.paid && (
-                                            <span style={{ color: "#4CAF50", marginLeft: "8px" }}>
-                                                (Pagado)
-                                            </span>
-                                        )}
-                                    </label>
-                                </li>
-                            ))}
-                        </ul>
-                        <p>Subtotal: ${amountToPay.toFixed(2)}</p>
-                        {!showQR ? (() => {
-                            // cuántas unidades quedan sin pagar
-                            const unpaidCount = flatItems.filter(x => !x.paid).length;
-                            const isLastBatch = selectedItems.length === unpaidCount;
-                            return (
-                                <>
-                                    <button
-                                        onClick={() => {
-                                            if (isLastBatch) {
-                                                // si paga todo, voy al confirm de cerrar
-                                                setShowCloseConfirm(true);
-                                            } else {
-                                                handlePay("CASH");
-                                            }
+                        )}
+
+                        {/* — PASO 3: “Repartir entre ‘people’ personas” — */}
+                        {step === "split" && (
+                            <>
+                                <label className="payer-name-input">
+                                    Personas:
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        value={people}
+                                        onChange={e => {
+                                            const v = Number(e.target.value);
+                                            setPeople(v > 0 ? v : 1);
                                         }}
-                                        disabled={selectedItems.length === 0}
-                                    >
-                                        Efectivo
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            if (isLastBatch) {
-                                                setShowCloseConfirm(true);
-                                            } else {
-                                                setShowQR(true);
-                                            }
-                                        }}
-                                        disabled={selectedItems.length === 0}
-                                    >
-                                        QR
-                                    </button>
-                                </>
-                            );
-                        })() : (
-                            <PaymentQR
-                                amount={amountToPay}
-                                onPaymentSuccess={() => handlePartialPay(payMethod)}
-                            />
+                                        onBlur={() => handlePeopleChange(people)}
+                                    />
+                                </label>
+
+                                <p>Cada uno paga: ${share.toFixed(2)}</p>
+                                <p>Pagadas: <strong>{cyclePaidPeople}</strong> / <strong>{totalPeople}</strong> personas</p>
+
+                                <label className="payer-name-input">
+                                    Nombre del pagador:
+                                    <input
+                                        type="text"
+                                        value={payerName}
+                                        onChange={e => setPayerName(e.target.value)}
+                                        placeholder="Ej. Ana López"
+                                    />
+                                </label>
+
+                                {!showCloseConfirm && (
+                                    !showQR ? (
+                                        <>
+                                            <button onClick={() => handlePartialPay("CASH")}>Efectivo</button>
+                                            <button onClick={() => { setPayMethod("QR"); setShowQR(true); }}>QR</button>
+                                        </>
+                                    ) : (
+                                        <PaymentQR amount={share} />
+                                    )
+                                )}
+                            </>
+                        )}
+
+                        {/* — PASO 4: “Pagar productos sueltos” — */}
+                        {step === "products" && (
+                            <>
+                                <label className="payer-name-input">
+                                    Nombre del pagador:
+                                    <input
+                                        type="text"
+                                        value={payerName}
+                                        onChange={e => setPayerName(e.target.value)}
+                                        placeholder="Ej. Juan Pérez"
+                                    />
+                                </label>
+
+                                <ul className="pm-product-list">
+                                    {flatItems.map((i, idx) => (
+                                        <li key={`${i.id}-${idx}`}>
+                                            <label>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={i.paid || selectedItems.includes(idx)}
+                                                    disabled={i.paid}
+                                                    onChange={() => {
+                                                        if (i.paid) return;
+                                                        setSelectedItems(prev =>
+                                                            prev.includes(idx)
+                                                                ? prev.filter(x => x !== idx)
+                                                                : [...prev, idx]
+                                                        );
+                                                    }}
+                                                />
+                                                {i.productName} = ${i.price.toFixed(2)}{" "}
+                                                {i.paid && <span className="paid-tag">(Pagado)</span>}
+                                            </label>
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <p>Subtotal: ${amountToPay.toFixed(2)}</p>
+
+                                {showQR ? (
+                                    <PaymentQR
+                                        amount={amountToPay}
+                                        onPaymentSuccess={() => handleProductsPay(payMethod)}
+                                    />
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => handleProductsPay("CASH")}
+                                            disabled={selectedItems.length === 0}
+                                        >
+                                            Efectivo
+                                        </button>
+                                        <button
+                                            onClick={() => { setPayMethod("QR"); setShowQR(true); }}
+                                            disabled={selectedItems.length === 0}
+                                        >
+                                            QR
+                                        </button>
+                                    </>
+                                )}
+                            </>
                         )}
                     </>
                 )}
             </div>
+
         </div>
     );
 }

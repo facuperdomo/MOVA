@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
@@ -39,18 +40,27 @@ public class PrintController {
     private final ProductRepository productRepo;
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> printOrder(
+    public ResponseEntity<Map<String, String>> printOrder(
             @RequestBody OrderDTO orderDto,
             @RequestHeader("X-Branch-Id") Long branchId,
             @RequestHeader("X-Device-Id") Long deviceId
     ) {
-        // 0) Rellenar datos de la sucursal
         Branch b = branchService.findById(branchId);
+
+        if (!b.isEnablePrinting()) {
+            log.warn("[printOrder] La sucursal {} tiene impresión desactivada", b.getId());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                            "error", "PrintingDisabled",
+                            "message", "La sucursal tiene la impresión desactivada."
+                    ));
+        }
+
+        // continuar normalmente
         orderDto.setBranchRut(b.getRut());
         orderDto.setBranchName(b.getName());
         orderDto.setBranchAddress(b.getLocation());
 
-        // 1) Consultar la venta y completar datos
         SaleResponseDTO sale = saleService.getById(orderDto.getId());
         orderDto.setDateTime(sale.getDateTime().toString());
         orderDto.setTotalAmount(sale.getTotalAmount());
@@ -58,7 +68,6 @@ public class PrintController {
             orderDto.setPaymentMethod(sale.getPaymentMethod());
         }
 
-        // 2) Mapear ítems
         List<SaleItemDTO> items = sale.getItems().stream()
                 .map(i -> SaleItemDTO.builder()
                 .productId(i.getProductId())
@@ -71,7 +80,6 @@ public class PrintController {
         orderDto.setItems(items);
         orderDto.setCompanyName(b.getCompany().getName());
 
-        // 3–5) Generar ticket, loguear y enviar
         sendAndLog(orderDto, deviceId, "printOrder");
         return ResponseEntity.accepted().build();
     }
@@ -81,13 +89,23 @@ public class PrintController {
      */
     @PostMapping("/receipt/items")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void printItemsReceipt(
+    public ResponseEntity<?> printItemsReceipt(
             @RequestBody OrderDTO dto,
             @RequestHeader("X-Branch-Id") Long branchId,
             @RequestHeader("X-Device-Id") Long deviceId
     ) {
         // 0) Rellenar datos de sucursal/empresa
         Branch b = branchService.findById(branchId);
+
+        if (!b.isEnablePrinting()) {
+            log.warn("[printItemsReceipt] La sucursal {} tiene impresión desactivada", b.getId());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                            "error", "PrintingDisabled",
+                            "message", "La sucursal tiene la impresión desactivada."
+                    ));
+        }
+
         dto.setBranchRut(b.getRut());
         dto.setBranchName(b.getName());
         dto.setBranchAddress(b.getLocation());
@@ -118,6 +136,7 @@ public class PrintController {
 
         // 3–5) Generar ticket, loguear y enviar
         sendAndLog(dto, deviceId, "printItemsReceipt");
+        return ResponseEntity.noContent().build();
     }
 
     // -----------------------------------------------

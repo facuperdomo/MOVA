@@ -85,7 +85,7 @@ input[type="file"] {
 .form-panel button {
   width: 100%;
   padding: 16px;
-  background-color: #27ae60;
+  background-color: 	#27AE60;
   color: white;
   font-size: 18px;
   font-weight: bold;
@@ -136,7 +136,7 @@ input[type="file"] {
   padding-bottom: 5px;
 }
 .category-manage-btn {
-  background-color: #27ae60;
+  background-color: 	#27AE60;
   color: white;
   padding: 10px;
   border: none;
@@ -212,7 +212,7 @@ input[type="file"] {
 }
 .product-item p {
   font-size: 14px;
-  color: #f1c40f;
+  color: #F39C12;
   font-weight: bold;
   margin: 4px 0;
 }
@@ -240,18 +240,18 @@ input[type="file"] {
 }
 
 .edit-product-btn {
-  background-color: #3498db;
+  background-color: #2C5CFF;
   color: white;
 }
 .edit-product-btn:hover {
-  background-color: #2980b9;
+  background-color: #1F3FB9;
 }
 .delete-product-btn {
-  background-color: #e74c3c;
+  background-color: #C0392B;
   color: white;
 }
 .delete-product-btn:hover {
-  background-color: #c0392b;
+  background-color: #992D22;
 }
 
 /* ==============================
@@ -312,7 +312,7 @@ input[type="file"] {
 }
 
 .category-panel .selected-category {
-  background-color: #27ae60;
+  background-color: #27AE60;
   font-weight: bold;
   color: white;
 }
@@ -350,18 +350,18 @@ input[type="file"] {
   transition: 0.2s ease;
 }
 .category-tabs .active-tab {
-  background-color: #1e90ff;
+  background-color: #2C5CFF;
   color: white;
   font-weight: bold;
 }
 
 /* botón de ingredientes en cada tarjeta */
 .ing-product-btn {
-  background: #f39c12;
+  background: #F39C12;
   color: white;
 }
 .ing-product-btn:hover {
-  background: #d78c10;
+  background: #D68910;
 }
 
 /* selector de categoría en el form */

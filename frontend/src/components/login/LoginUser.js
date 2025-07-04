@@ -1,7 +1,7 @@
+// src/components/login/LoginUser.jsx
 import React, { useState } from 'react';
 import './loginUserStyle.css';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../../config/apiConfig';
 import { customFetch } from '../../utils/api';
 import logo from '../../assets/logo-login.png';
 
@@ -12,13 +12,16 @@ export default function LoginUser() {
   const [msg, setMsg] = useState('');
   const [isPressed, setIsPressed] = useState(false);
 
+  // Para el modal de forzar login
+  const [showForceModal, setShowForceModal] = useState(false);
+  const [pendingBranchId, setPendingBranchId] = useState(null);
+
   const navigate = useNavigate();
 
-  const showError = (message) => {
+  const showError = message => {
     setErr(true);
     setMsg(message);
   };
-
   const hideError = () => {
     setErr(false);
     setMsg('');
@@ -27,66 +30,87 @@ export default function LoginUser() {
   const handleMouseDown = () => setIsPressed(true);
   const handleMouseUp = () => setIsPressed(false);
 
-  const loginAction = async (e) => {
+  // Ejecuta el login (normal o forzado)
+  const doLogin = async (force, branchId) => {
+    const url = force
+      ? '/auth/loginUser?forzarLogin=true'
+      : '/auth/loginUser';
+    const data = await customFetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ username, password, branchId }),
+      skipRefresh: true
+    });
+
+    // Guardar datos en localStorage
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role);
+    localStorage.setItem('companyId', data.companyId);
+    localStorage.setItem('isAdmin', data.role === 'ADMIN');
+
+    // Redirigir según rol
+    if (data.role === 'SUPERADMIN') navigate('/superadmin-dashboard', { replace: true });
+    else if (data.role === 'ADMIN') navigate('/admin-options',     { replace: true });
+    else if (data.role === 'USER') navigate('/dashboard',           { replace: true });
+    else if (data.role === 'KITCHEN') navigate('/kitchen-dashboard',{ replace: true });
+  };
+
+  const loginAction = async e => {
     hideError();
     e.preventDefault();
 
-    if (username.trim() === '') {
+    if (!username.trim()) {
       showError('El usuario ingresado no puede ser vacío');
       return;
     }
 
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        showError('No se encontró token. Inicie sesión en la empresa primero.');
-        return;
-      }
-
-      let payload;
-      try {
-        payload = JSON.parse(atob(token.split('.')[1]));
-      } catch (e) {
-        showError('Token inválido. Intente iniciar sesión nuevamente.');
-        return;
-      }
-
-      const branchId = payload.branchId;
-      if (!branchId) {
-        showError('El token no contiene información de la sucursal.');
-        return;
-      }
-
-      const data = await customFetch("/auth/loginUser", {
-        method: 'POST',
-        body: JSON.stringify({ username, password, branchId }),
-        skipRefresh: true // 🧠 EVITA INTENTAR REFRESH
-      });
-
-      console.log("🔍 Respuesta del backend:", data);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('role', data.role);
-      localStorage.setItem('companyId', data.companyId);
-      localStorage.setItem('isAdmin', data.role === 'ADMIN');
-      
-      // Esperá un frame para asegurar que `localStorage` esté actualizado
-      await new Promise((r) => setTimeout(r, 0));
-
-      if (data.role === 'SUPERADMIN') {
-        navigate('/superadmin-dashboard', { replace: true });
-      } else if (data.role === 'ADMIN') {
-        console.log("✅ Login terminado")
-        navigate('/admin-options', { replace: true });
-      } else if (data.role === 'USER') {
-        navigate('/dashboard', { replace: true });
-      } else if (data.role === 'KITCHEN') {
-        navigate('/kitchen-dashboard', { replace: true });
-      }
-
-    } catch (err) {
-      showError(err.message);
+    const raw = localStorage.getItem('token');
+    if (!raw) {
+      showError('No se encontró token. Inicie sesión en la empresa primero.');
+      return;
     }
-    console.log("✅ Login terminado")
+
+    let payload;
+    try {
+      payload = JSON.parse(atob(raw.split('.')[1]));
+    } catch {
+      showError('Token inválido. Intente iniciar sesión nuevamente.');
+      return;
+    }
+
+    const branchId = payload.branchId;
+    if (!branchId) {
+      showError('El token no contiene información de la sucursal.');
+      return;
+    }
+    // Guardamos para usar en el modal
+    setPendingBranchId(branchId);
+
+    try {
+      await doLogin(false, branchId);
+    } catch (error) {
+      const status    = error.status || error.data?.status;
+      const serverMsg = error.data?.message || error.message;
+
+      if (status === 409) {
+        // conflicto → mostramos modal
+        setShowForceModal(true);
+      } else if (serverMsg.toLowerCase().includes('bad credentials')) {
+        showError('No existe ese usuario para esta sucursal o la contraseña es incorrecta');
+      } else {
+        showError(serverMsg);
+      }
+    }
+  };
+
+  const handleForceConfirm = async () => {
+    setShowForceModal(false);
+    if (!pendingBranchId) return;
+    try {
+      await doLogin(true, pendingBranchId);
+    } catch (error) {
+      const serverMsg = error.data?.message || error.message;
+      showError(serverMsg);
+    }
   };
 
   return (
@@ -99,34 +123,60 @@ export default function LoginUser() {
           type='text'
           id='username'
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={e => setUsername(e.target.value)}
           placeholder='Usuario de la Empresa'
-          required
         />
         <input
           className='password'
           type='password'
           id='password'
           value={password}
+          onChange={e => setPassword(e.target.value)}
           placeholder='Contraseña'
-          onChange={(e) => setPassword(e.target.value)}
         />
         <input
           className={`loginButton ${isPressed ? 'pressed' : ''}`}
           type='button'
           id='loginButton'
-          onClick={loginAction}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
+          onClick={loginAction}
           value='Ingresar'
         />
       </form>
-      <div id='msgValidateLogin' className={err ? 'errorValidateLogin' : ''}>
-        <div id='errorSpan'>
-          <span>Error</span>
+
+      {err && (
+        <div id='msgValidateLogin' className='errorValidateLogin'>
+          <div id='errorSpan'><span>Error</span></div>
+          {msg}
         </div>
-        {msg}
-      </div>
+      )}
+
+      {/* Modal de “Forzar Login” */}
+      {showForceModal && (
+        <div className="force-overlay">
+          <div className="force-modal">
+            <h3>Sesión Activa Detectada</h3>
+            <p>Ya hay otra sesión activa con este usuario.<br/>¿Cerrar la anterior y entrar aquí?</p>
+            <div className="force-buttons">
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={() => setShowForceModal(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="force-btn"
+                onClick={handleForceConfirm}
+              >
+                Cerrar sesión remota y entrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

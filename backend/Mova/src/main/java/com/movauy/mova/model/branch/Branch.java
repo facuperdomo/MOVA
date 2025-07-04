@@ -48,6 +48,10 @@ public class Branch {
     @Column(nullable = false)
     private boolean enableKitchenCommands = false;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean enablePrinting = false; // por defecto sí imprime
+
     private String location;
     private String phone;
 

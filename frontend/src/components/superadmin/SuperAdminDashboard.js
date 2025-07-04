@@ -19,7 +19,7 @@ const SuperAdminDashboard = () => {
     const [branchForm, setBranchForm] = useState({
         name: '', username: '', password: '',
         mercadoPagoAccessToken: '', location: '', phone: '',
-        enableIngredients: false, enableKitchenCommands: false
+        enableIngredients: false, enableKitchenCommands: false, enablePrinting: false
     });
     const [selectedBranch, setSelectedBranch] = useState(null);
     const [showBranchDeletePopup, setShowBranchDeletePopup] = useState(false);
@@ -268,11 +268,33 @@ const SuperAdminDashboard = () => {
     const fetchBranchesForCompany = async (company) => {
         try {
             const res = await customFetch(`/api/companies/${company.id}/branches`);
+            console.log('🔍 RAW branches response:', res);
+
             const data = Array.isArray(res) ? res : [];
-            const normalized = data.map(b => ({
-                ...b,
-                enabled: String(b.enabled).toLowerCase() === 'true'
-            }));
+            data.forEach(b => {
+                console.log(
+                    `📋 Branch ${b.id} raw enablePrinting:`,
+                    b.enablePrinting,
+                    `type: ${typeof b.enablePrinting}`
+                );
+            });
+
+            const normalized = data.map(b => {
+                const raw = b.enablePrinting;
+                const asBool = raw === true || raw === 'true' || raw === 1 || raw === '1';
+                console.log(
+                    `✅ Branch ${b.id} normalized enablePrinting:`,
+                    asBool
+                );
+                return {
+                    ...b,
+                    enabled: String(b.enabled).toLowerCase() === 'true',
+                    enableIngredients: Boolean(b.enableIngredients),
+                    enableKitchenCommands: Boolean(b.enableKitchenCommands),
+                    enablePrinting: asBool
+                };
+            });
+
             setBranches(normalized);
             setSelectedCompany(company);
             setShowBranchesModal(true);
@@ -493,7 +515,8 @@ const SuperAdminDashboard = () => {
             phone: b.phone || '',
             rut: b.rut || '',
             enableIngredients: b.enableIngredients,
-            enableKitchenCommands: b.enableKitchenCommands
+            enableKitchenCommands: b.enableKitchenCommands,
+            enablePrinting: b.enablePrinting
         });
         setShowBranchForm(true);
     };
@@ -1203,6 +1226,14 @@ const SuperAdminDashboard = () => {
                         <input name="rut" placeholder="RUT" value={branchForm.rut} onChange={handleBranchChange} />
                         <label><input type="checkbox" name="enableIngredients" checked={branchForm.enableIngredients} onChange={handleBranchChange} /> Habilitar Ingredientes</label>
                         <label><input type="checkbox" name="enableKitchenCommands" checked={branchForm.enableKitchenCommands} onChange={handleBranchChange} /> Comandas a Cocina</label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                name="enablePrinting"
+                                checked={branchForm.enablePrinting}
+                                onChange={handleBranchChange}
+                            /> Habilitar Impresión
+                        </label>
                         <div className="popup-buttons">
                             <button className="popup-btn popup-btn-save" onClick={submitNewBranch}>Guardar</button>
                             <button className="popup-btn popup-btn-cancel" onClick={closeBranchForm}>Cancelar</button>

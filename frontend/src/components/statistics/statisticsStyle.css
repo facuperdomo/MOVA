@@ -79,7 +79,7 @@
 }
 
 .statistics-sidebar button.active {
-  background-color: #ffcc00;
+  background-color: #F39C12;
   color: black;
 }
 
@@ -110,7 +110,7 @@
 }
 
 .filter-container button.active {
-  background-color: #ffcc00;
+  background-color: #F39C12;
   color: black;
   transform: scale(1.1);
 }
@@ -163,7 +163,7 @@
 .no-data-message {
   text-align: center;
   font-size: 18px;
-  color: #ffcc00;
+  color: #F39C12;
 }
 
 .sales-table {
@@ -185,7 +185,7 @@
 }
 
 .cancel-button {
-  background-color: red;
+  background-color: #C0392B;
   color: white;
   border: none;
   padding: 6px 12px;
@@ -195,7 +195,7 @@
 }
 
 .cancel-button:hover {
-  background-color: darkred;
+  background-color: #992D22;
 }
 
 .summary-cards {
@@ -221,7 +221,7 @@
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background-color: #27ae60;
+  background-color: #27AE60;
   color: white;
   border: none;
   padding: 14px 20px;

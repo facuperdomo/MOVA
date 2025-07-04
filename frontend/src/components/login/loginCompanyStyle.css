@@ -61,7 +61,7 @@
 
 #loginButton{
     width: 200px;
-    background-color: #2A67D0;
+    background-color: #2C5CFF;
     color:white;
     height: 40px;
     border-radius: 20px;
@@ -75,12 +75,12 @@
 }
 
 #loginButton.pressed {
-    background-color: #2C3E50; /* Azul más oscuro al presionar */
+    background-color: #1F3FB9; /* Azul más oscuro al presionar */
     transform: scale(0.98); /* Efecto de "presión" cuando se presiona */
   }
 
 #loginButton:active {
-    background-color: #2C3E50;
+    background-color: #1F3FB9;
     box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
 }
 
@@ -95,7 +95,7 @@
     height: 8rem;
     margin-top: 10px;
     width: 450px; /* Ancho de la alerta*/
-    background-color: rgba(254, 16, 16, 0.655);
+    background-color: #C0392B;
     color: white;
     font-family: 'Montserrat', sans-serif;
     font-weight: bold;

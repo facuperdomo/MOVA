@@ -7,6 +7,7 @@ import com.movauy.mova.model.print.Printer;
 import com.movauy.mova.service.branch.BranchService;
 import com.movauy.mova.service.company.CompanyService;
 import com.movauy.mova.service.print.PrinterService;
+import com.movauy.mova.service.user.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,7 @@ public class BranchController {
     private final BranchService branchService;
     private final CompanyService companyService;
     private final PrinterService printerService;
+    private final AuthService authService;
 
     /**
      * Crea una nueva sucursal bajo la empresa {companyId}
@@ -43,6 +45,7 @@ public class BranchController {
                 .mercadoPagoAccessToken(dto.getMercadoPagoAccessToken())
                 .enableIngredients(dto.isEnableIngredients())
                 .enableKitchenCommands(dto.isEnableKitchenCommands())
+                .enablePrinting(dto.isEnablePrinting())
                 .location(dto.getLocation())
                 .phone(dto.getPhone())
                 .rut(dto.getRut())
@@ -85,6 +88,7 @@ public class BranchController {
                 dto.getMercadoPagoAccessToken(),
                 dto.isEnableIngredients(),
                 dto.isEnableKitchenCommands(),
+                dto.isEnablePrinting(),
                 dto.getLocation(),
                 dto.getPhone(),
                 dto.getRut()
@@ -123,6 +127,7 @@ public class BranchController {
                 .mercadoPagoAccessToken(b.getMercadoPagoAccessToken())
                 .enableIngredients(b.isEnableIngredients())
                 .enableKitchenCommands(b.isEnableKitchenCommands())
+                .enablePrinting(b.isEnablePrinting())
                 .location(b.getLocation())
                 .phone(b.getPhone())
                 .rut(b.getRut())
@@ -177,7 +182,7 @@ public class BranchController {
         Branch updated = branchService.assignPlan(branchId, planId);
         return ResponseEntity.ok(mapToDto(updated));
     }
-    
+
     /**
      * —————— DESASIGNAR PLAN DE LA SUCURSAL ——————
      */

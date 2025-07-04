@@ -60,6 +60,40 @@ const AdminOptions = () => {
   const [devices, setDevices] = useState([]);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
 
+  const LOCAL_KEY = "selectedCashBoxId";
+
+  useEffect(() => {
+    if (!cashBoxes.length) return;
+
+    // 1) Primero intento restaurar de localStorage,
+    //    en caso de que el usuario ya la hubiera seleccionado manualmente:
+    const savedId = localStorage.getItem(LOCAL_KEY);
+    if (savedId) {
+      const box = cashBoxes.find(b => String(b.id) === savedId);
+      if (box) {
+        setSelectedBox(box);
+        setIsCashRegisterOpen(box.isOpen);
+        return;
+      }
+    }
+
+    // 2) Si no había en localStorage, pregunto al servidor
+    customFetch(`${API_URL}/api/cash-box/status-for-user`)
+      .then(dto => {
+        if (dto.open && dto.code) {
+          // busco la caja por código en mi lista
+          const openBox = cashBoxes.find(b => b.code === dto.code);
+          if (openBox) {
+            setSelectedBox(openBox);
+            setIsCashRegisterOpen(true);
+            // guardo también para futuras recargas
+            localStorage.setItem(LOCAL_KEY, openBox.id);
+          }
+        }
+      })
+      .catch(console.error);
+  }, [cashBoxes]);
+
   useEffect(() => {
     if (!localStorage.getItem("deviceId")) {
       // obtén branchId y token desde localStorage
@@ -276,21 +310,26 @@ const AdminOptions = () => {
       localStorage.removeItem('isAdmin');
       localStorage.removeItem('companyId');
       localStorage.removeItem('deviceId');
+      localStorage.removeItem(LOCAL_KEY);
+
+      setSelectedBox(null);
+      setIsCashRegisterOpen(false);
+
       navigate('/login', { replace: true });
     }
   };
 
   return (
     <div className="admin-options">
-      { showDeviceModal && (
-      <SelectDeviceModal
-        devices={devices}
-        onSelect={(id) => {
-          if (id) localStorage.setItem("deviceId", id);
-          setShowDeviceModal(false);
-        }}
-      />
-    ) }
+      {showDeviceModal && (
+        <SelectDeviceModal
+          devices={devices}
+          onSelect={(id) => {
+            if (id) localStorage.setItem("deviceId", id);
+            setShowDeviceModal(false);
+          }}
+        />
+      )}
       {/* Sidebar */}
       <nav className={`sidebar ${isMenuOpen ? "open" : ""}`}>
         <div className="menu-toggle" onClick={() => setIsMenuOpen(v => !v)}>
@@ -430,6 +469,7 @@ const AdminOptions = () => {
                         className="popup-btn"
                         onClick={() => {
                           setSelectedBox(box);
+                          localStorage.setItem(LOCAL_KEY, box.id);
                           setIsCashRegisterOpen(box.isOpen);
                           setShowManageBoxesModal(false);
                         }}

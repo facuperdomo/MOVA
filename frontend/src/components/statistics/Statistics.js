@@ -31,16 +31,47 @@ const Statistics = () => {
   const [saleDetail, setSaleDetail] = useState(null);
   const [showPaymentsModal, setShowPaymentsModal] = useState(false);
   const [paymentsData, setPaymentsData] = useState([]);
+  const [boxes, setBoxes] = useState([]);
+  const [selectedBoxes, setSelectedBoxes] = useState([]);
+  const [branchId, setBranchId] = useState(null);
 
   useEffect(() => {
+    const fetchMyProfile = async () => {
+      try {
+        const me = await customFetch(`${API_URL}/auth/me`);
+        setBranchId(me.branchId);
+      } catch (e) {
+        console.error("No pude obtener el branchId:", e);
+      }
+    };
+    fetchMyProfile();
+  }, []);
+
+  useEffect(() => {
+    if (!branchId) return;
+    if (boxes.length > 0 && selectedBoxes.length === 0) {
+      setSalesData([]);
+      setTopProducts([]);
+      setCashRegisterHistory([]);
+      return;
+    }
+
     if (!customStart && !customEnd) {
       if (selectedOption === "sales") fetchSalesData();
       if (selectedOption === "top-products") fetchTopProducts();
       if (selectedOption === "cash-register") fetchCashRegisterHistory();
     }
-  }, [selectedFilter, selectedOption]);
+  }, [branchId, selectedFilter, selectedOption, selectedBoxes, boxes]);
 
   useEffect(() => {
+    if (!branchId) return;
+    if (boxes.length > 0 && selectedBoxes.length === 0) {
+      setSalesData([]);
+      setTopProducts([]);
+      setCashRegisterHistory([]);
+      return;
+    }
+
     // Ejecuta solo si ambas fechas están completas
     if (customStart && customEnd) {
       if (selectedOption === "sales") fetchSalesData();
@@ -54,30 +85,61 @@ const Statistics = () => {
       setTopProducts([]);
       setCashRegisterHistory([]);
     }
-  }, [customStart, customEnd, selectedOption]);
+  }, [branchId, customStart, customEnd, selectedOption, selectedBoxes, boxes]);
+
+  useEffect(() => {
+    const loadBoxes = async () => {
+      try {
+        // 1) Trae todas las cajas de la sucursal
+        const all = await customFetch(`${API_URL}/api/cash-box`);
+        // 2) Filtra solo las habilitadas
+        const enabled = all.filter(b => b.enabled);
+        setBoxes(enabled);
+        setSelectedBoxes(enabled.map(b => b.id));
+      } catch (err) {
+        console.error("Error cargando cajas:", err);
+      }
+    };
+    loadBoxes();
+  }, []);
+
+  const buildParams = () => {
+    const params = new URLSearchParams();
+    if (customStart && customEnd) {
+      params.append("startDate", customStart);
+      params.append("endDate", customEnd);
+    } else if (selectedFilter) {
+      params.append("filter", selectedFilter);
+    }
+    // solo si deseleccionó alguna caja
+    if (boxes.length > 0) {
+      params.append("boxIds", selectedBoxes.join(","));
+    }
+    return params.toString();
+  };
 
   // Obtener estadísticas de ventas
   const fetchSalesData = async () => {
     setLoading(true);
     setError(null);
+
+    // si ya cargaron cajas y el usuario desmarcó todas → vacío
+    if (boxes.length > 0 && selectedBoxes.length === 0) {
+      setSalesData([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      let url = `${API_URL}/api/statistics/sales`;
-
-      if (customStart && customEnd) {
-        url += `?startDate=${customStart}&endDate=${customEnd}`;
-      } else {
-        url += `?filter=${selectedFilter}`;
-      }
-
+      const qs = buildParams();
+      const url = `${API_URL}/api/statistics/by-branch/${branchId}/sales${qs ? `?${qs}` : ""}`;
       const response = await customFetch(url);
 
-      // ✔️ Validación para limpiar si viene vacío
       if (!Array.isArray(response) || response.length === 0) {
         setSalesData([]);
-        return;
+      } else {
+        setSalesData(response);
       }
-
-      setSalesData(response);
     } catch (err) {
       setError("No se pudieron cargar las estadísticas.");
       setSalesData([]);
@@ -90,20 +152,25 @@ const Statistics = () => {
   const fetchTopProducts = async () => {
     setLoading(true);
     setError(null);
-    try {
-      let url = `${API_URL}/api/statistics/top-selling-products`;
-      if (customStart && customEnd) {
-        url += `?startDate=${customStart}&endDate=${customEnd}`;
-      } else {
-        url += `?filter=${selectedFilter}`;
-      }
 
+    // mismo chequeo que arriba
+    if (boxes.length > 0 && selectedBoxes.length === 0) {
+      setTopProducts([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const qs = buildParams();
+      // ! aquí también cambiamos la URL
+      const url = `${API_URL}/api/statistics/by-branch/${branchId}/top-products${qs ? `?${qs}` : ""}`;
       const response = await customFetch(url);
+
       if (!Array.isArray(response) || response.length === 0) {
         setTopProducts([]);
-        return;
+      } else {
+        setTopProducts(response);
       }
-      setTopProducts(response); // 👈 acá también tenías setSalesData, estaba mal
     } catch (err) {
       setError("Hubo un error al obtener los productos más vendidos.");
       setTopProducts([]);
@@ -117,12 +184,8 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      let url = `${API_URL}/api/statistics/cash-box-history`;
-      if (customStart && customEnd) {
-        url += `?startDate=${customStart}&endDate=${customEnd}`;
-      } else {
-        url += `?filter=${selectedFilter}`;
-      }
+      const qs = buildParams();
+      const url = `${API_URL}/api/statistics/cash-box-history${qs ? `?${qs}` : ""}`;
 
       const response = await customFetch(url);
       if (!Array.isArray(response) || response.length === 0) {
@@ -297,6 +360,30 @@ const Statistics = () => {
                   f === "month" ? "📅 Mes" : "📆 Año"}
             </button>
           ))}
+          {/* filtro por cajas */}
+          {boxes.length > 0 && (
+            <div className="box-filter">
+              <span>Cajas:</span>
+              {boxes.map(b => (
+                <label key={b.id} style={{ margin: "0 8px" }}>
+                  <input
+                    type="checkbox"
+                    value={b.id}
+                    checked={selectedBoxes.includes(b.id)}
+                    onChange={e => {
+                      const id = Number(e.target.value);
+                      setSelectedBoxes(prev =>
+                        e.target.checked
+                          ? [...prev, id]
+                          : prev.filter(x => x !== id)
+                      );
+                    }}
+                  />
+                  {b.code}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {error && <div className="error-message">{error}</div>}
@@ -364,7 +451,7 @@ const Statistics = () => {
             <div className="chart-container">
               <Bar
                 data={{
-                  labels: cashRegisterHistory.map(r => formatDate(r.openDate)),
+                  labels: cashRegisterHistory.map(r => formatDate(r.openedAt)),
                   datasets: [{
                     label: "Ventas Totales",
                     data: cashRegisterHistory.map(r => r.totalSales || 0),
@@ -386,8 +473,8 @@ const Statistics = () => {
               <tbody>
                 {cashRegisterHistory.map(reg => (
                   <tr key={reg.id}>
-                    <td>{formatDate(reg.openDate)}</td>
-                    <td>{reg.closeDate ? formatDate(reg.closeDate) : "Abierta"}</td>
+                    <td>{formatDate(reg.openedAt)}</td>
+                    <td>{reg.closedAt ? formatDate(reg.closedAt) : "Abierta"}</td>
                     <td>${reg.totalSales}</td>
                   </tr>
                 ))}

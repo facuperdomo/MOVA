@@ -64,6 +64,7 @@ public class BranchService {
             String mercadoPagoAccessToken,
             boolean enableIngredients,
             boolean enableKitchenCommands,
+            boolean enablePrinting,
             String location,
             String phone,
             String rut
@@ -81,6 +82,7 @@ public class BranchService {
         existing.setMercadoPagoAccessToken(mercadoPagoAccessToken);
         existing.setEnableIngredients(enableIngredients);
         existing.setEnableKitchenCommands(enableKitchenCommands);
+        existing.setEnablePrinting(enablePrinting);
         existing.setLocation(location);
         existing.setPhone(phone);
         existing.setRut(rut);

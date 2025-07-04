@@ -65,9 +65,10 @@ public class StatisticsController {
             @RequestHeader("Authorization") String token,
             @RequestParam(required = false) String filter,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) List<Long> boxIds) {
         List<Map<String, Object>> history
-                = statisticsService.getCashBoxHistory(filter, startDate, endDate, token);
+                = statisticsService.getCashBoxHistory(filter, startDate, endDate, token, boxIds);
         return ResponseEntity.ok(history);
     }
 
@@ -105,15 +106,15 @@ public class StatisticsController {
         return statisticsService.getStatisticsByCompany(companyId, filter, startDate, endDate);
     }
 
-    @PreAuthorize("hasRole('SUPERADMIN')")
     @GetMapping("/by-branch/{branchId}")
     public CompanyStatisticsDTO getStatisticsByBranch(
             @PathVariable Long branchId,
             @RequestParam(required = false) String filter,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) List<Long> boxIds // <--- nuevo
     ) {
-        return statisticsService.getStatisticsByBranch(branchId, filter, startDate, endDate);
+        return statisticsService.getStatisticsByBranch(branchId, filter, startDate, endDate, boxIds);
     }
 
     @GetMapping("/by-branch/{branchId}/top-products")
@@ -121,9 +122,10 @@ public class StatisticsController {
             @PathVariable Long branchId,
             @RequestParam(required = false) String filter,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) List<Long> boxIds // <--- nuevo
     ) {
-        return statisticsService.getTopSellingProductsByBranch(branchId, filter, startDate, endDate);
+        return statisticsService.getTopSellingProductsByBranch(branchId, filter, startDate, endDate, boxIds);
     }
 
     @GetMapping("/sales/{id}")
@@ -134,4 +136,24 @@ public class StatisticsController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    /**
+     * Lista ventas de la sucursal {branchId}, filtradas por fecha y
+     * opcionalmente por cajas.
+     */
+    @GetMapping("/by-branch/{branchId}/sales")
+    public ResponseEntity<List<Map<String, Object>>> getSalesByBranch(
+            @RequestHeader("Authorization") String token,
+            @PathVariable Long branchId,
+            @RequestParam(required = false) String filter,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) List<Long> boxIds
+    ) {
+        // opcional: validar que el branchId coincide con el del token o SUPERADMIN...
+        List<Map<String, Object>> sales = statisticsService
+                .getSalesByBranch(branchId, filter, startDate, endDate, boxIds);
+        return ResponseEntity.ok(sales);
+    }
+
 }

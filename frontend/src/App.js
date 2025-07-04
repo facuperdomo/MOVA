@@ -16,15 +16,16 @@ import CompanyStatistics from './components/statistics/CompanyStatistics';
 import BranchStatistics from './components/statistics/BranchStatistics';
 
 import PrivateRoute from "./components/PrivateRoute";
+import PublicRoute from "./components/PublicRoute";
 import { isTokenValid } from "./utils/authUtils";
-import TokenVerifier from "./components/TokenVerifier"; // 👈 verificador de sesión
+import TokenVerifier from "./components/TokenVerifier";
 
 function App() {
   const role = localStorage.getItem("role"); // 'SUPERADMIN', 'ADMIN', 'USER', etc.
 
   return (
     <Router>
-      <TokenVerifier /> {/* 👈 Verifica expiración de sesión en segundo plano */}
+      <TokenVerifier />
       <Routes>
         {/* Home redirige según sesión y rol */}
         <Route
@@ -39,9 +40,11 @@ function App() {
         />
 
         {/* Rutas de login públicas */}
-        <Route path="/login" element={<LoginCompany />} />
-        <Route path="/loginUser" element={<LoginUser />} />
-        <Route path="/superadmin-login" element={<LoginSuperAdmin />} />
+        <Route element={<PublicRoute />}>
+          <Route path="/login" element={<LoginCompany />} />
+          <Route path="/loginUser" element={<LoginUser />} />
+          <Route path="/superadmin-login" element={<LoginSuperAdmin />} />
+        </Route>
 
         {/* SUPERADMIN */}
         <Route element={<PrivateRoute superadminOnly />}>

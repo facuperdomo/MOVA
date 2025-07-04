@@ -8,7 +8,7 @@
   justify-content: center;
   padding-top: 40px;
   gap: 12px;            /* separación mínima entre paneles */
-  z-index: 1000;
+  z-index: 10000;
 }
 
 /* estilo común a ambos */

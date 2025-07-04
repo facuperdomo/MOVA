@@ -28,7 +28,7 @@ public class JwtService {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
     private static final String SECRET_KEY = "586E3272357538782F413F4428472B4B6250655368566B597033733676397924";
-    private static final long TOKEN_EXPIRATION_TIME = 1000 * 60 * 60 * 8; // 2 hora
+    private static final long TOKEN_EXPIRATION_TIME = 1000 * 60 * 30;
 
     private final UserRepository userRepository;
 

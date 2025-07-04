@@ -12,6 +12,7 @@ public class BranchDTO {
     private String  mercadoPagoAccessToken;
     private boolean enableIngredients;
     private boolean enableKitchenCommands;
+    private boolean enablePrinting;
     private String  location;
     private String  phone;
     private String  rut;

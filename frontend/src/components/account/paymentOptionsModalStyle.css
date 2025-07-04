@@ -24,6 +24,7 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .payment-modal-content::-webkit-scrollbar {
   display: none;
 }
@@ -34,6 +35,7 @@
     transform: scale(0.95);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -181,21 +183,26 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .pm-product-list::-webkit-scrollbar {
   display: none;
 }
+
 .pm-product-list li {
   margin-bottom: 0.5rem;
 }
+
 .pm-product-list label {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #fff;
 }
+
 .pm-product-list input[type="checkbox"][disabled] {
   accent-color: #4CAF50;
 }
+
 .pm-product-list span {
   font-size: 0.85rem;
   font-weight: 500;
@@ -207,6 +214,7 @@
   text-align: center;
   margin-top: 1.5rem;
 }
+
 .close-confirm-buttons {
   display: flex;
   flex-direction: column;
@@ -220,4 +228,65 @@
   text-align: center;
   margin-top: 0;
   margin-bottom: 1.8rem;
+}
+
+.confirm-close-overlay-a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  z-index: 88888;
+}
+
+/* Dale un contenedor limpio y centrado al contenido del modal */
+.confirm-close-modal-a {
+  width: 90%;
+  height: 100%;
+}
+
+/* overlay semi-transparente para el success */
+.success-overlay {
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0 */
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+/* contenedor del mensaje de éxito */
+.success-modal {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 80%;
+  max-width: 300px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: fadeInScale 0.2s ease-out both;
+}
+
+/* título dentro del success */
+.success-modal h3 {
+  color: #fff;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+/* botón OK */
+.success-modal button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  background: #007bff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.success-modal button:active {
+  transform: scale(0.97);
 }

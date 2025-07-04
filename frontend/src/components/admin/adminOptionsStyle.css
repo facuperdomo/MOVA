@@ -108,16 +108,16 @@
 
 /* ——— Botones de Caja ——— */
 .open-cash-btn {
-  background-color: green;
+  background-color: #27AE60;
 }
 .open-cash-btn:active {
-  background-color: darkgreen;
+  background-color: #219150;
 }
 .close-cash-btn {
-  background-color: red;
+  background-color: #C0392B;
 }
 .close-cash-btn:active {
-  background-color: darkred;
+  background-color: #992D22;
 }
 
 /* ——— Resumen de Cierre ——— */
@@ -132,10 +132,10 @@
   margin-top: 10px;
 }
 .difference.correct {
-  color: green;
+  color: #27AE60;
 }
 .difference.incorrect {
-  color: red;
+  color: #C0392B;
 }
 
 /* ——— Calculadora ——— */
@@ -143,7 +143,7 @@
   width: 100%;
   padding: 16px;
   margin: 15px 0;
-  background-color: #007bff;
+  background-color: #2C5CFF;
   border: none;
   border-radius: 8px;
   color: #fff;
@@ -152,7 +152,7 @@
   cursor: pointer;
 }
 .calculator-btn:active {
-  background-color: #0056b3;
+  background-color: #1F3FB9;
 }
 .calculator-popup input {
   width: 100%;
@@ -200,7 +200,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 300;
+  z-index: 10000;
 }
 .popup-content {
   background-color: #222;
@@ -274,7 +274,7 @@
     margin-bottom: 15px;
     padding: 12px 20px;
     font-size: 16px;
-    background-color: green;
+    background-color: #27AE60;
     color: white;
     border: none;
     border-radius: 8px;

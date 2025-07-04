@@ -53,4 +53,23 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
             @Param("branchId") Long branchId);
 
     boolean existsByProductId(Long productId);
+
+    @Query("""
+  SELECT p.name, SUM(i.quantity)
+    FROM SaleItem i
+    JOIN i.sale s
+    JOIN s.cashBox cb
+    JOIN i.product p
+   WHERE s.branch.id = :branchId
+     AND cb.id IN :boxIds
+     AND s.dateTime BETWEEN :start AND :end
+   GROUP BY p.name
+   ORDER BY SUM(i.quantity) DESC
+""")
+    List<Object[]> findTopSellingProductsByBranchAndBoxIds(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("branchId") Long branchId,
+            @Param("boxIds") List<Long> boxIds
+    );
 }

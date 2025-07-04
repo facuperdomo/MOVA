@@ -11,7 +11,7 @@ async function ensureDeviceId() {
 
 export async function printOrder(order) {
   console.log("▶ Enviando impresión, payload:", order);
-  const token    = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
   const deviceId = await ensureDeviceId();
 
@@ -20,10 +20,10 @@ export async function printOrder(order) {
   }
 
   const headers = {
-    "Content-Type":  "application/json",
+    "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
-    "X-Branch-Id":   branchId,
-    "X-Device-Id":   deviceId
+    "X-Branch-Id": branchId,
+    "X-Device-Id": deviceId
   };
 
   const payload = {
@@ -39,14 +39,23 @@ export async function printOrder(order) {
   });
 
   if (!resp.ok) {
-    const texto = await resp.text();
-    throw new Error(`Error ${resp.status}: ${texto}`);
+    // Intentamos parsear JSON de error
+    let body;
+    try {
+      body = await resp.json();
+    } catch {
+      // si no es JSON, caemos al texto genérico
+      const txt = await resp.text();
+      throw new Error(txt || `Error ${resp.status}`);
+    }
+    // Lanzamos solo el message
+    throw new Error(body.message || `Error ${resp.status}`);
   }
 }
 
 export async function printItemsReceipt(orderDto) {
   console.log("▶ Enviando impresión de ítems, payload:", orderDto);
-  const token    = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
   const deviceId = localStorage.getItem("deviceId");
 
@@ -58,10 +67,10 @@ export async function printItemsReceipt(orderDto) {
   }
 
   const headers = {
-    "Content-Type":  "application/json",
+    "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,
-    "X-Branch-Id":   branchId,
-    "X-Device-Id":   deviceId
+    "X-Branch-Id": branchId,
+    "X-Device-Id": deviceId
   };
 
   const resp = await fetch(`${API_URL}/api/print/direct/receipt/items`, {
@@ -71,7 +80,16 @@ export async function printItemsReceipt(orderDto) {
   });
 
   if (!resp.ok) {
-    const texto = await resp.text();
-    throw new Error(`Error ${resp.status}: ${texto}`);
+    // Intentamos parsear JSON de error
+    let body;
+    try {
+      body = await resp.json();
+    } catch {
+      // si no es JSON, caemos al texto genérico
+      const txt = await resp.text();
+      throw new Error(txt || `Error ${resp.status}`);
+    }
+    // Lanzamos solo el message
+    throw new Error(body.message || `Error ${resp.status}`);
   }
 }

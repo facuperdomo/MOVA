@@ -56,4 +56,11 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             @Param("open") LocalDateTime open,
             @Param("close") LocalDateTime close
     );
+
+    List<Sale> findByBranch_IdAndCashBox_IdInAndDateTimeBetween(
+        Long branchId,
+        List<Long> cashBoxIds,
+        LocalDateTime start,
+        LocalDateTime end
+    );
 }

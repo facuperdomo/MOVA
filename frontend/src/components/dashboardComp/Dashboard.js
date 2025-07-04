@@ -59,6 +59,7 @@ const Dashboard = () => {
   const [printError, setPrintError] = useState(false);
 
   const [enableIngredients, setEnableIngredients] = useState(false);
+  const [enablePrinting, setEnablePrinting] = useState(true);
 
   const [accounts, setAccounts] = useState([]);
   const [newAccountName, setNewAccountName] = useState('');
@@ -93,23 +94,30 @@ const Dashboard = () => {
 
   const [cashBoxCode, setCashBoxCode] = useState(null);
 
+  const [showAllPaidModal, setShowAllPaidModal] = useState(false);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
   useEffect(() => {
-    const role = localStorage.getItem("role");
     const branchId = localStorage.getItem("branchId");
-    if (role !== "ADMIN" && branchId && !localStorage.getItem("deviceId")) {
-      const token = localStorage.getItem("token");
-      fetch(`${API_URL}/api/branches/${branchId}/devices`, {
+    const token = localStorage.getItem("token");
+    const hasDevice = Boolean(localStorage.getItem("deviceId"));
+
+    if (branchId && !hasDevice) {
+      customFetch(`${API_URL}/api/branches/${branchId}/devices`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
-        .then(r => r.json())
-        .then(list => {
+        .then((list) => {
+          console.log("Dispositivos disponibles:", list);
           setDevices(list);
           setShowDeviceModal(true);
         })
-        .catch(console.error);
+        .catch(err => {
+          console.error("Error al cargar dispositivos:", err);
+          setErrorMessage("No fue posible obtener la lista de terminales.");
+          setShowErrorModal(true);
+        });
     }
   }, []);
 
@@ -125,9 +133,11 @@ const Dashboard = () => {
     setBranchId(parseInt(storedBranchId));
     (async () => {
       try {
-        const branch = await customFetch(`${API_URL}/api/branches/${storedBranchId}`);
+        const branch = await customFetch(`${API_URL}/api/branch/me`);
         console.log("flag enableIngredients:", branch.enableIngredients);
+        console.log("flag enablePrinting:", branch.enablePrinting);
         setEnableIngredients(branch.enableIngredients);
+        setEnablePrinting(branch.enablePrinting);
       } catch (err) {
         console.error("Error al cargar configuración de sucursal:", err);
       }
@@ -233,6 +243,17 @@ const Dashboard = () => {
     }
   };
 
+  const handleConfirmClosePrintWithValidation = async () => {
+    if (!enablePrinting) {
+      await confirmCloseWithoutPrint();
+      return;
+    }
+    const deviceId = localStorage.getItem("deviceId");
+    if (!validateDevice()) return;
+    // si existe, delega al confirmCloseAndPrint original
+    await confirmCloseAndPrint();
+  };
+
   const loadAccountItems = async (accountId) => {
     try {
       // 1️⃣ Mira qué trae el fetch en bruto
@@ -311,7 +332,7 @@ const Dashboard = () => {
     await loadAccountItems(selectedAccountId);
 
     // 2) traete también el split/status —> itemPayments
-    const status = await customFetch(
+    let status = await customFetch(
       `${API_URL}/api/accounts/${selectedAccountId}/split/status`
     );
     setItemPayments(status.itemPayments || []);
@@ -337,6 +358,17 @@ const Dashboard = () => {
     setShowPaymentModal(true);
   };
 
+  const validateDevice = () => {
+    const deviceId = localStorage.getItem("deviceId");
+    if (!deviceId) {
+      setErrorMessage(
+        "No se seleccionó el dispositivo que se está utilizando; por favor, elige uno nuevamente."
+      );
+      setShowErrorModal(true);
+      return false;
+    }
+    return true;
+  };
 
   const loadAccounts = async (branchId) => {
     try {
@@ -696,7 +728,11 @@ const Dashboard = () => {
       setShowPopup(false);
       setOfflineMessage("");
 
-      // 2) Disparar impresión
+      // 2) Si la impresión está desactivada, simplemente salir
+      if (!enablePrinting) return;
+
+      // 3) Imprimir si corresponde
+      if (!validateDevice()) return;
       setIsPrinting(true);
       setPrintError(false);
       try {
@@ -741,18 +777,36 @@ const Dashboard = () => {
   };
 
   const handleRetryPrint = async () => {
+    console.log("🚀 handleRetryPrint arrancó");       // ①
+    if (!enablePrinting) {
+      setErrorMessage("La impresión está desactivada para esta sucursal.");
+      setShowErrorModal(true);
+      return;
+    }
+    if (!validateDevice()) return;
     if (!lastSale) return;
+
     setIsPrinting(true);
     setPrintError(false);
+
     try {
+      console.log("🔄 Reintentando printOrder...", lastSale);  // ②
       await printOrder(lastSale);
+      console.log("✅ printOrder salió bien");                 // ③
     } catch (err) {
+      // ④ esto SÍ debería aparecer en la consola
       console.error("❌ Reintento de impresión fallido:", err);
+      setErrorMessage(
+        err.message ||
+        "Hubo un error imprimiendo. Verifica la impresora asignada."
+      );
+      setShowErrorModal(true);
       setPrintError(true);
     } finally {
       setIsPrinting(false);
     }
   };
+
 
   // Almacenar venta offline en localStorage
   const storeOfflineSale = (saleData) => {
@@ -933,53 +987,97 @@ const Dashboard = () => {
     }
   };
 
-  const confirmCloseAndPrint = async () => {
-    const accountId = pendingCloseAccountId;
+  // Confirmar cierre e impresión
+const confirmCloseAndPrint = async () => {
+  const accountId = pendingCloseAccountId;
+  // si no hay impresión, lo cierras sin imprimir
+  if (!enablePrinting) {
+    await confirmCloseWithoutPrint();
+    return;
+  }
+  if (!validateDevice()) return;
+
+  try {
+    // 1) cierro la cuenta y recibo el recibo
+    const receipt = await customFetch(
+      `${API_URL}/api/accounts/${accountId}/close`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: cashBoxCode,
+          amount: currentTotal,
+          paymentMethod: "CUENTA",
+          payerName: "–",
+        }),
+      }
+    );
+
+    // 2) intento imprimir
+    setIsPrinting(true);
+    setPrintError(false);
     try {
-      // 1) cerramos y recibimos el recibo
-      const receipt = await customFetch(
-        `${API_URL}/api/accounts/${accountId}/close`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: cashBoxCode, amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
-        }
-      );
-      // 2) imprimimos TODO lo vendido
       await printOrder(receipt);
-
-      // 3) refrescamos lista de cuentas
+      // 🟢 sólo si imprime OK, limpio la UI:
       setShowClosePrintModal(false);
       setSelectedAccountId(null);
+      setPendingCloseAccountId(null);
       await loadAccounts(branchId);
     } catch (err) {
-      console.error("Error cerrando e imprimiendo:", err);
-      setErrorMessage("No se pudo cerrar la cuenta.");
-      setShowErrorModal(true);
-    }
-  };
-
-  // Cierra sin imprimir
-  const confirmCloseWithoutPrint = async () => {
-    const accountId = pendingCloseAccountId;
-    try {
-      await customFetch(
-        `${API_URL}/api/accounts/${accountId}/close`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: cashBoxCode, amount: currentTotal, paymentMethod: "CUENTA", payerName: "–" }),
-        }
+      console.error("❌ Error imprimiendo al cerrar cuenta:", err);
+      setErrorMessage(
+        err.message ||
+        "Hubo un error imprimiendo el recibo. La cuenta sigue abierta."
       );
-      setShowClosePrintModal(false);
-      setSelectedAccountId(null);
-      await loadAccounts(branchId);
-    } catch (err) {
+      setShowErrorModal(true);
+      setPrintError(true);
+      // <-- NO limpiamos pendingCloseAccountId, sigue disponible “Reintentar impresión”
+    } finally {
+      setIsPrinting(false);
+    }
+  } catch (err) {
+    console.error("Error cerrando la cuenta:", err);
+    setErrorMessage("No se pudo cerrar la cuenta en el servidor.");
+    setShowErrorModal(true);
+  }
+};
+
+// Confirmar cierre sin imprimir
+const confirmCloseWithoutPrint = async () => {
+  const accountId = pendingCloseAccountId;
+  if (!accountId) return;
+
+  try {
+    await customFetch(
+      `${API_URL}/api/accounts/${accountId}/close`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: cashBoxCode,
+          amount: currentTotal,
+          paymentMethod: "CUENTA",
+          payerName: "–",
+        }),
+      }
+    );
+  } catch (err) {
+    // Si ya estaba cerrada, no mostramos error
+    if (!err.message.includes("ya está cerrada")) {
       console.error("Error cerrando sin imprimir:", err);
       setErrorMessage("No se pudo cerrar la cuenta.");
       setShowErrorModal(true);
+      return;
     }
-  };
+  }
+
+  // En cualquier caso (éxito o ya cerrada), limpiamos:
+  setShowClosePrintModal(false);
+  setSelectedAccountId(null);
+  setPendingCloseAccountId(null);
+  await loadAccounts(branchId);
+};
+
 
   // ——————————————————————————————————————————————————————————
   // ¿Pagar? Abre directamente el modal de opciones de pago para la cuenta indicada
@@ -990,6 +1088,14 @@ const Dashboard = () => {
       const stat = await customFetch(
         `${API_URL}/api/accounts/${accountId}/split/status`
       );
+
+      const remaining = stat.currentTotal - (stat.paidMoney || 0);
+
+      // -- Nuevo bloque: si no hay nada por pagar, muestras el modal y sales --
+      if (remaining <= 0) {
+        setShowAllPaidModal(true);
+        return;
+      }
       setSplitTotal(stat.total);
       setSplitRemaining(stat.remaining);
       setPaidMoney(stat.paidMoney);
@@ -1008,19 +1114,28 @@ const Dashboard = () => {
   };
 
   const handlePrint = async ({ type, payload }) => {
-    console.log("🚀 handlePrint recibido:", { type, payload });
+    if (!enablePrinting) {
+      // si la impresión está deshabilitada, no hacemos nada
+      return;
+    }
+    if (!validateDevice()) return;
+
     setIsPrinting(true);
     setPrintError(false);
     try {
       if (type === "PRODUCT_PAYMENT") {
-        // Pago por producto → imprimimos SOLO esos items
         await printItemsReceipt(payload);
       } else {
-        // Full closure o pagos parciales → imprimen con venta completa
         await printOrder(payload);
       }
     } catch (err) {
       console.error("Error imprimiendo ticket:", err);
+      // Muestra el mensaje en tu modal en vez de alert
+      setErrorMessage(
+        err?.message ||
+        "Hubo un error imprimiendo. Verifica la impresora asignada."
+      );
+      setShowErrorModal(true);
       setPrintError(true);
     } finally {
       setIsPrinting(false);
@@ -1185,7 +1300,7 @@ const Dashboard = () => {
                   Deshacer venta
                 </button>
 
-                {isPrinting ? (
+                {!enablePrinting ? null : isPrinting ? (
                   <button className="popup-btn-print" disabled>
                     Imprimiendo…
                   </button>
@@ -1194,8 +1309,21 @@ const Dashboard = () => {
                     Reintentar impresión
                   </button>
                 ) : (
-                  // <-- aquí mostramos siempre un botón de impresión manual
-                  <PrintButton order={lastSale} />
+                  <PrintButton
+                    order={lastSale}
+                    onError={(err) => {
+                      setErrorMessage(
+                        err.message ||
+                        "Hubo un error imprimiendo. Verifica la impresora asignada."
+                      );
+                      setShowErrorModal(true);
+                      setPrintError(true);
+                    }}
+                    onSuccess={() => {
+                      // opcional: si quieres limpiar el error tras éxito
+                      setPrintError(false);
+                    }}
+                  />
                 )}
               </div>
             )}
@@ -1205,16 +1333,49 @@ const Dashboard = () => {
       </div>
 
       {showClosePrintModal && (
-        <div className="confirm-close-overlay">
-          <div className="confirm-close-modal">
-            <h2>¿Deseas imprimir lo vendido?</h2>
+        <div
+          className="confirm-close-overlay"
+          onClick={e => {
+            // Si clicas fuera del modal, ciérralo
+            if (e.target.classList.contains("confirm-close-overlay")) {
+              setShowClosePrintModal(false);
+            }
+          }}
+        >
+          <div className="confirm-close-modal" style={{ position: 'relative' }}>
+            {/* Botón "X" para cerrar */}
+            <X
+              size={24}
+              className="confirm-close-modal__close"
+              onClick={() => setShowClosePrintModal(false)}
+              style={{ position: "absolute", top: 8, right: 8, cursor: "pointer" }}
+            />
+
+            <h2>
+              {enablePrinting
+                ? "¿Deseas imprimir lo vendido?"
+                : "¿Deseas cerrar la cuenta?"}
+            </h2>
+
             <div className="popup-buttons">
-              <button className="popup-btn popup-btn-cash" onClick={confirmCloseAndPrint}>
-                Sí, imprimir
+              <button
+                className="popup-btn popup-btn-cash"
+                onClick={handleConfirmClosePrintWithValidation}
+              >
+                {enablePrinting ? "Sí, imprimir" : "Sí, cerrar"}
               </button>
-              <button className="popup-btn popup-btn-qr" onClick={confirmCloseWithoutPrint}>
-                No, sólo cerrar
-              </button>
+
+              {enablePrinting && (
+                <button
+                  className="popup-btn popup-btn-qr"
+                  onClick={() => {
+                    setShowClosePrintModal(false);
+                    confirmCloseWithoutPrint();
+                  }}
+                >
+                  No, sólo cerrar
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1493,6 +1654,25 @@ const Dashboard = () => {
         </div>
       )}
 
+      {showAllPaidModal && (
+        <div className="popup-overlay" onClick={() => setShowAllPaidModal(false)}>
+          <div className="popup-content">
+            <X
+              className="popup-close"
+              size={32}
+              onClick={() => setShowAllPaidModal(false)}
+            />
+            <h2>Todo pagado</h2>
+            <p>La cuenta ya no tiene saldo pendiente.</p>
+            <button
+              className="popup-btn"
+              onClick={() => setShowAllPaidModal(false)}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      )}
       {showPaymentModal && selectedAccountId && (
         <PaymentOptionsModal
           accountId={selectedAccountId}
@@ -1500,6 +1680,7 @@ const Dashboard = () => {
           itemPayments={itemPayments}
           total={currentTotal}
           onClose={() => setShowPaymentModal(false)}
+          cashBoxCode={cashBoxCode}
           // ——— Nuestras dos props nuevas ———
           onPaidAndClose={handlePaidAndClose}
           onPaidWithoutClose={handlePaidWithoutClose}
@@ -1537,8 +1718,22 @@ const Dashboard = () => {
             />
             <h2>Error</h2>
             <p>{errorMessage}</p>
+
+            {/* Si es error de dispositivo, damos opción extra */}
+            {errorMessage.includes("dispositivo") && (
+              <button
+                className="popup-btn popup-btn-primary"
+                onClick={() => {
+                  setShowErrorModal(false);
+                  setShowDeviceModal(true);
+                }}
+              >
+                Seleccionar dispositivo
+              </button>
+            )}
+
             <button
-              className="popup-btn popup-btn-empty"
+              className="popup-btn popup-btn-secondary"
               onClick={() => setShowErrorModal(false)}
             >
               Aceptar

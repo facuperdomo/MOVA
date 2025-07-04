@@ -110,7 +110,8 @@ public class StatisticsService {
             String filter,
             String startDateStr,
             String endDateStr,
-            String token
+            String token,
+            List<Long> boxIds
     ) {
         Long branchId = authService.getUserBasicFromToken(token).getBranchId();
 
@@ -128,6 +129,12 @@ public class StatisticsService {
         // 2) Movimientos en ese rango
         List<CashRegister> movs = cashRegisterRepository
                 .findByCashBoxBranchIdAndOpenDateBetween(branchId, start, end);
+
+        if (boxIds != null && !boxIds.isEmpty()) {
+            movs = movs.stream()
+                    .filter(cr -> boxIds.contains(cr.getCashBox().getId()))
+                    .collect(Collectors.toList());
+        }
 
         // 3) Agrupar por caja
         return movs.stream()
@@ -335,15 +342,17 @@ public class StatisticsService {
         );
     }
 
-    public CompanyStatisticsDTO getStatisticsByBranch(Long branchId, String filter, String startDateStr, String endDateStr) {
-        Optional<Branch> branchOpt = branchRepository.findById(branchId);
-        if (branchOpt.isEmpty()) {
-            throw new IllegalArgumentException("Sucursal no encontrada");
-        }
+    public CompanyStatisticsDTO getStatisticsByBranch(
+            Long branchId,
+            String filter,
+            String startDateStr,
+            String endDateStr,
+            List<Long> boxIds
+    ) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new IllegalArgumentException("Sucursal no encontrada"));
 
-        Branch branch = branchOpt.get();
         LocalDateTime startDate, endDate;
-
         if (startDateStr != null && endDateStr != null) {
             startDate = LocalDateTime.parse(startDateStr + "T00:00:00");
             endDate = LocalDateTime.parse(endDateStr + "T23:59:59");
@@ -352,36 +361,96 @@ public class StatisticsService {
             endDate = LocalDateTime.now();
         }
 
-        List<Sale> sales = saleRepository.findByBranchInAndDateTimeBetween(List.of(branch), startDate, endDate);
+        List<Sale> sales;
+        if (boxIds != null && !boxIds.isEmpty()) {
+            sales = saleRepository
+                    .findByBranch_IdAndCashBox_IdInAndDateTimeBetween(
+                            branchId, boxIds, startDate, endDate);
+        } else {
+            sales = saleRepository
+                    .findByBranch_IdAndDateTimeBetween(branchId, startDate, endDate);
+        }
+
         return buildCompanyStatistics(sales, List.of(branch));
     }
 
-    public List<Map<String, Object>> getTopSellingProductsByBranch(Long branchId, String filter, String startDateStr, String endDateStr) {
-        LocalDateTime startDate;
-        LocalDateTime endDate;
-
+    public List<Map<String, Object>> getTopSellingProductsByBranch(
+            Long branchId,
+            String filter,
+            String startDateStr,
+            String endDateStr,
+            List<Long> boxIds
+    ) {
+        // 1) Fechas
+        LocalDateTime startDate, endDate;
         if (startDateStr != null && endDateStr != null) {
-            try {
-                startDate = LocalDateTime.parse(startDateStr + "T00:00:00");
-                endDate = LocalDateTime.parse(endDateStr + "T23:59:59");
-            } catch (Exception e) {
-                throw new IllegalArgumentException("Fechas inválidas");
-            }
+            startDate = LocalDateTime.parse(startDateStr + "T00:00:00");
+            endDate = LocalDateTime.parse(endDateStr + "T23:59:59");
         } else {
             startDate = getStartDate(filter);
             endDate = LocalDateTime.now();
         }
 
-        // Consultar productos vendidos en ese rango
-        return saleItemRepository.findTopSellingProductsByBranch(startDate, endDate, branchId)
-                .stream()
-                .map(row -> {
-                    Object[] cols = (Object[]) row;
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("name", cols[0]);
-                    map.put("quantity", ((Number) cols[1]).intValue());
-                    return map;
-                }).toList();
+        // 2) Consultar con o sin boxIds
+        List<Object[]> rows;
+        if (boxIds != null && !boxIds.isEmpty()) {
+            rows = saleItemRepository.findTopSellingProductsByBranchAndBoxIds(
+                    startDate, endDate, branchId, boxIds);
+        } else {
+            rows = saleItemRepository.findTopSellingProductsByBranch(
+                    startDate, endDate, branchId);
+        }
+
+        // 3) Mapear a List<Map<String,Object>>
+        return rows.stream()
+                .map(r -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("name", (String) r[0]);
+                    m.put("quantity", ((Number) r[1]).intValue());
+                    return m;
+                })
+                .collect(Collectors.toList());
     }
 
+    /**
+     * Devuelve listado de ventas (id, date, total, estado) para una sucursal y,
+     * opcionalmente, filtradas por boxIds.
+     */
+    public List<Map<String, Object>> getSalesByBranch(
+            Long branchId,
+            String filter,
+            String startDateStr,
+            String endDateStr,
+            List<Long> boxIds
+    ) {
+        // 1) parsear rango
+        LocalDateTime start, end;
+        if (startDateStr != null && endDateStr != null) {
+            start = LocalDateTime.parse(startDateStr + "T00:00:00");
+            end = LocalDateTime.parse(endDateStr + "T23:59:59");
+        } else {
+            start = getStartDate(filter);
+            end = LocalDateTime.now();
+        }
+
+        // 2) obtener ventas con o sin filtro de cajas
+        List<Sale> sales;
+        if (boxIds != null && !boxIds.isEmpty()) {
+            sales = saleRepository
+                    .findByBranch_IdAndCashBox_IdInAndDateTimeBetween(branchId, boxIds, start, end);
+        } else {
+            sales = saleRepository
+                    .findByBranch_IdAndDateTimeBetween(branchId, start, end);
+        }
+
+        // 3) mapear a List<Map<String,Object>>
+        return sales.stream().map(sale -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", sale.getId());
+            m.put("date", sale.getDateTime().format(DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")));
+            m.put("total", sale.getTotalAmount());
+            m.put("estado", sale.getEstado().name());
+            return m;
+        }).collect(Collectors.toList());
+    }
 }
