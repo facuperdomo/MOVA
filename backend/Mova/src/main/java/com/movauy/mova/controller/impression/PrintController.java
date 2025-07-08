@@ -79,7 +79,7 @@ public class PrintController {
                 .collect(Collectors.toList());
         orderDto.setItems(items);
         orderDto.setCompanyName(b.getCompany().getName());
-
+        log.debug("[printOrder] X-Branch-Id={}  X-Device-Id={}", branchId, deviceId);
         sendAndLog(orderDto, deviceId, "printOrder");
         return ResponseEntity.accepted().build();
     }
@@ -166,11 +166,8 @@ public class PrintController {
 
         // Log snippet de Base64
         String b64 = Base64.getEncoder().encodeToString(payload);
-        if (b64.length() > 100) {
-            log.info("[{}] Payload Base64 snippet: {}…", context, b64.substring(0, 100));
-        } else {
-            log.info("[{}] Payload Base64: {}", context, b64);
-        }
+log.info("[{}] Payload Base64 (COMPLETO): {}", context, b64);
+
 
         // Elegir impresora según deviceId
         Printer target = printerRepo.findByDeviceId(deviceId).stream()

@@ -213,7 +213,8 @@ public class AuthService {
                 companyId,
                 me.getRole().name(),
                 me.getBranch() != null && me.getBranch().isEnableIngredients(),
-                me.getBranch() != null && me.getBranch().isEnableKitchenCommands()
+                me.getBranch() != null && me.getBranch().isEnableKitchenCommands(),
+                null
         );
     }
 
@@ -229,7 +230,8 @@ public class AuthService {
                 companyId,
                 user.getRole().name(),
                 user.getBranch() != null && user.getBranch().isEnableIngredients(),
-                user.getBranch() != null && user.getBranch().isEnableKitchenCommands()
+                user.getBranch() != null && user.getBranch().isEnableKitchenCommands(),
+                null
         );
     }
 

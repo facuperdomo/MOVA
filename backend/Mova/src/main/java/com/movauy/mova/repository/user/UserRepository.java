@@ -2,7 +2,9 @@
 package com.movauy.mova.repository.user;
 
 import com.movauy.mova.dto.UserBasicDTO;
+import com.movauy.mova.model.user.Role;
 import com.movauy.mova.model.user.User;
+import java.util.Collection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -50,4 +52,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByBranch_Id(Long branchId);
     
     List<User> findByAssignedBox_Id(Long boxId);
+    
+    // Todos los usuarios de una branch con rol ADMIN o USER
+    List<User> findByBranch_IdAndRoleIn(Long branchId, Collection<Role> roles);
+
+    // Todos los usuarios de una branch, rol ADMIN/USER, y que ya estén asignados a la caja boxId
+    List<User> findByBranch_IdAndRoleInAndAssignedBox_Id(
+        Long branchId,
+        Collection<Role> roles,
+        Long boxId
+    );
 }

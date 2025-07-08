@@ -15,6 +15,8 @@ public class UserBasicDTO {
     private String role;
     private boolean enableIngredients;
     private boolean enableKitchenCommands;
+    private Long assignedBoxId;
+    
     public UserBasicDTO(Long id, String username) {
         this.id = id;
         this.username = username;
@@ -23,5 +25,11 @@ public class UserBasicDTO {
         this.id       = id;
         this.username = username;
         this.role     = role;
+    }
+    public UserBasicDTO(Long id, String username, String role, Long assignedBoxId) {
+        this.id       = id;
+        this.username = username;
+        this.role     = role;
+        this.assignedBoxId = assignedBoxId;
     }
 }

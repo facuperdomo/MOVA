@@ -5,6 +5,7 @@ import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.finance.CashBox;
 import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.plan.Plan;
+import com.movauy.mova.model.user.Role;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.repository.finance.CashBoxRepository;
@@ -172,18 +173,6 @@ public class CashBoxService {
         userRepo.save(user);
     }
 
-    public List<User> getUsersForBox(String jwt, Long boxId) {
-        // (Opcional) valida que la caja exista y pertenece a tu sucursal:
-        cashBoxRepository.findById(boxId)
-                .orElseThrow(() -> new EntityNotFoundException("Caja no encontrada: " + boxId));
-
-        // Aquí usas directamente el repo para evitar cargar via la relación
-        List<User> assigned = userRepo.findByAssignedBox_Id(boxId);
-        log.debug(">>> Usuarios asignados a caja {}: {}", boxId,
-                assigned.stream().map(User::getUsername).toList());
-        return assigned;
-    }
-
     /**
      * Busca la caja abierta asignada al usuario del token
      */
@@ -280,5 +269,40 @@ public class CashBoxService {
         box.setEnabled(enabled);
         return cashBoxRepository.save(box);
     }
+    
+     @Transactional
+    public List<UserBasicDTO> getUsersForBox(String jwt, Long boxId) {
+        CashBox box = cashBoxRepository.findById(boxId)
+            .orElseThrow(() -> new EntityNotFoundException("Caja no encontrada"));
+        Long branchId = box.getBranch().getId();
 
+        // sólo roles ADMIN y USER
+        List<Role> roles = List.of(Role.ADMIN, Role.USER);
+
+        // consulta directa en BD
+        List<User> assigned = userRepo
+            .findByBranch_IdAndRoleInAndAssignedBox_Id(branchId, roles, boxId);
+
+        return assigned.stream()
+            .map(u -> new UserBasicDTO(u.getId(), u.getUsername(), u.getRole().name()))
+            .toList();
+    }
+
+    // Para listar candidatos NO asignados (por si lo necesitas)
+    @Transactional
+    public List<UserBasicDTO> getAvailableUsersForBox(String jwt, Long boxId) {
+        Long branchId = authService.getBranchIdFromToken(jwt);
+        List<Role> roles = List.of(Role.ADMIN, Role.USER);
+
+        List<User> branchUsers = userRepo.findByBranch_IdAndRoleIn(branchId, roles);
+
+        // quita los que ya tienen assignedBox != null (o assignedBox.id == boxId si quieres incluir reasignaciones)
+        List<User> freeUsers = branchUsers.stream()
+            .filter(u -> u.getAssignedBox()==null)
+            .toList();
+
+        return freeUsers.stream()
+            .map(u -> new UserBasicDTO(u.getId(), u.getUsername(), u.getRole().name()))
+            .toList();
+    }
 }

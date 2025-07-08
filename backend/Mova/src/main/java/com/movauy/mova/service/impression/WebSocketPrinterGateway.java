@@ -1,5 +1,6 @@
 package com.movauy.mova.service.impression;
 
+import com.movauy.mova.controller.impression.PrintController;
 import com.movauy.mova.controller.impression.PrintMessage;
 import com.movauy.mova.model.print.Printer;
 import com.movauy.mova.model.branch.Branch;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Base64;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class WebSocketPrinterGateway implements PrinterGateway {
@@ -18,14 +21,15 @@ public class WebSocketPrinterGateway implements PrinterGateway {
     private final PrinterRepository printerRepo;
     private final BranchService branchService;
     private final SimpMessagingTemplate messaging;
+    private static final Logger log = LoggerFactory.getLogger(PrintController.class);
 
     @Autowired
     public WebSocketPrinterGateway(PrinterRepository printerRepo,
-                                   BranchService branchService,
-                                   SimpMessagingTemplate messaging) {
-        this.printerRepo   = printerRepo;
+            BranchService branchService,
+            SimpMessagingTemplate messaging) {
+        this.printerRepo = printerRepo;
         this.branchService = branchService;
-        this.messaging     = messaging;
+        this.messaging = messaging;
     }
 
     @Override
@@ -40,9 +44,9 @@ public class WebSocketPrinterGateway implements PrinterGateway {
         if (printerIdHeader != null) {
             Long pid = Long.valueOf(printerIdHeader);
             target = printers.stream()
-                     .filter(p -> p.getId().equals(pid))
-                     .findFirst()
-                     .orElse(null);
+                    .filter(p -> p.getId().equals(pid))
+                    .findFirst()
+                    .orElse(null);
         }
         if (target == null && !printers.isEmpty()) {
             target = printers.get(0);
@@ -50,11 +54,13 @@ public class WebSocketPrinterGateway implements PrinterGateway {
         if (target == null) {
             throw new IllegalArgumentException("No se encontró impresora para branchId=" + branchId);
         }
+        log.debug("[WebSocketGateway] branchId={}  printerFound={} (id={}, mac={}, bridge='{}')",
+                branchId, target != null, target.getId(), target.getMacAddress(), target.getDevice().getBridgeUrl());
 
         // 3) Construye el PrintMessage
         String deviceUuid = target.getDevice().getBridgeUrl();
-        String b64        = Base64.getEncoder().encodeToString(payload);
-        PrintMessage msg  = new PrintMessage();
+        String b64 = Base64.getEncoder().encodeToString(payload);
+        PrintMessage msg = new PrintMessage();
         msg.setB64(b64);
         msg.setMacAddress(target.getMacAddress());
 

@@ -192,21 +192,6 @@ public class CashBoxController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{boxId}/users")
-    public ResponseEntity<List<UserBasicDTO>> listAssignedUsers(
-            @RequestHeader("Authorization") String authHeader,
-            @PathVariable Long boxId
-    ) {
-        String token = authHeader.replace("Bearer ", "");
-        List<User> users = cashBoxService.getUsersForBox(token, boxId);
-        List<UserBasicDTO> dtos = users.stream()
-                .map(u -> new UserBasicDTO(u.getId(), u.getUsername(), u.getRole().name()))
-                .toList();
-        log.info("Controller listAssignedUsers boxId={} → DTOs count={} → {}", boxId, dtos.size(),
-                dtos.stream().map(UserBasicDTO::getUsername).toList());
-        return ResponseEntity.ok(dtos);
-    }
-
     /**
      * —————— PUEDE CREAR MÁS CAJAS? ——————
      */
@@ -236,5 +221,27 @@ public class CashBoxController {
                 "code", updated.getCode(),
                 "enabled", updated.getEnabled()
         ));
+    }
+    
+    /** usuarios YA asignados (igual que siempre, pero filtrados) */
+    @GetMapping("/{boxId}/users")
+    public ResponseEntity<List<UserBasicDTO>> listAssignedUsers(
+        @RequestHeader("Authorization") String authHeader,
+        @PathVariable Long boxId
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        var dtos = cashBoxService.getUsersForBox(token, boxId);
+        return ResponseEntity.ok(dtos);
+    }
+
+    /** usuarios DISPONIBLES para asignar */
+    @GetMapping("/{boxId}/available-users")
+    public ResponseEntity<List<UserBasicDTO>> listAvailableUsers(
+        @RequestHeader("Authorization") String authHeader,
+        @PathVariable Long boxId
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        var dtos = cashBoxService.getAvailableUsersForBox(token, boxId);
+        return ResponseEntity.ok(dtos);
     }
 }

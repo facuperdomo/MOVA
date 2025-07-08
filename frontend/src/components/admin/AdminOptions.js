@@ -35,7 +35,7 @@ const AdminOptions = () => {
   const [difference, setDifference] = useState(null);
 
   const [cashBoxes, setCashBoxes] = useState([]);    // lista de cajas
-  const [allUsers, setAllUsers] = useState([]);    // lista de todos los vendedores
+
   const [assignedUserIds, setAssignedUserIds] = useState([]); // ids asignados a la caja seleccionada
   const [currentBox, setCurrentBox] = useState(null);  // caja que estamos gestionando
   const [selectedBox, setSelectedBox] = useState(null); // la que abrimos / cerramos
@@ -59,6 +59,8 @@ const AdminOptions = () => {
 
   const [devices, setDevices] = useState([]);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
+
+  const [branchUsers, setBranchUsers] = useState([]);   // todos los ADMIN/USER de la sucursal
 
   const LOCAL_KEY = "selectedCashBoxId";
 
@@ -126,7 +128,7 @@ const AdminOptions = () => {
 
     // Traer cajas y usuarios
     loadCashBoxes();
-    loadAllUsers();
+
     loadCanCreateBox();
   }, []);
 
@@ -161,16 +163,6 @@ const AdminOptions = () => {
     }
   }
 
-  async function loadAllUsers() {
-    try {
-      const users = await customFetch(`${API_URL}/auth`);
-      const filtered = users.filter(u => u.role === "USER" || u.role === "ADMIN");
-      setAllUsers(filtered);
-    } catch (err) {
-      console.error("Error al cargar usuarios:", err);
-    }
-  }
-
   async function loadCanCreateBox() {
     try {
       const ok = await customFetch(`${API_URL}/api/cash-box/can-create`);
@@ -180,16 +172,28 @@ const AdminOptions = () => {
     }
   }
 
+  async function loadBranchUsers() {
+    try {
+      const branchId = localStorage.getItem("branchId");
+      const companyId = localStorage.getItem("companyId");
+      console.log("[loadBranchUsers] llamando a", `${API_URL}/api/branches/${branchId}/users?roles=ADMIN,USER`);
+      const users = await customFetch(
+        `${API_URL}/api/companies/${companyId}/branches/${branchId}/users?roles=ADMIN,USER`
+      );
+      console.log("[loadBranchUsers] recibido:", users);
+      setBranchUsers(users);
+    } catch (err) {
+      console.error("[loadBranchUsers] error:", err);
+    }
+  }
+
   async function loadAssignedUsers(box) {
     try {
-      console.log("→ fetch /api/cash-box/" + box.id + "/users");
       const users = await customFetch(
         `${API_URL}/api/cash-box/${box.id}/users`
       );
-      console.log("← assignedUsers raw:", users);
-      const ids = users.map(u => u.id);
-      console.log("← assignedUserIds:", ids);
-      setAssignedUserIds(ids);
+      // sólo guardo los IDs; la lista completa la tomo de branchUsers
+      setAssignedUserIds(users.map(u => u.id));
     } catch (err) {
       console.error("Error al cargar asignados:", err);
     }
@@ -293,6 +297,21 @@ const AdminOptions = () => {
     } catch {
       alert("Expresión inválida");
     }
+  };
+
+  const openAssignModal = async (box) => {
+    setCurrentBox(box);
+    // esperamos a que se cargue la lista de asignados
+    const assigned = await customFetch(`${API_URL}/api/cash-box/${box.id}/users`);
+    setAssignedUserIds(assigned.map(u => u.id));
+    // luego traemos todos los usuarios de la branch
+    const branchId = localStorage.getItem("branchId");
+    const companyId = localStorage.getItem("companyId");
+    const users = await customFetch(
+      `${API_URL}/api/companies/${companyId}/branches/${branchId}/users?roles=ADMIN,USER`
+    );
+    setBranchUsers(users);
+    setShowAssignModal(true);
   };
 
   const handleLogout = async () => {
@@ -478,11 +497,7 @@ const AdminOptions = () => {
                       </button>
                       <button
                         className="popup-btn"
-                        onClick={() => {
-                          setCurrentBox(box);
-                          loadAssignedUsers(box);
-                          setShowAssignModal(true);
-                        }}
+                        onClick={() => openAssignModal(box)}
                       >
                         Asignar
                       </button>
@@ -514,11 +529,11 @@ const AdminOptions = () => {
             />
             <h3>Asignar vendedores a caja {currentBox.code}</h3>
             <div className="user-list">
-              {allUsers.map(u => (
+              {branchUsers.map(u => (
                 <label key={u.id} style={{ display: "block", margin: "8px 0" }}>
                   <input
                     type="checkbox"
-                    checked={Array.isArray(assignedUserIds) && assignedUserIds.includes(u.id)}
+                    checked={assignedUserIds.includes(u.id)}
                     onChange={() => toggleUserAssignment(u.id)}
                   />
                   {u.username}

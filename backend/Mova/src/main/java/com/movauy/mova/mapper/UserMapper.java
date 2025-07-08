@@ -35,7 +35,8 @@ public class UserMapper {
                 companyId,
                 user.getRole() != null ? user.getRole().name() : null,
                 user.getBranch() != null && user.getBranch().isEnableIngredients(),
-                user.getBranch() != null && user.getBranch().isEnableKitchenCommands()
+                user.getBranch() != null && user.getBranch().isEnableKitchenCommands(),
+                null
         );
     }
 

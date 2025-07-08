@@ -1,14 +1,20 @@
 package com.movauy.mova.controller.branch;
 
+import com.movauy.mova.Jwt.JwtAuthenticationFilter;
 import com.movauy.mova.dto.BranchDTO;
+import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.branch.Branch;
 import com.movauy.mova.model.company.Company;
 import com.movauy.mova.model.print.Printer;
+import com.movauy.mova.model.user.Role;
+import com.movauy.mova.model.user.User;
+import com.movauy.mova.repository.user.UserRepository;
 import com.movauy.mova.service.branch.BranchService;
 import com.movauy.mova.service.company.CompanyService;
 import com.movauy.mova.service.print.PrinterService;
 import com.movauy.mova.service.user.AuthService;
 import jakarta.validation.Valid;
+import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/companies/{companyId}/branches")
@@ -27,6 +35,8 @@ public class BranchController {
     private final CompanyService companyService;
     private final PrinterService printerService;
     private final AuthService authService;
+    private final UserRepository userRepository;
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     /**
      * Crea una nueva sucursal bajo la empresa {companyId}
@@ -193,5 +203,33 @@ public class BranchController {
             @PathVariable Long branchId
     ) {
         branchService.unassignPlan(branchId);
+    }
+    
+    /** Lista todos los ADMIN y USER de la branch */
+    @GetMapping("/{branchId}/users")
+    public ResponseEntity<List<UserBasicDTO>> listBranchUsers(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long branchId,
+            @RequestParam String roles  // e.g. "ADMIN,USER"
+    ) {
+        String token = authHeader.replace("Bearer ", "");
+        logger.warn("→ listBranchUsers: branchId={} roles={}", branchId, roles);
+
+        // parsea roles
+        List<Role> roleList = Arrays.stream(roles.split(","))
+            .map(Role::valueOf)
+            .toList();
+
+        List<User> users = userRepository.findByBranch_IdAndRoleIn(branchId, roleList);
+        List<UserBasicDTO> dtos = users.stream()
+            .map(u -> {
+                UserBasicDTO dto = new UserBasicDTO(u.getId(), u.getUsername(), u.getRole().name(), u.getAssignedBox() != null ? u.getAssignedBox().getId() : null);
+                logger.warn("   usuario: {}", u.getUsername());
+                return dto;
+            })
+            .toList();
+
+        logger.warn("✔ Encontrados {} usuarios", dtos.size());
+        return ResponseEntity.ok(dtos);
     }
 }
