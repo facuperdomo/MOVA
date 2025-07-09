@@ -118,21 +118,16 @@ public class PrintController {
         dto.setTotalAmount(sale.getTotalAmount());
 
         // 2) Mapear nombres de ítems desde la BBDD
-        List<SaleItemDTO> fixedItems = dto.getItems().stream()
-                .map(i -> {
-                    String nombre = productRepo.findById(i.getProductId())
-                            .map(p -> p.getName())
-                            .orElse("Producto");
-                    return SaleItemDTO.builder()
-                            .productId(i.getProductId())
-                            .name(nombre)
-                            .quantity(i.getQuantity())
-                            .unitPrice(i.getUnitPrice())
-                            .ingredientIds(i.getIngredientIds())
-                            .build();
-                })
-                .toList();
-        dto.setItems(fixedItems);
+        List<SaleItemDTO> items = sale.getItems().stream()
+                .map(i -> SaleItemDTO.builder()
+                .productId(i.getProductId())
+                .name(i.getName())
+                .quantity(i.getQuantity())
+                .unitPrice(i.getUnitPrice())
+                .ingredientIds(i.getIngredientIds())
+                .build())
+                .collect(Collectors.toList());
+        dto.setItems(items);
 
         // 3–5) Generar ticket, loguear y enviar
         sendAndLog(dto, deviceId, "printItemsReceipt");
@@ -166,8 +161,7 @@ public class PrintController {
 
         // Log snippet de Base64
         String b64 = Base64.getEncoder().encodeToString(payload);
-log.info("[{}] Payload Base64 (COMPLETO): {}", context, b64);
-
+        log.info("[{}] Payload Base64 (COMPLETO): {}", context, b64);
 
         // Elegir impresora según deviceId
         Printer target = printerRepo.findByDeviceId(deviceId).stream()

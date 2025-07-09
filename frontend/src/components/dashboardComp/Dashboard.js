@@ -1126,6 +1126,7 @@ const confirmCloseWithoutPrint = async () => {
       if (type === "PRODUCT_PAYMENT") {
         await printItemsReceipt(payload);
       } else {
+        console.log("EN EL PRINT ORDER SE MANDA ESTO ", payload);
         await printOrder(payload);
       }
     } catch (err) {

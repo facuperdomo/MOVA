@@ -140,7 +140,7 @@ export default function PaymentOptionsModal({
                 }),
             }
         );
-
+        console.log("✅ Respuesta del backend al pagar:", orderDTO);
         // 2) Imprimimos el cierre de cuenta (FULL_CLOSURE mantiene tu ticket de cierre)
         await onPrint({ type: 'FULL_CLOSURE', payload: orderDTO });
 
@@ -168,7 +168,7 @@ export default function PaymentOptionsModal({
                 }),
             }
         );
-
+        console.log("✅ Respuesta del backend al pagar:", orderDTO);
         // 2) Imprimes el ticket de pago parcial
         await onPrint({ type: 'PARTIAL_PAYMENT', payload: orderDTO });
 
@@ -298,12 +298,6 @@ export default function PaymentOptionsModal({
             );
             console.log("✅ Respuesta de cierre (OrderDTO):", orderDTO);
 
-            // 3) Imprimir el ticket de cierre
-            console.log("🔸 Enviando a impresión:", orderDTO);
-            await onPrint({ type: 'FULL_CLOSURE', payload: orderDTO });
-            console.log("✅ onPrint completado");
-
-            // 4) Limpieza de UI
             console.log("🔸 Actualizando UI tras cierre");
             onPaidAndClose();
             onClose();
