@@ -93,3 +93,34 @@ export async function printItemsReceipt(orderDto) {
     throw new Error(body.message || `Error ${resp.status}`);
   }
 }
+
+/**  
+ * Imprime lo que venga en el DTO (items, nombres, precios…)  
+ * contra el endpoint “/direct/front”.  
+ */
+export async function printFrontOrder(order) {
+  const token    = localStorage.getItem("token");
+  const branchId = localStorage.getItem("branchId");
+  const deviceId = await ensureDeviceId();
+
+  const resp = await fetch(
+    `${API_URL}/api/print/direct/front`,
+    {
+      method:  "POST",
+      headers: {
+        "Content-Type":    "application/json",
+        "Authorization":   `Bearer ${token}`,
+        "X-Branch-Id":     branchId,
+        "X-Device-Id":     deviceId
+      },
+      body: JSON.stringify(order)
+    }
+  );
+
+  if (!resp.ok) {
+    let err;
+    try { err = (await resp.json()).message; }
+    catch { err = await resp.text(); }
+    throw new Error(err || `Error ${resp.status}`);
+  }
+}

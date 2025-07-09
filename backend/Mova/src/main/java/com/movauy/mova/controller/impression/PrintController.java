@@ -202,4 +202,38 @@ public class PrintController {
         log.info("[{}] Enviando a /topic/print/{} (mac={})", context, uuid, target.getMacAddress());
         messaging.convertAndSend("/topic/print/" + uuid, msg);
     }
+    
+    /**
+     * Imprime exactamente lo que envía el front (items, nombres, precios).
+     */
+    @PostMapping("/direct/front")
+    public ResponseEntity<Void> printFrontOrder(
+        @RequestBody OrderDTO dto,
+        @RequestHeader("X-Branch-Id") Long branchId,
+        @RequestHeader("X-Device-Id") Long deviceId
+    ) {
+        // validaciones de sucursal / dispositivo idénticas a printOrder…
+        Branch b = branchService.findById(branchId);
+        if (!b.isEnablePrinting()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        // Sólo seteamos datos de cabecera, TODO el array dto.getItems() se respeta tal cual
+        dto.setBranchRut(b.getRut());
+        dto.setBranchName(b.getName());
+        dto.setBranchAddress(b.getLocation());
+        dto.setCompanyName(b.getCompany().getName());
+        
+        log.info("[printItemsReceipt] DTO preparado para impresión:");
+        log.info("ID Venta: {}", dto.getId());
+        log.info("Fecha: {}", dto.getDateTime());
+        log.info("Método de pago: {}", dto.getPaymentMethod());
+        log.info("Monto total: {}", dto.getTotalAmount());
+        log.info("Sucursal: {} ({}) - {}", dto.getBranchName(), dto.getBranchRut(), dto.getBranchAddress());
+        log.info("Empresa: {}", dto.getCompanyName());
+        log.info("Ítems:");
+        // No tocamos dto.getItems(): vienen completos del front
+        sendAndLog(dto, deviceId, "printFrontOrder");
+        return ResponseEntity.accepted().build();
+    }
 }

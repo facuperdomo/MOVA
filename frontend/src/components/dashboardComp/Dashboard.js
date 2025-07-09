@@ -12,7 +12,8 @@ import { API_URL, WS_URL } from "../../config/apiConfig";
 import PrintButton from '../impression/PrintButton';
 import {
   printOrder,
-  printItemsReceipt
+  printItemsReceipt,
+  printFrontOrder
 } from "../../utils/print";
 import PaymentStatusNotifier from '../paymentqr/PaymentStatusNotifier';
 import AddMesaModal from "../addMesaModal/AddMesaModal";
@@ -988,95 +989,95 @@ const Dashboard = () => {
   };
 
   // Confirmar cierre e impresión
-const confirmCloseAndPrint = async () => {
-  const accountId = pendingCloseAccountId;
-  // si no hay impresión, lo cierras sin imprimir
-  if (!enablePrinting) {
-    await confirmCloseWithoutPrint();
-    return;
-  }
-  if (!validateDevice()) return;
-
-  try {
-    // 1) cierro la cuenta y recibo el recibo
-    const receipt = await customFetch(
-      `${API_URL}/api/accounts/${accountId}/close`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: cashBoxCode,
-          amount: currentTotal,
-          paymentMethod: "CUENTA",
-          payerName: "–",
-        }),
-      }
-    );
-
-    // 2) intento imprimir
-    setIsPrinting(true);
-    setPrintError(false);
-    try {
-      await printOrder(receipt);
-      // 🟢 sólo si imprime OK, limpio la UI:
-      setShowClosePrintModal(false);
-      setSelectedAccountId(null);
-      setPendingCloseAccountId(null);
-      await loadAccounts(branchId);
-    } catch (err) {
-      console.error("❌ Error imprimiendo al cerrar cuenta:", err);
-      setErrorMessage(
-        err.message ||
-        "Hubo un error imprimiendo el recibo. La cuenta sigue abierta."
-      );
-      setShowErrorModal(true);
-      setPrintError(true);
-      // <-- NO limpiamos pendingCloseAccountId, sigue disponible “Reintentar impresión”
-    } finally {
-      setIsPrinting(false);
-    }
-  } catch (err) {
-    console.error("Error cerrando la cuenta:", err);
-    setErrorMessage("No se pudo cerrar la cuenta en el servidor.");
-    setShowErrorModal(true);
-  }
-};
-
-// Confirmar cierre sin imprimir
-const confirmCloseWithoutPrint = async () => {
-  const accountId = pendingCloseAccountId;
-  if (!accountId) return;
-
-  try {
-    await customFetch(
-      `${API_URL}/api/accounts/${accountId}/close`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: cashBoxCode,
-          amount: currentTotal,
-          paymentMethod: "CUENTA",
-          payerName: "–",
-        }),
-      }
-    );
-  } catch (err) {
-    // Si ya estaba cerrada, no mostramos error
-    if (!err.message.includes("ya está cerrada")) {
-      console.error("Error cerrando sin imprimir:", err);
-      setErrorMessage("No se pudo cerrar la cuenta.");
-      setShowErrorModal(true);
+  const confirmCloseAndPrint = async () => {
+    const accountId = pendingCloseAccountId;
+    // si no hay impresión, lo cierras sin imprimir
+    if (!enablePrinting) {
+      await confirmCloseWithoutPrint();
       return;
     }
-  }
+    if (!validateDevice()) return;
 
-  // En cualquier caso (éxito o ya cerrada), limpiamos:
-  setShowClosePrintModal(false);
-  setSelectedAccountId(null);
-  setPendingCloseAccountId(null);
-  await loadAccounts(branchId);
-};
+    try {
+      // 1) cierro la cuenta y recibo el recibo
+      const receipt = await customFetch(
+        `${API_URL}/api/accounts/${accountId}/close`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: cashBoxCode,
+            amount: currentTotal,
+            paymentMethod: "CUENTA",
+            payerName: "–",
+          }),
+        }
+      );
+
+      // 2) intento imprimir
+      setIsPrinting(true);
+      setPrintError(false);
+      try {
+        await printOrder(receipt);
+        // 🟢 sólo si imprime OK, limpio la UI:
+        setShowClosePrintModal(false);
+        setSelectedAccountId(null);
+        setPendingCloseAccountId(null);
+        await loadAccounts(branchId);
+      } catch (err) {
+        console.error("❌ Error imprimiendo al cerrar cuenta:", err);
+        setErrorMessage(
+          err.message ||
+          "Hubo un error imprimiendo el recibo. La cuenta sigue abierta."
+        );
+        setShowErrorModal(true);
+        setPrintError(true);
+        // <-- NO limpiamos pendingCloseAccountId, sigue disponible “Reintentar impresión”
+      } finally {
+        setIsPrinting(false);
+      }
+    } catch (err) {
+      console.error("Error cerrando la cuenta:", err);
+      setErrorMessage("No se pudo cerrar la cuenta en el servidor.");
+      setShowErrorModal(true);
+    }
+  };
+
+  // Confirmar cierre sin imprimir
+  const confirmCloseWithoutPrint = async () => {
+    const accountId = pendingCloseAccountId;
+    if (!accountId) return;
+
+    try {
+      await customFetch(
+        `${API_URL}/api/accounts/${accountId}/close`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: cashBoxCode,
+            amount: currentTotal,
+            paymentMethod: "CUENTA",
+            payerName: "–",
+          }),
+        }
+      );
+    } catch (err) {
+      // Si ya estaba cerrada, no mostramos error
+      if (!err.message.includes("ya está cerrada")) {
+        console.error("Error cerrando sin imprimir:", err);
+        setErrorMessage("No se pudo cerrar la cuenta.");
+        setShowErrorModal(true);
+        return;
+      }
+    }
+
+    // En cualquier caso (éxito o ya cerrada), limpiamos:
+    setShowClosePrintModal(false);
+    setSelectedAccountId(null);
+    setPendingCloseAccountId(null);
+    await loadAccounts(branchId);
+  };
 
 
   // ——————————————————————————————————————————————————————————
@@ -1126,7 +1127,11 @@ const confirmCloseWithoutPrint = async () => {
       console.log(`🖨️ handlePrint → type=${type}`, payload);
       if (type === "PRODUCT_PAYMENT") {
         await printItemsReceipt(payload);
+      } else if (type === "FULL_CLOSURE" || type === "PARTIAL_PAYMENT") {
+        // para imprimir el cierre con todos los datos que mandó el front
+        await printFrontOrder(payload);
       } else {
+        // tu flujo legacy
         await printOrder(payload);
       }
     } catch (err) {
