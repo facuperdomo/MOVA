@@ -9,6 +9,7 @@ import com.movauy.mova.dto.OrderDTO;
 import com.movauy.mova.dto.PayItemsRequestDTO;
 import com.movauy.mova.dto.PaymentRequestDTO;
 import com.movauy.mova.dto.SplitStatusDTO;
+import com.movauy.mova.dto.UnitItemDTO;
 import com.movauy.mova.model.account.Account;
 import com.movauy.mova.model.account.AccountItem;
 import com.movauy.mova.model.ingredient.Ingredient;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.springframework.http.HttpStatus;
 
 @RestController
@@ -184,4 +186,23 @@ public class AccountController {
                 .toList();
         return ResponseEntity.ok(dtos);
     }
+
+    @GetMapping("/{accountId}/unit-items")
+    public ResponseEntity<List<UnitItemDTO>> getUnitItems(@PathVariable Long accountId) {
+        // Reúnes los AccountItemPaymentDTO actuales:
+        List<AccountItemPaymentDTO> info = accountService.getAccountItemsWithPaymentInfo(accountId);
+        // Ahora, desagrega por unidad:
+        List<UnitItemDTO> flat = info.stream().flatMap(dto -> {
+            return IntStream.range(0, dto.getQuantity())
+                    .mapToObj(i -> new UnitItemDTO(
+                    dto.getItemId(),
+                    dto.getProductId(),
+                    dto.getProductName(),
+                    dto.getUnitPrice(),
+                    i < dto.getPaidQty() // las primeras paidQty unidades son “paid”
+            ));
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(flat);
+    }
+    
 }

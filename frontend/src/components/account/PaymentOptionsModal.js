@@ -46,36 +46,21 @@ export default function PaymentOptionsModal({
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
 
-    const paidQtyMap = useMemo(() => {
-        const m = new Map();
-        itemPayments.forEach(ip => {
-            const id = typeof ip === "number" ? ip : ip.itemId;
-            const paidQty = ip.paidQuantity ?? ip.paidQty ?? (ip.paid ? ip.quantity : 0);
-            m.set(id, paidQty);
-        });
-        return m;
-    }, [itemPayments]);
+    const [localItemPayments, setLocalItemPayments] = useState(itemPayments);
+    const [unitItems, setUnitItems] = useState([]);
 
     // 2) Construimos `flatItems` a partir de `items`, marcando sólo las primeras `paidQtyMap.get(id)` unidades de cada línea
-    const flatItems = React.useMemo(() => {
-        return items.flatMap(i => {
-            const id = i.id || i.itemId;
-            const qty = i.quantity;
-            const paidQty = paidQtyMap.get(id) || 0;
-            const arr = [];
-            for (let idx = 0; idx < qty; idx++) {
-                arr.push({
-                    id,
-                    productName: i.productName,
-                    price: i.unitPrice ?? i.price ?? 0,
-                    ingredients: i.ingredients || [],
-                    quantity: 1,
-                    paid: idx < paidQty,
-                });
-            }
-            return arr;
-        });
-    }, [items, paidQtyMap]);
+    const flatItems = React.useMemo(
+        () => unitItems.map(u => ({
+            id: u.itemId,
+            productName: u.productName,
+            price: u.unitPrice,
+            ingredients: u.ingredients || [], // si lo envías
+            quantity: 1,
+            paid: u.paid,
+        })),
+        [unitItems]
+    );
 
     // —————————————————————————————————————————————————————————————————————
     // 4) Si el paso es “products”, sumamos los precios de los índices que el usuario marcó
@@ -115,14 +100,25 @@ export default function PaymentOptionsModal({
         }
     }, [step, currentTotal, paidMoney]);
 
-     useEffect(() => {
-    if (step === "products") {
-      const unpaid = flatItems.filter(i => !i.paid).length;
-      if (unpaid === 0 && flatItems.length > 0) {
-        setShowCloseConfirm(true);
-      }
-    }
-  }, [flatItems, step]);
+    useEffect(() => {
+        if (step === "products") {
+            const unpaid = flatItems.filter(i => !i.paid).length;
+            if (unpaid === 0 && flatItems.length > 0) {
+                setShowCloseConfirm(true);
+            }
+        }
+    }, [flatItems, step]);
+
+    useEffect(() => {
+        if (step === "products") {
+            (async () => {
+                const flat = await customFetch(
+                    `${API_URL}/api/accounts/${accountId}/unit-items`
+                );
+                setUnitItems(flat);
+            })();
+        }
+    }, [step, accountId]);
     // ——————————————————————————————
     // 5bis) Pago “full” (total) (sin cerrar)
     // ——————————————————————————————
@@ -140,9 +136,20 @@ export default function PaymentOptionsModal({
                 }),
             }
         );
-        console.log("✅ Respuesta del backend al pagar:", orderDTO);
+        const fullPayload = {
+            ...orderDTO,
+            // items: vienen de la prop `items` o de `flatItems`
+            items: items.map(i => ({
+                productId: i.productId ?? i.id,
+                name: i.productName,       // aquí sí le pones el nombre
+                quantity: i.quantity,
+                unitPrice: i.unitPrice ?? i.price,
+                ingredientIds: i.ingredients?.map(x => x.id) || []
+            }))
+        };
+        console.log("✅ Respuesta del backend al pagar:", fullPayload);
         // 2) Imprimimos el cierre de cuenta (FULL_CLOSURE mantiene tu ticket de cierre)
-        await onPrint({ type: 'FULL_CLOSURE', payload: orderDTO });
+        await onPrint({ type: 'FULL_CLOSURE', payload: fullPayload });
 
         // 3) Ejecutamos callback “pago sin cerrar”
         onPaidWithoutClose();
@@ -164,13 +171,25 @@ export default function PaymentOptionsModal({
                 body: JSON.stringify({
                     amount: amountToPay,
                     payerName: payerName || "–",
-                    paymentMethod: method
+                    paymentMethod: method,
+
                 }),
             }
         );
-        console.log("✅ Respuesta del backend al pagar:", orderDTO);
+        const fullPayload = {
+            ...orderDTO,
+            // items: vienen de la prop `items` o de `flatItems`
+            items: items.map(i => ({
+                productId: i.productId ?? i.id,
+                name: i.productName,       // aquí sí le pones el nombre
+                quantity: i.quantity,
+                unitPrice: i.unitPrice ?? i.price,
+                ingredientIds: i.ingredients?.map(x => x.id) || []
+            }))
+        };
+        console.log("✅ Respuesta del backend al pagar:", fullPayload);
         // 2) Imprimes el ticket de pago parcial
-        await onPrint({ type: 'PARTIAL_PAYMENT', payload: orderDTO });
+        await onPrint({ type: 'PARTIAL_PAYMENT', payload: fullPayload });
 
         // 3) Lees el nuevo estado
         const { remaining } = await getSplitStatus();
@@ -212,18 +231,23 @@ export default function PaymentOptionsModal({
         // 2) Imprimes el ticket de pago de productos
         await onPrint({ type: 'PRODUCT_PAYMENT', payload: orderDTO });
 
-        // 3) Actualizas UI
-        onPaidWithoutClose();
+        // 3) Espera a que el padre recargue items y pagos
+        await onPaidWithoutClose();
 
-        // 4) Compruebas si quedó algún producto sin pagar
-        const unpaidCount = flatItems.filter(i => !i.paid).length;
-        await fetchSplitStatus();
+        // 3) Después de onPaidWithoutClose(), recarga la lista real de pagos por ítem:
+        const updated = await customFetch(
+            `${API_URL}/api/accounts/${accountId}/items-with-payment`
+        );
+        // items-with-payment devuelve [{ itemId, quantity, paidQty }, …]
+        setLocalItemPayments(updated);
 
+        // 4) Ahora flatItems se actualiza correctamente, pues usa localItemPayments
         setSelectedItems([]);
         setAmountToPay(0);
 
-        // 5) Si ya no queda ninguno, muestro confirm
-        if (unpaidCount === itemIdsToPay.length) {
+        // 5) Y ya puedes preguntar si no queda nada pendiente:
+        const remainingUnpaid = flatItems.filter(i => !i.paid).length;
+        if (remainingUnpaid === 0) {
             setShowCloseConfirm(true);
         }
 
