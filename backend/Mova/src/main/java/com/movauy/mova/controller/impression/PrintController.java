@@ -45,6 +45,11 @@ public class PrintController {
             @RequestHeader("X-Branch-Id") Long branchId,
             @RequestHeader("X-Device-Id") Long deviceId
     ) {
+        log.info("[printOrder] DTO.id={} total={} method={} items={}",
+                orderDto.getId(),
+                orderDto.getTotalAmount(),
+                orderDto.getPaymentMethod(),
+                orderDto.getItems());
         Branch b = branchService.findById(branchId);
 
         if (!b.isEnablePrinting()) {
@@ -79,6 +84,7 @@ public class PrintController {
                 .collect(Collectors.toList());
         orderDto.setItems(items);
         orderDto.setCompanyName(b.getCompany().getName());
+
         log.debug("[printOrder] X-Branch-Id={}  X-Device-Id={}", branchId, deviceId);
         sendAndLog(orderDto, deviceId, "printOrder");
         return ResponseEntity.accepted().build();
