@@ -10,7 +10,7 @@ async function ensureDeviceId() {
 }
 
 export async function printOrder(order) {
-  console.log("▶ [printOrder] payload recibido:", order, JSON.stringify(order, null, 2));
+  console.log("▶ printOrder payload:", order);
   const token = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
   const deviceId = await ensureDeviceId();
@@ -54,7 +54,7 @@ export async function printOrder(order) {
 }
 
 export async function printItemsReceipt(orderDto) {
-  console.log("LO QUE SE ESTA MANDANDO EN PRINTITEMSRECIPT:" + orderDto, orderDto);
+  console.log("▶ printItemsReceipt payload:", orderDto);
   const token = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
   const deviceId = localStorage.getItem("deviceId");

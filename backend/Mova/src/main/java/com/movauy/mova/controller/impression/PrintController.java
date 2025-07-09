@@ -84,7 +84,11 @@ public class PrintController {
                 .collect(Collectors.toList());
         orderDto.setItems(items);
         orderDto.setCompanyName(b.getCompany().getName());
-
+        log.info("[printOrder2] DTO.id={} total={} method={} items={}",
+                orderDto.getId(),
+                orderDto.getTotalAmount(),
+                orderDto.getPaymentMethod(),
+                orderDto.getItems());
         log.debug("[printOrder] X-Branch-Id={}  X-Device-Id={}", branchId, deviceId);
         sendAndLog(orderDto, deviceId, "printOrder");
         return ResponseEntity.accepted().build();
