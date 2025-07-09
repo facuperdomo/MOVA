@@ -133,8 +133,17 @@ public class PrintController {
                 })
                 .collect(Collectors.toList());
         dto.setItems(fixedItems);
-        log.info("EL DTO QUE SE ESTA MANDANDO ES ESTE " + dto);
-        log.info("LOS ITEMS SON ESTOS " + fixedItems);
+        log.info("[printItemsReceipt] DTO preparado para impresión:");
+        log.info("ID Venta: {}", dto.getId());
+        log.info("Fecha: {}", dto.getDateTime());
+        log.info("Método de pago: {}", dto.getPaymentMethod());
+        log.info("Monto total: {}", dto.getTotalAmount());
+        log.info("Sucursal: {} ({}) - {}", dto.getBranchName(), dto.getBranchRut(), dto.getBranchAddress());
+        log.info("Empresa: {}", dto.getCompanyName());
+        log.info("Ítems:");
+        dto.getItems().forEach(i
+                -> log.info(" - {} x{} @ {}", i.getName(), i.getQuantity(), i.getUnitPrice())
+        );
         // 3–5) Generar ticket, loguear y enviar
         sendAndLog(dto, deviceId, "printItemsReceipt");
         return ResponseEntity.noContent().build();
