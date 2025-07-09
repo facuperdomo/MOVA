@@ -54,7 +54,7 @@ export async function printOrder(order) {
 }
 
 export async function printItemsReceipt(orderDto) {
-  console.log("▶ Enviando impresión de ítems, payload:", orderDto);
+  console.log("LO QUE SE ESTA MANDANDO EN PRINTITEMSRECIPT:" + orderDto, orderDto);
   const token = localStorage.getItem("token");
   const branchId = localStorage.getItem("branchId");
   const deviceId = localStorage.getItem("deviceId");

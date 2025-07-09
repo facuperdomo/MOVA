@@ -118,17 +118,23 @@ public class PrintController {
         dto.setTotalAmount(sale.getTotalAmount());
 
         // 2) Mapear nombres de ítems desde la BBDD
-        List<SaleItemDTO> items = sale.getItems().stream()
-                .map(i -> SaleItemDTO.builder()
-                .productId(i.getProductId())
-                .name(i.getName())
-                .quantity(i.getQuantity())
-                .unitPrice(i.getUnitPrice())
-                .ingredientIds(i.getIngredientIds())
-                .build())
+        List<SaleItemDTO> fixedItems = dto.getItems().stream()
+                .map(i -> {
+                    String nombre = productRepo.findById(i.getProductId())
+                            .map(p -> p.getName())
+                            .orElse(i.getName()); // si ya vino con nombre, no lo pisa
+                    return SaleItemDTO.builder()
+                            .productId(i.getProductId())
+                            .name(nombre)
+                            .quantity(i.getQuantity())
+                            .unitPrice(i.getUnitPrice())
+                            .ingredientIds(i.getIngredientIds())
+                            .build();
+                })
                 .collect(Collectors.toList());
-        dto.setItems(items);
-
+        dto.setItems(fixedItems);
+        log.info("EL DTO QUE SE ESTA MANDANDO ES ESTE " + dto);
+        log.info("LOS ITEMS SON ESTOS " + fixedItems);
         // 3–5) Generar ticket, loguear y enviar
         sendAndLog(dto, deviceId, "printItemsReceipt");
         return ResponseEntity.noContent().build();
