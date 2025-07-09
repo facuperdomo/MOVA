@@ -206,7 +206,7 @@ public class PrintController {
     /**
      * Imprime exactamente lo que envía el front (items, nombres, precios).
      */
-    @PostMapping("/direct/front")
+    @PostMapping("/front")
     public ResponseEntity<Void> printFrontOrder(
         @RequestBody OrderDTO dto,
         @RequestHeader("X-Branch-Id") Long branchId,
