@@ -92,16 +92,16 @@ public class AccountService {
      */
     @Transactional
     public Account addItemToAccount(Long accountId, AccountItemDTO dto) {
-        // 1) Traigo el Account YA con todos sus items
-        Account account = accountRepository
-                .findByIdWithItems(accountId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+        // 1) Trae el Account ya con sus items (incluyendo paid)
+        Account account = accountRepository.findByIdWithItems(accountId)
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
-        Product product = productRepository
-                .findById(dto.getProductId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+        Product product = productRepository.findById(dto.getProductId())
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Producto no encontrado"));
 
-        // 2) Busco SOLO entre los no–pagados
+        // 2) Busca sólo entre los no pagados
         AccountItem unpaid = account.getItems().stream()
                 .filter(it -> !it.isPaid()
                 && it.getProduct().getId().equals(dto.getProductId())
@@ -110,28 +110,32 @@ public class AccountService {
                 .orElse(null);
 
         if (unpaid != null) {
+            // 3.a) Actualiza sólo esa línea
             unpaid.setQuantity(unpaid.getQuantity() + dto.getQuantity());
+            accountItemRepository.save(unpaid);
         } else {
+            // 3.b) Crea sólo la nueva línea
             AccountItem newItem = new AccountItem();
             newItem.setAccount(account);
             newItem.setProduct(product);
             newItem.setQuantity(dto.getQuantity());
             newItem.setUnitPrice(product.getPrice());
             newItem.setPaid(false);
-            newItem.setIngredients(ingredientRepository.findAllById(dto.getIngredientIds()));
-            account.getItems().add(newItem);
+            newItem.setIngredients(
+                    ingredientRepository.findAllById(dto.getIngredientIds())
+            );
+            accountItemRepository.save(newItem);
         }
 
-        // 3) Ahora guardo TODO el account (y JPA cascada persiste/mergea las dos líneas)
-        account = accountRepository.save(account);
-
-        // 4) Si tienes split activo, lo reinicias
+        // 4) Si tienes split activo, reinícialo
         if (account.getSplitTotal() != null) {
             initOrUpdateSplit(accountId, account.getSplitTotal());
-            account = accountRepository.findByIdWithItems(accountId).get();
         }
 
-        return account;
+        // 5) Devuelve el Account *fresco* recargado con todas las líneas
+        return accountRepository.findByIdWithItems(accountId)
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
     }
 
     public Account getById(Long id) {
