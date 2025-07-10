@@ -14,7 +14,10 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     List<Account> findByBranchAndClosed(Branch branch, boolean closed);
 
-    @EntityGraph(attributePaths = "items")
+    /**
+     * Trae la cuenta, todas sus líneas y cada línea con sus ingredients.
+     */
+    @EntityGraph(attributePaths = {"items", "items.ingredients"})
     @Query("select a from Account a where a.id = :id")
-    Optional<Account> findByIdWithItems(@Param("id") Long id);
+    Optional<Account> findByIdWithItemsAndIngredients(@Param("id") Long id);
 }

@@ -92,35 +92,38 @@ public class AccountService {
      */
     @Transactional
     public Account addItemToAccount(Long accountId, AccountItemDTO dto) {
-        // 1) Trae el Account ya con sus items (incluyendo paid)
-        Account account = accountRepository.findByIdWithItems(accountId)
+        // 1) Cargo la cuenta CON sus items e ingredients
+        Account account = accountRepository
+                .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
-        // 2) Resuelve el Product
+        // 2) Cargo el producto y la lista de ingredientes
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Producto no encontrado"));
+        List<Ingredient> ingredients = ingredientRepository.findAllById(dto.getIngredientIds());
 
-        // 3) Siempre crea una nueva línea sin tocar las existentes
-        AccountItem newItem = new AccountItem();
-        newItem.setAccount(account);
-        newItem.setProduct(product);
-        newItem.setQuantity(dto.getQuantity());
-        newItem.setUnitPrice(product.getPrice());
-        newItem.setPaid(false);
-        newItem.setIngredients(
-                ingredientRepository.findAllById(dto.getIngredientIds())
-        );
-        accountItemRepository.save(newItem);
+        // 3) Por cada unidad pedida, creo UNA línea independiente con quantity = 1
+        for (int i = 0; i < dto.getQuantity(); i++) {
+            AccountItem single = new AccountItem();
+            single.setAccount(account);
+            single.setProduct(product);
+            single.setQuantity(1);
+            single.setUnitPrice(product.getPrice());
+            single.setPaid(false);
+            single.setIngredients(ingredients);
+            accountItemRepository.save(single);
+        }
 
-        // 4) Si había un split activo, reinícialo
+        // 4) Si hay un split activo, reinícialo
         if (account.getSplitTotal() != null) {
             initOrUpdateSplit(accountId, account.getSplitTotal());
         }
 
-        // 5) Devuelve el Account recargado, con todas las líneas intactas
-        return accountRepository.findByIdWithItems(accountId)
+        // 5) Recargo la cuenta con sus líneas + ingredientes y devuelvo
+        return accountRepository
+                .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
     }

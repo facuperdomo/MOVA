@@ -49,20 +49,23 @@ export default function PaymentOptionsModal({
 
     useEffect(() => {
         if (step === "products") {
+            // 1) Reseteo estado UI
             setShowCloseConfirm(false);
+            setSelectedItems([]);
+
+            // 2) Traigo SIEMPRE el estado más actual
             (async () => {
                 const flat = await customFetch(
                     `${API_URL}/api/accounts/${accountId}/unit-items`
                 );
-                // 🎯 añade un unitId único combinando itemId + índice
                 const withUnitId = flat.map((u, idx) => ({
                     ...u,
                     unitId: `${u.itemId}-${idx}`
                 }));
                 setUnitItems(withUnitId);
-            })()
+            })();
         }
-    }, [step, accountId])
+    }, [step, accountId, items]);
 
     const flatItems = useMemo(
         () => unitItems.map(u => ({

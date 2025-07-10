@@ -193,7 +193,7 @@ public class AccountController {
 
     @GetMapping("/{accountId}/unit-items")
     public ResponseEntity<List<UnitItemDTO>> getUnitItems(@PathVariable Long accountId) {
-        Account account = accountRepository.findByIdWithItems(accountId)
+        Account account = accountRepository.findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
