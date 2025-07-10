@@ -41,8 +41,10 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,8 +104,9 @@ public class AccountService {
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Producto no encontrado"));
-        List<Ingredient> ingredients = ingredientRepository.findAllById(dto.getIngredientIds());
-
+        List<Ingredient> ingredientList = ingredientRepository.findAllById(dto.getIngredientIds());
+// ...y los conviertes a Set
+        Set<Ingredient> ingredients = new HashSet<>(ingredientList);
         // 3) Por cada unidad pedida, creo UNA línea independiente con quantity = 1
         for (int i = 0; i < dto.getQuantity(); i++) {
             AccountItem single = new AccountItem();

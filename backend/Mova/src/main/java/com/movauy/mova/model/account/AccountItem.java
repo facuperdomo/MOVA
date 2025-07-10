@@ -5,8 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.movauy.mova.model.ingredient.Ingredient;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 @Entity
@@ -39,6 +38,6 @@ public class AccountItem {
             joinColumns = @JoinColumn(name = "account_item_id"),
             inverseJoinColumns = @JoinColumn(name = "ingredient_id")
     )
-    private List<Ingredient> ingredients = new ArrayList<>();
+    private Set<Ingredient> ingredients = new HashSet<>();
 }
 
