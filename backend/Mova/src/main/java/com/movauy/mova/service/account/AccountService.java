@@ -92,46 +92,46 @@ public class AccountService {
      */
     @Transactional
     public Account addItemToAccount(Long accountId, AccountItemDTO dto) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
-        Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Producto no encontrado"));
+        // 1) Traigo el Account YA con todos sus items
+        Account account = accountRepository
+                .findByIdWithItems(accountId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
-        // 1) Intento reutilizar línea existente no pagada
-        AccountItem existing = account.getItems().stream()
-                .filter(it -> it.getProduct().getId().equals(dto.getProductId())
-                && !it.isPaid()
+        Product product = productRepository
+                .findById(dto.getProductId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+
+        // 2) Busco SOLO entre los no–pagados
+        AccountItem unpaid = account.getItems().stream()
+                .filter(it -> !it.isPaid()
+                && it.getProduct().getId().equals(dto.getProductId())
                 && sameIngredientSet(it, dto.getIngredientIds()))
                 .findFirst()
                 .orElse(null);
 
-        if (existing != null) {
-            // Aumento cantidad y persisto sólo este ítem
-            existing.setQuantity(existing.getQuantity() + dto.getQuantity());
-            accountItemRepository.save(existing);
+        if (unpaid != null) {
+            unpaid.setQuantity(unpaid.getQuantity() + dto.getQuantity());
         } else {
-            // Creo un nuevo ítem y lo persisto individualmente
-            AccountItem item = new AccountItem();
-            item.setAccount(account);
-            item.setProduct(product);
-            item.setQuantity(dto.getQuantity());
-            item.setUnitPrice(product.getPrice());
-            List<Ingredient> kept = ingredientRepository.findAllById(dto.getIngredientIds());
-            item.setIngredients(kept);
-            accountItemRepository.save(item);
+            AccountItem newItem = new AccountItem();
+            newItem.setAccount(account);
+            newItem.setProduct(product);
+            newItem.setQuantity(dto.getQuantity());
+            newItem.setUnitPrice(product.getPrice());
+            newItem.setPaid(false);
+            newItem.setIngredients(ingredientRepository.findAllById(dto.getIngredientIds()));
+            account.getItems().add(newItem);
         }
 
-        // 2) Si había un split activo, reiniciamos splitRemaining
+        // 3) Ahora guardo TODO el account (y JPA cascada persiste/mergea las dos líneas)
+        account = accountRepository.save(account);
+
+        // 4) Si tienes split activo, lo reinicias
         if (account.getSplitTotal() != null) {
             initOrUpdateSplit(accountId, account.getSplitTotal());
+            account = accountRepository.findByIdWithItems(accountId).get();
         }
 
-        // 3) Recargamos y devolvemos el estado de la cuenta actualizado
-        return accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+        return account;
     }
 
     public Account getById(Long id) {
