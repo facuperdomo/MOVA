@@ -94,37 +94,51 @@ public class AccountService {
      */
     @Transactional
     public Account addItemToAccount(Long accountId, AccountItemDTO dto) {
-        // 1) Cargo la cuenta CON sus items e ingredients
+        // 1) Cargo cuenta con sus items+ingredients
         Account account = accountRepository
                 .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
-        // 2) Cargo el producto y la lista de ingredientes
+        // 2) Cargo producto e ingredientes
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Producto no encontrado"));
-        List<Ingredient> ingredientList = ingredientRepository.findAllById(dto.getIngredientIds());
-// ...y los conviertes a Set
-        Set<Ingredient> ingredients = new HashSet<>(ingredientList);
-        // 3) Por cada unidad pedida, creo UNA línea independiente con quantity = 1
-        for (int i = 0; i < dto.getQuantity(); i++) {
-            AccountItem single = new AccountItem();
-            single.setAccount(account);
-            single.setProduct(product);
-            single.setQuantity(1);
-            single.setUnitPrice(product.getPrice());
-            single.setPaid(false);
-            single.setIngredients(ingredients);
-            accountItemRepository.save(single);
+        // convierto la lista a Set para comparar facilmente
+        Set<Ingredient> ingredients = new HashSet<>(
+                ingredientRepository.findAllById(dto.getIngredientIds())
+        );
+
+        // 3) Busco una línea existente NO pagada con el mismo producto+ingredientes
+        AccountItem unpaid = account.getItems().stream()
+                .filter(it -> !it.isPaid()
+                && it.getProduct().getId().equals(dto.getProductId())
+                && it.getIngredients().equals(ingredients))
+                .findFirst()
+                .orElse(null);
+
+        if (unpaid != null) {
+            // 3.a) Si existe, sólo le sumo la cantidad
+            unpaid.setQuantity(unpaid.getQuantity() + dto.getQuantity());
+            accountItemRepository.save(unpaid);
+        } else {
+            // 3.b) Si no existe, creo nueva línea con toda la cantidad
+            AccountItem newItem = new AccountItem();
+            newItem.setAccount(account);
+            newItem.setProduct(product);
+            newItem.setQuantity(dto.getQuantity());
+            newItem.setUnitPrice(product.getPrice());
+            newItem.setPaid(false);
+            newItem.setIngredients(ingredients);
+            accountItemRepository.save(newItem);
         }
 
-        // 4) Si hay un split activo, reinícialo
+        // 4) Si hay split activo, reinícialo
         if (account.getSplitTotal() != null) {
             initOrUpdateSplit(accountId, account.getSplitTotal());
         }
 
-        // 5) Recargo la cuenta con sus líneas + ingredientes y devuelvo
+        // 5) Devuelvo la cuenta recargada con items+ingredients
         return accountRepository
                 .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
