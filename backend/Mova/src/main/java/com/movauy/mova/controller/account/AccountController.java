@@ -14,6 +14,7 @@ import com.movauy.mova.model.account.Account;
 import com.movauy.mova.model.account.AccountItem;
 import com.movauy.mova.model.ingredient.Ingredient;
 import com.movauy.mova.service.account.AccountService;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -189,20 +190,22 @@ public class AccountController {
 
     @GetMapping("/{accountId}/unit-items")
     public ResponseEntity<List<UnitItemDTO>> getUnitItems(@PathVariable Long accountId) {
-        // Reúnes los AccountItemPaymentDTO actuales:
-        List<AccountItemPaymentDTO> info = accountService.getAccountItemsWithPaymentInfo(accountId);
-        // Ahora, desagrega por unidad:
-        List<UnitItemDTO> flat = info.stream().flatMap(dto -> {
-            return IntStream.range(0, dto.getQuantity())
-                    .mapToObj(i -> new UnitItemDTO(
-                    dto.getItemId(),
-                    dto.getProductId(),
-                    dto.getProductName(),
-                    dto.getUnitPrice(),
-                    i < dto.getPaidQty() // las primeras paidQty unidades son “paid”
-            ));
-        }).collect(Collectors.toList());
+        Account account = accountService.getById(accountId);
+
+        List<UnitItemDTO> flat = account.getItems().stream()
+                .flatMap(item
+                        -> IntStream.range(0, item.getQuantity())
+                        .mapToObj(i -> new UnitItemDTO(
+                        item.getId(),
+                        item.getProduct().getId(),
+                        item.getProduct().getName(),
+                        BigDecimal.valueOf(item.getUnitPrice()),
+                        item.isPaid()
+                ))
+                )
+                .collect(Collectors.toList());
+
         return ResponseEntity.ok(flat);
     }
-    
+
 }
