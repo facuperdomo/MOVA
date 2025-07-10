@@ -229,15 +229,6 @@ export default function PaymentOptionsModal({
             .flatMap(([id, cnt]) => Array(cnt).fill(Number(id)));
         if (itemIdsToPay.length === 0) return;
 
-        await customFetch(
-            `${API_URL}/api/accounts/${accountId}/payments/items`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ itemIds: itemIdsToPay, payerName: payerName || "–" })
-            }
-        );
-
         // 1) Envías el pago de ítems
         const orderDTO = await customFetch(
             `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,

@@ -93,18 +93,26 @@ public class AccountService {
     @Transactional
     public Account addItemToAccount(Long accountId, AccountItemDTO dto) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
         Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Producto no encontrado"));
 
-        // 1) Si ya había una línea sin pagar, apilo ahí, si no la creo
+        // 1) Intento reutilizar línea existente no pagada
         AccountItem existing = account.getItems().stream()
-                .filter(it -> it.getProduct().getId().equals(dto.getProductId()) && !it.isPaid() && sameIngredientSet(it, dto.getIngredientIds()))
-                .findFirst().orElse(null);
+                .filter(it -> it.getProduct().getId().equals(dto.getProductId())
+                && !it.isPaid()
+                && sameIngredientSet(it, dto.getIngredientIds()))
+                .findFirst()
+                .orElse(null);
 
         if (existing != null) {
+            // Aumento cantidad y persisto sólo este ítem
             existing.setQuantity(existing.getQuantity() + dto.getQuantity());
+            accountItemRepository.save(existing);
         } else {
+            // Creo un nuevo ítem y lo persisto individualmente
             AccountItem item = new AccountItem();
             item.setAccount(account);
             item.setProduct(product);
@@ -112,20 +120,18 @@ public class AccountService {
             item.setUnitPrice(product.getPrice());
             List<Ingredient> kept = ingredientRepository.findAllById(dto.getIngredientIds());
             item.setIngredients(kept);
-            account.getItems().add(item);
+            accountItemRepository.save(item);
         }
 
-        Account saved = accountRepository.save(account);
-
-        // 2) Si había un split activo, lo reiniciamos por completo:
-        if (saved.getSplitTotal() != null) {
-            // esto fuerza splitRemaining = splitTotal
-            initOrUpdateSplit(accountId, saved.getSplitTotal());
-            // recargo el estado
-            saved = accountRepository.findById(accountId).get();
+        // 2) Si había un split activo, reiniciamos splitRemaining
+        if (account.getSplitTotal() != null) {
+            initOrUpdateSplit(accountId, account.getSplitTotal());
         }
 
-        return saved;
+        // 3) Recargamos y devolvemos el estado de la cuenta actualizado
+        return accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
     }
 
     public Account getById(Long id) {
