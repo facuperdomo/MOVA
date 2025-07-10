@@ -94,51 +94,36 @@ public class AccountService {
      */
     @Transactional
     public Account addItemToAccount(Long accountId, AccountItemDTO dto) {
-        // 1) Cargo cuenta con sus items+ingredients
         Account account = accountRepository
                 .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
-        // 2) Cargo producto e ingredientes
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Producto no encontrado"));
-        // convierto la lista a Set para comparar facilmente
+
         Set<Ingredient> ingredients = new HashSet<>(
                 ingredientRepository.findAllById(dto.getIngredientIds())
         );
 
-        // 3) Busco una línea existente NO pagada con el mismo producto+ingredientes
-        AccountItem unpaid = account.getItems().stream()
-                .filter(it -> !it.isPaid()
-                && it.getProduct().getId().equals(dto.getProductId())
-                && it.getIngredients().equals(ingredients))
-                .findFirst()
-                .orElse(null);
-
-        if (unpaid != null) {
-            // 3.a) Si existe, sólo le sumo la cantidad
-            unpaid.setQuantity(unpaid.getQuantity() + dto.getQuantity());
-            accountItemRepository.save(unpaid);
-        } else {
-            // 3.b) Si no existe, creo nueva línea con toda la cantidad
-            AccountItem newItem = new AccountItem();
-            newItem.setAccount(account);
-            newItem.setProduct(product);
-            newItem.setQuantity(dto.getQuantity());
-            newItem.setUnitPrice(product.getPrice());
-            newItem.setPaid(false);
-            newItem.setIngredients(ingredients);
-            accountItemRepository.save(newItem);
+        // Crea N filas, cada una qty=1 y paid=false
+        for (int i = 0; i < dto.getQuantity(); i++) {
+            AccountItem it = new AccountItem();
+            it.setAccount(account);
+            it.setProduct(product);
+            it.setQuantity(1);
+            it.setUnitPrice(product.getPrice());
+            it.setPaid(false);
+            it.setIngredients(ingredients);
+            accountItemRepository.save(it);
         }
 
-        // 4) Si hay split activo, reinícialo
+        // Reinicia split si aplica
         if (account.getSplitTotal() != null) {
             initOrUpdateSplit(accountId, account.getSplitTotal());
         }
 
-        // 5) Devuelvo la cuenta recargada con items+ingredients
         return accountRepository
                 .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -536,80 +521,36 @@ public class AccountService {
      */
     @Transactional
     public void payItemsAndRecordPayment(Long accountId, List<Long> itemIds, String payerName) {
-        // 1) Buscamos la cuenta con todos sus ítems
-        Account account = accountRepository.findById(accountId)
+        Account account = accountRepository
+                .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND,
-                "Cuenta no encontrada: " + accountId
-        ));
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
-        // 2) Contamos cuántas veces aparece cada itemId
-        Map<Long, Long> ocurrencias = itemIds.stream()
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        BigDecimal total = BigDecimal.ZERO;
 
-        BigDecimal totalAmountToPay = BigDecimal.ZERO;
-
-        // 3) Procesamos cada línea
-        for (Map.Entry<Long, Long> entry : ocurrencias.entrySet()) {
-            Long itemId = entry.getKey();
-            Long unidadesAPagar = entry.getValue();
-
-            // 3.a) Localizamos el AccountItem en la cuenta
-            AccountItem originalItem = account.getItems().stream()
-                    .filter(ai -> ai.getId().equals(itemId))
+        // Marca como pagadas sólo las filas que te pasan
+        for (Long id : itemIds) {
+            AccountItem it = account.getItems().stream()
+                    .filter(ai -> ai.getId().equals(id) && !ai.isPaid())
                     .findFirst()
                     .orElseThrow(() -> new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "El ítem " + itemId + " no existe en la cuenta " + accountId
-            ));
-
-            int cantidadOriginal = originalItem.getQuantity();
-            BigDecimal precioUnitario = BigDecimal.valueOf(originalItem.getUnitPrice());
-
-            if (unidadesAPagar < cantidadOriginal) {
-                // — Caso A: Pago parcial de esta línea —
-
-                // 1) Reduzco la cantidad de la línea original
-                originalItem.setQuantity(cantidadOriginal - unidadesAPagar.intValue());
-                originalItem.setPaid(false);
-
-                // 2) Creo una nueva línea ya marcada como pagada
-                AccountItem lineaNuevaPagada = AccountItem.builder()
-                        .account(account)
-                        .product(originalItem.getProduct())
-                        .quantity(unidadesAPagar.intValue())
-                        .unitPrice(originalItem.getUnitPrice())
-                        .paid(true)
-                        .build();
-
-                account.getItems().add(lineaNuevaPagada);
-
-                // 3) Acumulo el subtotal
-                BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(unidadesAPagar));
-                totalAmountToPay = totalAmountToPay.add(subtotal);
-
-            } else {
-                // — Caso B: Pago de toda la línea —
-
-                originalItem.setPaid(true);
-
-                BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(cantidadOriginal));
-                totalAmountToPay = totalAmountToPay.add(subtotal);
-            }
+                    "Ítem no existe o ya está pagado: " + id));
+            it.setPaid(true);
+            accountItemRepository.save(it);
+            total = total.add(BigDecimal.valueOf(it.getUnitPrice()));
         }
 
-        // 4) Registro el pago global en PaymentAccount
+        // Graba el pago global
         PaymentAccount pago = new PaymentAccount();
         pago.setAccount(account);
-        pago.setAmount(totalAmountToPay);
-        pago.setPayerName((payerName == null || payerName.isBlank()) ? "–" : payerName);
+        pago.setAmount(total);
+        pago.setPayerName(payerName == null || payerName.isBlank() ? "–" : payerName);
         pago.setPaidAt(LocalDateTime.now());
-        pago.setStatus(Status.PARTIALLY_PAID); // o PAID_IN_FULL según tu lógica
-
+        pago.setStatus(total.compareTo(BigDecimal.ZERO) > 0
+                ? Status.PARTIALLY_PAID
+                : Status.PAID_IN_FULL);
         paymentAccountRepository.save(pago);
-
-        // 5) Persistimos cambios en la cuenta y sus ítems
-        accountRepository.save(account);
     }
 
     /**
