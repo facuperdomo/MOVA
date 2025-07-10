@@ -14,7 +14,6 @@ export default function PaymentOptionsModal({
     // `itemPayments` puede venir como:
     // 1) [{ itemId: 123, quantity: 2, paidQty: 2 }, …]
     // 2) [123, 124, …]  (sólo IDs)
-    itemPayments = [],
     // El total actual de la cuenta
     total: currentTotal,
     onClose,
@@ -46,21 +45,35 @@ export default function PaymentOptionsModal({
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState("");
 
-    const [localItemPayments, setLocalItemPayments] = useState(itemPayments);
     const [unitItems, setUnitItems] = useState([]);
 
-    // 2) Construimos `flatItems` a partir de `items`, marcando sólo las primeras `paidQtyMap.get(id)` unidades de cada línea
-    const flatItems = React.useMemo(
+    useEffect(() => {
+        if (step === "products") {
+            (async () => {
+                const flat = await customFetch(
+                    `${API_URL}/api/accounts/${accountId}/unit-items`
+                );
+                // 🎯 añade un unitId único combinando itemId + índice
+                const withUnitId = flat.map((u, idx) => ({
+                    ...u,
+                    unitId: `${u.itemId}-${idx}`
+                }));
+                setUnitItems(withUnitId);
+            })()
+        }
+    }, [step, accountId])
+
+    const flatItems = useMemo(
         () => unitItems.map(u => ({
+            unitId: u.unitId,
             id: u.itemId,
             productName: u.productName,
             price: u.unitPrice,
-            ingredients: u.ingredients || [], // si lo envías
             quantity: 1,
             paid: u.paid,
         })),
         [unitItems]
-    );
+    )
 
     // —————————————————————————————————————————————————————————————————————
     // 4) Si el paso es “products”, sumamos los precios de los índices que el usuario marcó
@@ -109,16 +122,6 @@ export default function PaymentOptionsModal({
         }
     }, [flatItems, step]);
 
-    useEffect(() => {
-        if (step === "products") {
-            (async () => {
-                const flat = await customFetch(
-                    `${API_URL}/api/accounts/${accountId}/unit-items`
-                );
-                setUnitItems(flat);
-            })();
-        }
-    }, [step, accountId]);
     // ——————————————————————————————
     // 5bis) Pago “full” (total) (sin cerrar)
     // ——————————————————————————————
@@ -215,8 +218,25 @@ export default function PaymentOptionsModal({
     };
 
     const handleProductsPay = async (method) => {
-        const itemIdsToPay = selectedItems.map(idx => flatItems[idx]?.id).filter(Boolean);
+        const counts = selectedItems.reduce((acc, idx) => {
+            // ▶️ usa flatItems[idx].id, que es donde guardaste el itemId
+            const id = flatItems[idx].id;
+            acc[id] = (acc[id] || 0) + 1;
+            return acc;
+        }, {});
+        // 2) Reconstruye el array duplicando cada id según su count
+        const itemIdsToPay = Object.entries(counts)
+            .flatMap(([id, cnt]) => Array(cnt).fill(Number(id)));
         if (itemIdsToPay.length === 0) return;
+
+        await customFetch(
+            `${API_URL}/api/accounts/${accountId}/payments/items`,
+            {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ itemIds: itemIdsToPay, payerName: payerName || "–" })
+            }
+        );
 
         // 1) Envías el pago de ítems
         const orderDTO = await customFetch(
@@ -234,12 +254,14 @@ export default function PaymentOptionsModal({
         // 3) Espera a que el padre recargue items y pagos
         await onPaidWithoutClose();
 
-        // 3) Después de onPaidWithoutClose(), recarga la lista real de pagos por ítem:
-        const updated = await customFetch(
-            `${API_URL}/api/accounts/${accountId}/items-with-payment`
+        const raw = await customFetch(
+            `${API_URL}/api/accounts/${accountId}/unit-items`
         );
-        // items-with-payment devuelve [{ itemId, quantity, paidQty }, …]
-        setLocalItemPayments(updated);
+        const withUnitId = raw.map((u, idx) => ({
+            ...u,
+            unitId: `${u.itemId}-${idx}`
+        }));
+        setUnitItems(withUnitId);
 
         // 4) Ahora flatItems se actualiza correctamente, pues usa localItemPayments
         setSelectedItems([]);
@@ -451,7 +473,16 @@ export default function PaymentOptionsModal({
                                 ) : (
                                     <>
                                         <button onClick={() => handlePay("CASH")}>Efectivo</button>
-                                        <button onClick={() => { setPayMethod("QR"); setShowQR(true); }}>QR</button>
+                                        {!showQR ? (
+                                            <button onClick={() => { setPayMethod("QR"); setShowQR(true); }}>
+                                                QR
+                                            </button>
+                                        ) : (
+                                            <PaymentQR
+                                                amount={amountToPay}
+                                                onPaymentSuccess={() => handleFullPay(payMethod)}
+                                            />
+                                        )}
                                     </>
                                 )}
                             </>
@@ -522,7 +553,7 @@ export default function PaymentOptionsModal({
 
                                 <ul className="pm-product-list">
                                     {flatItems.map((i, idx) => (
-                                        <li key={`${i.id}-${idx}`}>
+                                        <li key={i.unitId}>
                                             <label>
                                                 <input
                                                     type="checkbox"

@@ -519,26 +519,25 @@ public class AccountService {
      */
     @Transactional
     public void payItemsAndRecordPayment(Long accountId, List<Long> itemIds, String payerName) {
-        // 1) Buscamos la cuenta completa
+        // 1) Buscamos la cuenta con todos sus ítems
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND,
                 "Cuenta no encontrada: " + accountId
         ));
 
-        // 2) Calculamos cuántas veces aparece cada itemId en la lista
-        //    (puede venir repetido si el usuario marcó la misma “unidad” varias veces)
+        // 2) Contamos cuántas veces aparece cada itemId
         Map<Long, Long> ocurrencias = itemIds.stream()
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
         BigDecimal totalAmountToPay = BigDecimal.ZERO;
 
-        // 3) Recorremos cada itemId y la cantidad de unidades que el usuario quiere pagar
+        // 3) Procesamos cada línea
         for (Map.Entry<Long, Long> entry : ocurrencias.entrySet()) {
             Long itemId = entry.getKey();
             Long unidadesAPagar = entry.getValue();
 
-            // 3.a) Buscamos el AccountItem dentro de la lista de la cuenta
+            // 3.a) Localizamos el AccountItem en la cuenta
             AccountItem originalItem = account.getItems().stream()
                     .filter(ai -> ai.getId().equals(itemId))
                     .findFirst()
@@ -547,68 +546,52 @@ public class AccountService {
                     "El ítem " + itemId + " no existe en la cuenta " + accountId
             ));
 
-            int cantidadOriginal = originalItem.getQuantity();          // ej: 2
-            BigDecimal precioUnitario = BigDecimal.valueOf(originalItem.getUnitPrice()); // ej: 200
+            int cantidadOriginal = originalItem.getQuantity();
+            BigDecimal precioUnitario = BigDecimal.valueOf(originalItem.getUnitPrice());
 
             if (unidadesAPagar < cantidadOriginal) {
-                // ─────────────────────────────────────────────────────────────
-                // Caso A: El usuario paga SOLO parte de las unidades de esta línea.
-                //   Ejemplo: quantity=2, pero unidadesAPagar=1
-                //
-                // 1) Reducimos la línea original de cantidad:
-                originalItem.setQuantity(cantidadOriginal - unidadesAPagar.intValue());
-                //    Ahora quedará quantity = 2 - 1 = 1
-                originalItem.setPaid(false);
-                //    La línea original sigue sin estar “pagada en su totalidad”.
-                //    (Hibernate detectará este cambio al guardar la cuenta más abajo.)
+                // — Caso A: Pago parcial de esta línea —
 
-                // 2) Creamos una sub-línea nueva para las unidades que sí se pagaron:
+                // 1) Reduzco la cantidad de la línea original
+                originalItem.setQuantity(cantidadOriginal - unidadesAPagar.intValue());
+                originalItem.setPaid(false);
+
+                // 2) Creo una nueva línea ya marcada como pagada
                 AccountItem lineaNuevaPagada = AccountItem.builder()
                         .account(account)
                         .product(originalItem.getProduct())
-                        .quantity(unidadesAPagar.intValue()) // ej: 1 unidad pagada
+                        .quantity(unidadesAPagar.intValue())
                         .unitPrice(originalItem.getUnitPrice())
                         .paid(true)
                         .build();
 
-                //    Si tu entidad AccountItem tiene otros campos (por ejemplo
-                //    ingredientes), puedes copiarlos también:
-                //    lineaNuevaPagada.setIngredientIds(originalItem.getIngredientIds());
-                //    // …lo que corresponda según tu modelo.
-                //
                 account.getItems().add(lineaNuevaPagada);
 
-                // 3) Calculamos el monto que corresponde a esas unidades pagadas:
-                BigDecimal subtotal = precioUnitario.multiply(new BigDecimal(unidadesAPagar));
+                // 3) Acumulo el subtotal
+                BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(unidadesAPagar));
                 totalAmountToPay = totalAmountToPay.add(subtotal);
+
             } else {
-                // ─────────────────────────────────────────────────────────────
-                // Caso B: El usuario paga EXACTAMENTE toda la línea (unidadesAPagar == cantidadOriginal).
-                //
-                // 1) Marcamos la línea original como pagada al 100%:
+                // — Caso B: Pago de toda la línea —
+
                 originalItem.setPaid(true);
 
-                // 2) Calculamos el monto: quantity × unitPrice
-                BigDecimal subtotal = precioUnitario.multiply(new BigDecimal(cantidadOriginal));
+                BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(cantidadOriginal));
                 totalAmountToPay = totalAmountToPay.add(subtotal);
             }
         }
 
-        // 4) Grabamos un registro en PaymentAccount con la suma total de todo lo pagado:
+        // 4) Registro el pago global en PaymentAccount
         PaymentAccount pago = new PaymentAccount();
         pago.setAccount(account);
         pago.setAmount(totalAmountToPay);
         pago.setPayerName((payerName == null || payerName.isBlank()) ? "–" : payerName);
         pago.setPaidAt(LocalDateTime.now());
-        // Opcional: status PARTIALLY_PAID o PAID_IN_FULL según tu lógica.
-        pago.setStatus(Status.PARTIALLY_PAID);
+        pago.setStatus(Status.PARTIALLY_PAID); // o PAID_IN_FULL según tu lógica
 
         paymentAccountRepository.save(pago);
 
-        // 5) Finalmente salvamos la cuenta para que Hibernate persista:
-        //    • los cambios en originalItem.quantity (si hubo split parcial)
-        //    • o el cambio en originalItem.paid = true (si se pagó toda la línea)
-        //    • y que se inserte la nueva línea “lineaNuevaPagada” en la colección.
+        // 5) Persistimos cambios en la cuenta y sus ítems
         accountRepository.save(account);
     }
 

@@ -62,6 +62,8 @@ const AdminOptions = () => {
 
   const [branchUsers, setBranchUsers] = useState([]);   // todos los ADMIN/USER de la sucursal
 
+  const [enablePrinting, setEnablePrinting] = useState(true);
+
   const LOCAL_KEY = "selectedCashBoxId";
 
   useEffect(() => {
@@ -97,7 +99,15 @@ const AdminOptions = () => {
   }, [cashBoxes]);
 
   useEffect(() => {
-    if (!localStorage.getItem("deviceId")) {
+    const branchId = localStorage.getItem("branchId");
+    if (!branchId) return;
+    customFetch(`${API_URL}/api/branch/me`)
+      .then(b => setEnablePrinting(b.enablePrinting))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (!localStorage.getItem("deviceId") && enablePrinting) {
       // obtén branchId y token desde localStorage
       const branchId = localStorage.getItem("branchId");
       const token = localStorage.getItem("token");
@@ -340,7 +350,7 @@ const AdminOptions = () => {
 
   return (
     <div className="admin-options">
-      {showDeviceModal && (
+      {enablePrinting && showDeviceModal && ( 
         <SelectDeviceModal
           devices={devices}
           onSelect={(id) => {

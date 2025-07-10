@@ -105,7 +105,7 @@ const Dashboard = () => {
     const token = localStorage.getItem("token");
     const hasDevice = Boolean(localStorage.getItem("deviceId"));
 
-    if (branchId && !hasDevice) {
+    if (branchId && !hasDevice && enablePrinting) {
       customFetch(`${API_URL}/api/branches/${branchId}/devices`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -1150,7 +1150,7 @@ const Dashboard = () => {
 
   return (
     <div className="app-container">
-      {showDeviceModal && (
+      {enablePrinting && showDeviceModal && (
         <SelectDeviceModal
           devices={devices}
           onSelect={(id) => {
