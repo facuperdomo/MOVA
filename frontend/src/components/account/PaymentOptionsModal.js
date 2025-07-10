@@ -49,6 +49,7 @@ export default function PaymentOptionsModal({
 
     useEffect(() => {
         if (step === "products") {
+            setShowCloseConfirm(false);
             (async () => {
                 const flat = await customFetch(
                     `${API_URL}/api/accounts/${accountId}/unit-items`

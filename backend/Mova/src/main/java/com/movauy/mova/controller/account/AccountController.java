@@ -13,6 +13,7 @@ import com.movauy.mova.dto.UnitItemDTO;
 import com.movauy.mova.model.account.Account;
 import com.movauy.mova.model.account.AccountItem;
 import com.movauy.mova.model.ingredient.Ingredient;
+import com.movauy.mova.repository.account.AccountRepository;
 import com.movauy.mova.service.account.AccountService;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/accounts")
@@ -30,6 +32,7 @@ import org.springframework.http.HttpStatus;
 public class AccountController {
 
     private final AccountService accountService;
+    private final AccountRepository accountRepository;
 
     @PostMapping
     public ResponseEntity<AccountResponseDTO> createAccount(@RequestBody AccountCreateDTO dto) {
@@ -190,18 +193,19 @@ public class AccountController {
 
     @GetMapping("/{accountId}/unit-items")
     public ResponseEntity<List<UnitItemDTO>> getUnitItems(@PathVariable Long accountId) {
-        Account account = accountService.getById(accountId);
+        Account account = accountRepository.findByIdWithItems(accountId)
+                .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
         List<UnitItemDTO> flat = account.getItems().stream()
-                .flatMap(item
-                        -> IntStream.range(0, item.getQuantity())
-                        .mapToObj(i -> new UnitItemDTO(
-                        item.getId(),
-                        item.getProduct().getId(),
-                        item.getProduct().getName(),
-                        BigDecimal.valueOf(item.getUnitPrice()),
-                        item.isPaid()
-                ))
+                .flatMap(item -> IntStream.range(0, item.getQuantity())
+                .mapToObj(i -> new UnitItemDTO(
+                item.getId(),
+                item.getProduct().getId(),
+                item.getProduct().getName(),
+                BigDecimal.valueOf(item.getUnitPrice()),
+                item.isPaid()
+        ))
                 )
                 .collect(Collectors.toList());
 
