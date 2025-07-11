@@ -46,12 +46,13 @@ export default function LoginUser() {
     localStorage.setItem('role', data.role);
     localStorage.setItem('companyId', data.companyId);
     localStorage.setItem('isAdmin', data.role === 'ADMIN');
+    localStorage.setItem('userId', data.userId);
 
     // Redirigir según rol
     if (data.role === 'SUPERADMIN') navigate('/superadmin-dashboard', { replace: true });
-    else if (data.role === 'ADMIN') navigate('/admin-options',     { replace: true });
-    else if (data.role === 'USER') navigate('/dashboard',           { replace: true });
-    else if (data.role === 'KITCHEN') navigate('/kitchen-dashboard',{ replace: true });
+    else if (data.role === 'ADMIN') navigate('/admin-options', { replace: true });
+    else if (data.role === 'USER') navigate('/dashboard', { replace: true });
+    else if (data.role === 'KITCHEN') navigate('/kitchen-dashboard', { replace: true });
   };
 
   const loginAction = async e => {
@@ -88,7 +89,7 @@ export default function LoginUser() {
     try {
       await doLogin(false, branchId);
     } catch (error) {
-      const status    = error.status || error.data?.status;
+      const status = error.status || error.data?.status;
       const serverMsg = error.data?.message || error.message;
 
       if (status === 409) {
@@ -157,7 +158,7 @@ export default function LoginUser() {
         <div className="force-overlay">
           <div className="force-modal">
             <h3>Sesión Activa Detectada</h3>
-            <p>Ya hay otra sesión activa con este usuario.<br/>¿Cerrar la anterior y entrar aquí?</p>
+            <p>Ya hay otra sesión activa con este usuario.<br />¿Cerrar la anterior y entrar aquí?</p>
             <div className="force-buttons">
               <button
                 type="button"

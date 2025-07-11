@@ -131,6 +131,9 @@ public class AuthController {
         );
         User user = authService.getUserByUsername(request.getUsername());
 
+        // Prepara siempre el userId
+        Long userId = user.getId();
+        
         // 2) SUPERADMIN saltea la restricción de “sesión única”
         if (user.getRole() == Role.SUPERADMIN) {
             String newVersion = authService.rotateTokenVersion(user);
@@ -138,6 +141,7 @@ public class AuthController {
             claims.put("ver", newVersion);
             claims.put("role", user.getRole().name());
             claims.put("authType", "USER");
+            claims.put("userId", userId);
             String jwt = jwtService.generateToken(claims, user);
             return ResponseEntity.ok(
                     AuthResponse.builder()
