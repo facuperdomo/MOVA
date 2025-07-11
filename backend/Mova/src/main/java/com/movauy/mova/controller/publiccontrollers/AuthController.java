@@ -133,6 +133,7 @@ public class AuthController {
 
         // Prepara siempre el userId
         Long userId = user.getId();
+        logger.info("🔑 loginUser para username='{}' resolved userId={}", request.getUsername(), userId);
         
         // 2) SUPERADMIN saltea la restricción de “sesión única”
         if (user.getRole() == Role.SUPERADMIN) {
@@ -149,6 +150,7 @@ public class AuthController {
                             .role(user.getRole().name())
                             .branchId(null)
                             .companyId(null)
+                            .userId(userId)
                             .build()
             );
         }

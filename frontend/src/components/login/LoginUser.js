@@ -47,6 +47,7 @@ export default function LoginUser() {
     localStorage.setItem('companyId', data.companyId);
     localStorage.setItem('isAdmin', data.role === 'ADMIN');
     localStorage.setItem('userId', data.userId);
+    console.log("SE GUARDA EL USERID: ", data.userId);
 
     // Redirigir según rol
     if (data.role === 'SUPERADMIN') navigate('/superadmin-dashboard', { replace: true });
