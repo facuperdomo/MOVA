@@ -32,7 +32,7 @@ async function maybeRefreshToken() {
 }
 
 export const customFetch = async (path, options = {}) => {
-  const { skipRefresh = false, ...fetchOptions } = options;
+  const { skipRefresh = false, skipAuthForMp = false, ...fetchOptions } = options;
   const maybe = !skipRefresh ? await maybeRefreshToken() : null;
   const token = maybe || localStorage.getItem("token");
   const url = path.startsWith("http") ? path : `${API_URL}${path}`;
@@ -42,7 +42,7 @@ export const customFetch = async (path, options = {}) => {
     const isFormData = fetchOptions.body instanceof FormData;
     return {
       ...(!isFormData && { "Content-Type": "application/json" }),
-      ...(!isMercadoPago && authToken
+      ...(!skipAuthForMp && authToken
         ? { Authorization: `Bearer ${authToken}` }
         : {})
     };

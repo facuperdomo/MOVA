@@ -52,7 +52,7 @@ public class MercadoPagoController {
     public ResponseEntity<Map<String, Object>> createPreference(
             @PathVariable Long branchId,
             @RequestBody PaymentRequest request,
-            Authentication authentication
+            @RequestHeader("Authorization") String rawToken
     ) {
         log.info("🔔 createPreference invoked for branchId={} amount={}", branchId, request.getAmount());
 
@@ -66,9 +66,9 @@ public class MercadoPagoController {
         }
 
         try {
-            User me = (User) authentication.getPrincipal();
+            User me = authService.getUserEntityFromToken(rawToken);
             Long userId = me.getId();
-            
+
             // 2) Configurar SDK y crear preferencia
             MercadoPago.SDK.setAccessToken(accessToken);
             Preference pref = new Preference()
