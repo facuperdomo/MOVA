@@ -521,27 +521,75 @@ public class AccountService {
      */
     @Transactional
     public void payItemsAndRecordPayment(Long accountId, List<Long> itemIds, String payerName) {
+        log.debug("▶▶ payItemsAndRecordPayment(accountId={}, itemIds={})", accountId, itemIds);
+
+        // Cargo la cuenta con sus items
         Account account = accountRepository
                 .findByIdWithItemsAndIngredients(accountId)
                 .orElseThrow(() -> new ResponseStatusException(
                 HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
+        // Contar cuántas veces aparece cada itemId
+        Map<Long, Long> counts = itemIds.stream()
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+
         BigDecimal total = BigDecimal.ZERO;
 
-        // Marca como pagadas sólo las filas que te pasan
-        for (Long id : itemIds) {
-            AccountItem it = account.getItems().stream()
-                    .filter(ai -> ai.getId().equals(id) && !ai.isPaid())
+        for (Map.Entry<Long, Long> entry : counts.entrySet()) {
+            Long itemId = entry.getKey();
+            int toPayUnits = entry.getValue().intValue();
+
+            log.debug("    → procesando itemId={} unidadesAPagar={}", itemId, toPayUnits);
+
+            // Busco la línea original, que puede tener quantity > 1
+            AccountItem original = account.getItems().stream()
+                    .filter(ai -> ai.getId().equals(itemId) && !ai.isPaid())
                     .findFirst()
                     .orElseThrow(() -> new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Ítem no existe o ya está pagado: " + id));
-            it.setPaid(true);
-            accountItemRepository.save(it);
-            total = total.add(BigDecimal.valueOf(it.getUnitPrice()));
+                    "Ítem no existe o ya está pagado: " + itemId));
+
+            int originalQty = original.getQuantity();
+            BigDecimal unitPrice = BigDecimal.valueOf(original.getUnitPrice());
+
+            if (toPayUnits < originalQty) {
+                // — Parcial: reduzco la original y creo una nueva pagada —
+
+                // 1) Ajusto cantidad en la línea original (parte no pagada)
+                original.setQuantity(originalQty - toPayUnits);
+                accountItemRepository.save(original);
+
+                // 2) Creo nueva línea con las unidades pagadas
+                AccountItem paidLine = new AccountItem();
+                paidLine.setAccount(account);
+                paidLine.setProduct(original.getProduct());
+                paidLine.setQuantity(toPayUnits);
+                paidLine.setUnitPrice(original.getUnitPrice());
+                paidLine.setPaid(true);
+                paidLine.setIngredients(new HashSet<>(original.getIngredients()));
+                accountItemRepository.save(paidLine);
+
+                log.debug("        • parcial: original qty={} → {}, nueva línea qty={}",
+                        originalQty, original.getQuantity(), toPayUnits);
+
+                total = total.add(unitPrice.multiply(BigDecimal.valueOf(toPayUnits)));
+
+            } else {
+                // — Pago toda la línea —
+
+                original.setPaid(true);
+                accountItemRepository.save(original);
+
+                log.debug("        • total: marcando toda la línea id={} qty={} como pagada",
+                        itemId, originalQty);
+
+                total = total.add(unitPrice.multiply(BigDecimal.valueOf(originalQty)));
+            }
+
+            log.debug("    ✔ subtotal acumulado: {}", total);
         }
 
-        // Graba el pago global
+        // Registro el pago global
         PaymentAccount pago = new PaymentAccount();
         pago.setAccount(account);
         pago.setAmount(total);
@@ -551,6 +599,8 @@ public class AccountService {
                 ? Status.PARTIALLY_PAID
                 : Status.PAID_IN_FULL);
         paymentAccountRepository.save(pago);
+
+        log.debug("◀ payItemsAndRecordPayment finalizado: total pagado={}", total);
     }
 
     /**

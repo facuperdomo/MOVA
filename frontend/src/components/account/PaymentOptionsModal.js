@@ -58,10 +58,12 @@ export default function PaymentOptionsModal({
                 const flat = await customFetch(
                     `${API_URL}/api/accounts/${accountId}/unit-items`
                 );
+                console.log("🧾 [LOG] unit-items crudos del server:", flat);
                 const withUnitId = flat.map((u, idx) => ({
                     ...u,
                     unitId: `${u.itemId}-${idx}`
                 }));
+                console.table(withUnitId.map(u => ({ unitId: u.unitId, paid: u.paid })));
                 setUnitItems(withUnitId);
             })();
         }
@@ -222,6 +224,8 @@ export default function PaymentOptionsModal({
     };
 
     const handleProductsPay = async (method) => {
+        console.log("💥 [LOG] handleProductsPay, selectedItems indices:", selectedItems);
+        console.log("💥 [LOG] flatItems actuales:", flatItems)
         const counts = selectedItems.reduce((acc, idx) => {
             // ▶️ usa flatItems[idx].id, que es donde guardaste el itemId
             const id = flatItems[idx].id;
@@ -242,7 +246,7 @@ export default function PaymentOptionsModal({
                 body: JSON.stringify({ itemIds: itemIdsToPay, payerName: payerName || "–", paymentMethod: method }),
             }
         );
-
+        console.log("✅ [LOG] respuesta pay-items/receipt:", orderDTO);
         // 2) Imprimes el ticket de pago de productos
         await onPrint({ type: 'PRODUCT_PAYMENT', payload: orderDTO });
 

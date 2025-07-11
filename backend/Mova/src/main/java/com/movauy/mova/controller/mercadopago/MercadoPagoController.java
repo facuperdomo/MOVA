@@ -11,8 +11,10 @@ import com.mercadopago.resources.datastructures.preference.BackUrls;
 import com.mercadopago.resources.datastructures.preference.Item;
 import com.mercadopago.resources.datastructures.preference.Payer;
 import com.movauy.mova.model.branch.Branch;
+import com.movauy.mova.model.user.User;
 import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.service.user.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
 
 @RestController
 @RequestMapping(path = "/api/mercadopago", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -48,7 +51,8 @@ public class MercadoPagoController {
     @PostMapping(path = "/create-preference/{branchId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> createPreference(
             @PathVariable Long branchId,
-            @RequestBody PaymentRequest request
+            @RequestBody PaymentRequest request,
+            HttpServletRequest httpReq
     ) {
         log.info("🔔 createPreference invoked for branchId={} amount={}", branchId, request.getAmount());
 
@@ -62,6 +66,9 @@ public class MercadoPagoController {
         }
 
         try {
+            String rawToken = httpReq.getHeader("Authorization");
+            User me = authService.getUserEntityFromToken(rawToken);
+            Long userId = me.getId();
             // 2) Configurar SDK y crear preferencia
             MercadoPago.SDK.setAccessToken(accessToken);
             Preference pref = new Preference()
@@ -75,6 +82,7 @@ public class MercadoPagoController {
                             .setSuccess(baseUrl + "/success")
                             .setPending(baseUrl + "/pending")
                             .setFailure(baseUrl + "/failure"))
+                    .setExternalReference("branch-" + branchId + "_user-" + userId)
                     .setAutoReturn(AutoReturn.approved)
                     .setNotificationUrl(baseUrl + "/api/webhooks/mercadopago");
             pref.save();

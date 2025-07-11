@@ -97,6 +97,8 @@ const Dashboard = () => {
 
   const [showAllPaidModal, setShowAllPaidModal] = useState(false);
 
+  const [userId, setUserId] = useState(null);
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
 
@@ -129,9 +131,10 @@ const Dashboard = () => {
 
   useEffect(() => {
     const storedBranchId = localStorage.getItem("branchId");
+    const storedUserId = localStorage.getItem("userId");
 
-    if (!storedBranchId) return;
-    setBranchId(parseInt(storedBranchId));
+    if (storedBranchId) setBranchId(parseInt(storedBranchId));
+    if (storedUserId) setUserId(parseInt(storedUserId));
     (async () => {
       try {
         const branch = await customFetch(`${API_URL}/api/branch/me`);
@@ -148,11 +151,11 @@ const Dashboard = () => {
 
   // Suscripción a WebSocket para recibir notificaciones de pago
   useEffect(() => {
-    if (offline) {
+    if (offline || !userId) {
       console.log("Offline: no inicializo STOMP/SockJS");
       return;
     }
-    console.log("Iniciando STOMP/SockJS a:", WS_URL);
+    console.log("Iniciando STOMP/SockJS a:", WS_URL, "para userId=", userId);
 
     const client = new Client({
       // 1) Creamos la conexión SockJS
@@ -163,7 +166,7 @@ const Dashboard = () => {
 
     client.onConnect = () => {
       // 2) Nos suscribimos al topic de estado de pago
-      client.subscribe("/topic/payment-status", async (msg) => {
+      client.subscribe(`/topic/payment-status/user/${userId}`, async (msg) => {
         const raw = msg.body.toLowerCase();
         if (!["approved", "rejected"].includes(raw)) return;
 
@@ -220,7 +223,7 @@ const Dashboard = () => {
     client.activate();
 
     return () => client.deactivate();
-  }, [offline]);
+  }, [offline, userId]);
 
   // Si se recibe un estado de pago, se oculta automáticamente después de 5 segundos
   useEffect(() => {
