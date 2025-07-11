@@ -130,11 +130,8 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
         User user = authService.getUserByUsername(request.getUsername());
+        Long userId = user.getId();  // <-- aquí capturamos el ID
 
-        // Prepara siempre el userId
-        Long userId = user.getId();
-        logger.info("🔑 loginUser para username='{}' resolved userId={}", request.getUsername(), userId);
-        
         // 2) SUPERADMIN saltea la restricción de “sesión única”
         if (user.getRole() == Role.SUPERADMIN) {
             String newVersion = authService.rotateTokenVersion(user);
@@ -144,13 +141,14 @@ public class AuthController {
             claims.put("authType", "USER");
             claims.put("userId", userId);
             String jwt = jwtService.generateToken(claims, user);
+
             return ResponseEntity.ok(
                     AuthResponse.builder()
                             .token(jwt)
                             .role(user.getRole().name())
                             .branchId(null)
                             .companyId(null)
-                            .userId(userId)
+                            .userId(userId) // <— lo añadimos aquí
                             .build()
             );
         }
@@ -161,7 +159,7 @@ public class AuthController {
             logger.warn("🔄 Sesión forzada: tokenVersion limpiado para '{}'", user.getUsername());
         }
 
-        // 4) Para usuarios normales, rechazamos el login si ya hay tokenVersion activo (y no forzado)
+        // 4) Rechazo si ya tiene sesión activa y no forzado
         if (!forzarLogin && user.getTokenVersion() != null && !user.getTokenVersion().isBlank()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(AuthResponse.builder()
@@ -179,6 +177,9 @@ public class AuthController {
             claims.put("branchId", user.getBranch().getId());
             claims.put("companyId", user.getBranch().getCompany().getId());
         }
+        // opcional: incluir también el userId en los claims si lo necesitas en el token
+        claims.put("userId", userId);
+
         String jwt = jwtService.generateToken(claims, user);
 
         return ResponseEntity.ok(
@@ -187,6 +188,7 @@ public class AuthController {
                         .role(user.getRole().name())
                         .branchId(user.getBranch() != null ? user.getBranch().getId() : null)
                         .companyId(user.getBranch() != null ? user.getBranch().getCompany().getId() : null)
+                        .userId(userId) // <— y aquí también
                         .build()
         );
     }
