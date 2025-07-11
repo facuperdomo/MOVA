@@ -32,19 +32,17 @@ async function maybeRefreshToken() {
 }
 
 export const customFetch = async (path, options = {}) => {
-  const { skipRefresh = false, skipAuthForMp = false, ...fetchOptions } = options;
+  const { skipRefresh = false, ...fetchOptions } = options;
   const maybe = !skipRefresh ? await maybeRefreshToken() : null;
   const token = maybe || localStorage.getItem("token");
   const url = path.startsWith("http") ? path : `${API_URL}${path}`;
-  const isMercadoPago = url.includes("/api/mercadopago/");
 
+  // Esta función siempre añade Authorization si hay token
   const createHeaders = (authToken) => {
     const isFormData = fetchOptions.body instanceof FormData;
     return {
       ...(!isFormData && { "Content-Type": "application/json" }),
-      ...(!skipAuthForMp && authToken
-        ? { Authorization: `Bearer ${authToken}` }
-        : {})
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
     };
   };
 
@@ -57,33 +55,30 @@ export const customFetch = async (path, options = {}) => {
   try {
     let res = await fetchWithToken(token);
 
-    if (!isMercadoPago && res.status === 401 && !skipRefresh) {
+    // lógica de refresh para rutas propias (no MP)
+    if (res.status === 401 && !skipRefresh) {
       console.warn("⚠️ 401 recibido, intentando refresh-token…");
       const newToken = await refreshToken();
       if (!newToken) {
-        console.error("🛑 No pude refrescar el token → redirigiendo a login");
         localStorage.removeItem("token");
         window.location.href = "/login";
         throw Object.assign(new Error("Sesión expirada"), { status: 401 });
       }
-      console.info("🔁 Refresh exitoso, retry fetch con nuevo token");
+      console.info("🔁 Refresh exitoso, reintentando con nuevo token");
       res = await fetchWithToken(newToken);
       if (res.status === 401) {
-        console.error("💥 Sigue 401 tras refresh → logout completo");
-        ["token", "role", "companyId", "isAdmin", "deviceId", "selectedCashBoxId", "branchId"]
-          .forEach(k => localStorage.removeItem(k));
+        ["token","role","companyId","isAdmin","deviceId","branchId"].forEach(k => localStorage.removeItem(k));
         window.location.href = "/login";
         throw Object.assign(new Error("Requiere login de nuevo"), { status: 401 });
       }
     }
 
     const contentType = res.headers.get("Content-Type") || "";
-    const body = contentType.includes("application/json")
-      ? await res.json()
+    const body = contentType.includes("application/json") 
+      ? await res.json() 
       : await res.text();
 
     if (!res.ok) {
-      console.warn(`🚫 HTTP ${res.status} en ${url}`, body);
       const err = new Error(body?.message || body?.error || res.statusText);
       err.status = res.status;
       err.data = body;
@@ -92,7 +87,6 @@ export const customFetch = async (path, options = {}) => {
 
     console.log(`✅ ${url} →`, body);
     return body;
-
   } catch (err) {
     console.error("❌ customFetch error completo:", err, "err.data=", err.data);
     throw err;
