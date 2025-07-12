@@ -96,37 +96,16 @@ public class AuthController {
     @PostMapping("/loginBranch")
     public ResponseEntity<AuthResponse> loginBranch(@RequestBody LoginRequest request) {
         try {
-            // 1) Hacemos el login “branch” tal cual lo tenías
-            AuthResponse base = authService.loginBranch(request);
-
-            // 2) Recuperamos el userId del usuario que acaba de loguearse
-            Long userId = authService
-                    .getUserByUsername(request.getUsername())
-                    .getId();
-
-            // 3) Construimos un nuevo AuthResponse incluyendo el userId
-            AuthResponse enriched = AuthResponse.builder()
-                    .token(base.getToken())
-                    .role(base.getRole())
-                    .branchId(base.getBranchId())
-                    .companyId(base.getCompanyId())
-                    .userId(userId)
-                    .build();
-
-            return ResponseEntity.ok(enriched);
-
+            AuthResponse response = authService.loginBranch(request);
+            return ResponseEntity.ok(response);
         } catch (UsernameNotFoundException | BadCredentialsException e) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
-                    .body(AuthResponse.builder()
-                            .message(e.getMessage())
-                            .build());
+                    .body(AuthResponse.builder().message(e.getMessage()).build());
         } catch (Exception e) {
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AuthResponse.builder()
-                            .message("Error al iniciar sesión")
-                            .build());
+                    .body(AuthResponse.builder().message("Error al iniciar sesión").build());
         }
     }
 

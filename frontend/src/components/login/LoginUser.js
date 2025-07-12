@@ -46,8 +46,12 @@ export default function LoginUser() {
     localStorage.setItem('role', data.role);
     localStorage.setItem('companyId', data.companyId);
     localStorage.setItem('isAdmin', data.role === 'ADMIN');
-    localStorage.setItem('userId', data.userId);
-    console.log("SE GUARDA EL USERID: ", data.userId);
+    
+    const me = await customFetch('/auth/me', {
+      headers: { 'Authorization': `Bearer ${data.token}` }
+    });
+    localStorage.setItem('userId', me.id);
+    console.log("SE GUARDA EL USERID DESDE /auth/me:", me.id);
 
     // Redirigir según rol
     if (data.role === 'SUPERADMIN') navigate('/superadmin-dashboard', { replace: true });
