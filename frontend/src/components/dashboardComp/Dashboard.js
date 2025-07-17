@@ -611,19 +611,20 @@ const Dashboard = () => {
       const thisIds = product.ingredients?.map(i => i.id) || [];
 
       // Buscamos si ya existe esa variante en la cuenta
-      const existing = accountItems.find(it =>
+      const existingUnpaid = accountItems.find(it =>
         it.productId === product.id &&
+        it.paid === false &&
         sameIngredientSet(it.ingredients.map(i => i.id), thisIds)
       );
 
-      if (existing) {
+      if (existingUnpaid) {
         // 2a) Si existe, incrementa cantidad
         await customFetch(
-          `${API_URL}/api/accounts/${selectedAccountId}/items/${existing.id}`,
+          `${API_URL}/api/accounts/${selectedAccountId}/items/${existingUnpaid.id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ quantity: existing.quantity + 1 })
+            body: JSON.stringify({ quantity: existingUnpaid.quantity + 1 })
           }
         );
       } else {
@@ -883,25 +884,20 @@ const Dashboard = () => {
   const groupItems = (items) => {
     const map = {};
     items.forEach(item => {
-      // si viene de accountItems usamos el productId, si viene del carrito usamos el id
       const prodId = item.productId != null ? item.productId : item.id;
-      // construimos la clave también con los ingredientes para distinguir variantes
       const ingredientsKey = (item.ingredients || [])
-        .map(i => i.id)
-        .sort()
-        .join(",");
-      const key = `${prodId}-${ingredientsKey}-${item.displayName || ''}`;
+        .map(i => i.id).sort().join(",");
+      // ahora también metemos item.paid en la clave:
+      const key = `${prodId}-${ingredientsKey}-${item.paid}-${item.displayName || ''}`;
 
       if (map[key]) {
         map[key].quantity += item.quantity;
       } else {
-        // hacemos un shallow copy para no mutar el original
         map[key] = { ...item };
       }
     });
     return Object.values(map);
   };
-
 
   const accountTotal = groupItems(accountItems)
     .reduce((sum, line) => {
@@ -1256,7 +1252,9 @@ const Dashboard = () => {
                 <div key={key} className="cart-item">
                   <div className="cart-item-text">
                     <span className="product-name">{name}</span>
+
                     <span className="product-quantity"> x{item.quantity}</span>
+                    {item.paid && <span className="paid-badge">(Pagado)</span>}
                   </div>
                   <button
                     className="delete-button"

@@ -29,7 +29,9 @@ public class AccountResponseDTO {
                             item.getQuantity(),
                             item.getIngredients().stream()
                                     .map(Ingredient::getId)
-                                    .collect(Collectors.toList())
+                                    .collect(Collectors.toList()),
+                            item.isPaid()
+                            
                     );
                 })
                 .toList();

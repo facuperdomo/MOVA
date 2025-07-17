@@ -363,8 +363,9 @@ public class AccountService {
         account.getItems().removeIf(it
                 -> !it.getId().equals(itemId)
                 && it.getProduct().getId().equals(prodId)
+                && !it.isPaid()
         );
-
+        
         // ajusto cantidad
         mainItem.setQuantity(newQty);
         Account saved = accountRepository.save(account);

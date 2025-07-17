@@ -626,3 +626,16 @@
 .remove-account-btn:hover {
   background: 	#992D22;
 }
+
+/* atenúa la fila pagada */
+.cart-item.paid {
+  opacity: 0.6;
+}
+
+/* estilo del badge “Pagado” */
+.paid-badge {
+  margin-left: 0.5rem;
+  font-size: 0.85em;
+  font-weight: bold;
+  color: #4caf50;
+}

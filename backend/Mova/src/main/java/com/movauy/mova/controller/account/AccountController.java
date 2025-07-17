@@ -184,7 +184,8 @@ public class AccountController {
                             item.getId(),
                             item.getProduct().getId(),
                             item.getQuantity(),
-                            ingrIds
+                            ingrIds,
+                            item.isPaid()
                     );
                 })
                 .toList();

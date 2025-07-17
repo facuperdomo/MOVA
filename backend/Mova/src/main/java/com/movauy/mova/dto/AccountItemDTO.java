@@ -9,4 +9,5 @@ public class AccountItemDTO {
     private Long productId;
     private int quantity;
     private List<Long> ingredientIds;
+    private boolean paid;
 }
