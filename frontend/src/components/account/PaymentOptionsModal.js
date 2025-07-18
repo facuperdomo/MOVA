@@ -132,19 +132,38 @@ export default function PaymentOptionsModal({
     // 5bis) Pago “full” (total) (sin cerrar)
     // ——————————————————————————————
     const handleFullPay = async (method) => {
-        // 1) Registro del pago total
-        const orderDTO = await customFetch(
-            `${API_URL}/api/accounts/${accountId}/payments/split`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    amount: amountToPay,
-                    payerName: payerName || "–",
-                    paymentMethod: method
-                }),
-            }
+        // Si no hay nada que pagar, salimos sin crear pago de “0”
+        if (amountToPay <= 0) {
+            // Opcionalmente puedes cerrar aquí:
+            onPaidWithoutClose();
+            onClose();
+            return;
+        }
+        const unitList = await customFetch(
+            `${API_URL}/api/accounts/${accountId}/unit-items`
         );
+        const unpaidItemIds = unitList
+            .filter(u => !u.paid)
+            .map(u => u.itemId);
+
+        let orderDTO = { items: [], totalAmount: 0 }; // fallback mínimo
+        if (unpaidItemIds.length > 0) {
+            orderDTO = await customFetch(
+                `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        itemIds: unpaidItemIds,
+                        payerName: payerName || "–",
+                        paymentMethod: method
+                    }),
+                }
+            );
+        } else {
+            console.log("✅ Todos los ítems ya estaban pagados");
+        }
+
         const fullPayload = {
             ...orderDTO,
             // items: vienen de la prop `items` o de `flatItems`
@@ -171,8 +190,13 @@ export default function PaymentOptionsModal({
     };
 
     const handlePartialPay = async (method) => {
-        // 1) Envías el pago
-        const orderDTO = await customFetch(
+        if (people <= 0) {
+            alert("La cantidad de personas debe ser mayor a 0 para dividir la cuenta.");
+            return;
+        }
+
+        // 1) Envías el pago “split”
+        await customFetch(
             `${API_URL}/api/accounts/${accountId}/payments/split`,
             {
                 method: "POST",
@@ -181,35 +205,67 @@ export default function PaymentOptionsModal({
                     amount: amountToPay,
                     payerName: payerName || "–",
                     paymentMethod: method,
-
                 }),
             }
         );
-        const fullPayload = {
-            ...orderDTO,
-            // items: vienen de la prop `items` o de `flatItems`
-            items: items.map(i => ({
-                productId: i.productId ?? i.id,
-                name: i.productName,       // aquí sí le pones el nombre
-                quantity: i.quantity,
-                unitPrice: i.unitPrice ?? i.price,
-                ingredientIds: i.ingredients?.map(x => x.id) || []
-            }))
-        };
-        console.log("✅ Respuesta del backend al pagar:", fullPayload);
-        // 2) Imprimes el ticket de pago parcial
-        await onPrint({ type: 'PARTIAL_PAYMENT', payload: fullPayload });
 
-        // 3) Lees el nuevo estado
-        const { remaining } = await getSplitStatus();
-        await fetchSplitStatus();
+        // 2) Refrescas el estado del split
+        const status = await customFetch(
+            `${API_URL}/api/accounts/${accountId}/split/status`
+        );
+        const total = Number(status.total);
+        const remaining = Number(status.remaining);
+        const share = Number(status.share);
+        const paidCount = total - remaining;
 
-        // 4) Si ya no queda nadie → muestro confirm
+        setPeople(remaining);
+        setShare(share);
+        setCyclePaidPeople(paidCount);
+        setTotalPeople(total);
+        setAmountToPay(share);
+
+        // 3) Si ya no queda nadie → marcamos todos los ítems como pagados
         if (remaining === 0) {
+            // 3.1) Traigo la lista de “unit-items” para obtener los IDs
+            const unitList = await customFetch(
+                `${API_URL}/api/accounts/${accountId}/unit-items`
+            );
+            const unpaidIds = unitList
+                .filter(u => !u.paid)
+                .map(u => u.itemId);
+
+            // 3.2) Si hay ítems sin pagar, llamo al mismo endpoint de “pagar ítems”
+            if (unpaidIds.length > 0) {
+                await customFetch(
+                    `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            itemIds: unpaidIds,
+                            payerName: payerName || "–",
+                            paymentMethod: method,
+                        }),
+                    }
+                );
+            }
+
+            // 3.3) Ya no quedan porciones → muestro el confirm de “cerrar cuenta”
             setShowCloseConfirm(true);
         }
 
-        // 5) Muestro modal de éxito
+        // 4) Actualizo el listado de unidades con su nuevo flag `paid`
+        const freshUnits = await customFetch(
+            `${API_URL}/api/accounts/${accountId}/unit-items`
+        );
+        setUnitItems(
+            freshUnits.map((u, idx) => ({
+                ...u,
+                unitId: `${u.itemId}-${idx}`
+            }))
+        );
+
+        // 5) Mensaje de éxito
         setSuccessMessage("Pago parcial realizado con éxito");
         setShowSuccess(true);
     };
@@ -278,9 +334,26 @@ export default function PaymentOptionsModal({
     };
 
     const handlePeopleChange = async (n) => {
+        // 1) actualizas en el back
         await customFetch(`${API_URL}/api/accounts/${accountId}/split?people=${n}`, { method: "PUT" });
-        await fetchSplitStatus();
-        onSplitUpdate?.(n);   // o los parámetros que prefieras
+
+        // 2) traes el estado completo de split
+        const status = await customFetch(`${API_URL}/api/accounts/${accountId}/split/status`);
+        // lo desestructuras:
+        const total = Number(status.total);
+        const remaining = Number(status.remaining);
+        const share = Number(status.share);
+        const paidMoney = Number(status.paidMoney || 0);
+        const currentTotal = Number(status.currentTotal || 0);
+        const itemPayments = status.itemPayments || [];
+
+        // 3) notificas al padre con TODO
+        onSplitUpdate?.(total, remaining, paidMoney, currentTotal, itemPayments);
+
+        // 4) y actualizas aquí también tu propio share/people/amountToPay si quieres:
+        setPeople(remaining);
+        setShare(share);
+        setAmountToPay(share);
     };
     // —————————————————————————————————————————————————————————————————————
     // 6) Handler para “Pagar”:
@@ -501,11 +574,11 @@ export default function PaymentOptionsModal({
                                     Personas:
                                     <input
                                         type="number"
-                                        min={1}
+                                        min={0}
                                         value={people}
                                         onChange={e => {
                                             const v = Number(e.target.value);
-                                            setPeople(v > 0 ? v : 1);
+                                            setPeople(Number.isNaN(v) ? 0 : v < 0 ? 0 : v);
                                         }}
                                         onBlur={() => handlePeopleChange(people)}
                                     />
@@ -527,8 +600,20 @@ export default function PaymentOptionsModal({
                                 {!showCloseConfirm && (
                                     !showQR ? (
                                         <>
-                                            <button onClick={() => handlePartialPay("CASH")}>Efectivo</button>
-                                            <button onClick={() => { setPayMethod("QR"); setShowQR(true); }}>QR</button>
+                                            <button
+                                                onClick={() => handlePartialPay("CASH")}
+                                                disabled={people <= 0}
+                                                title={people <= 0 ? "Debe haber al menos 1 persona" : undefined}
+                                            >
+                                                Efectivo
+                                            </button>
+                                            <button
+                                                onClick={() => { setPayMethod("QR"); setShowQR(true); }}
+                                                disabled={people <= 0}
+                                                title={people <= 0 ? "Debe haber al menos 1 persona" : undefined}
+                                            >
+                                                QR
+                                            </button>
                                         </>
                                     ) : (
                                         <PaymentQR amount={share} />

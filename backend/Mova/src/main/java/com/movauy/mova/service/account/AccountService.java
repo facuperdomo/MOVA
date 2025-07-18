@@ -260,20 +260,23 @@ public class AccountService {
         BigDecimal remaining = accountTotal.subtract(totalPaidSoFar).subtract(amount);
 
         // 4) Creamos el PaymentAccount y seteamos el status según corresponda
-        PaymentAccount payment = new PaymentAccount();
-        payment.setAccount(account);
-        payment.setAmount(amount);
-        payment.setPayerName(payerName != null ? payerName : "–");
-        payment.setPaidAt(LocalDateTime.now());
-        if (Boolean.TRUE.equals(closeAfter) && remaining.compareTo(BigDecimal.ZERO) <= 0) {
-            payment.setStatus(Status.PAID_IN_FULL);
-        } else {
-            payment.setStatus(Status.PARTIALLY_PAID);
-        }
-        paymentAccountRepository.save(payment);
+        if (amount.compareTo(BigDecimal.ZERO) > 0) {
+            PaymentAccount payment = new PaymentAccount();
+            payment.setAccount(account);
+            payment.setAmount(amount);
+            payment.setPayerName(payerName != null ? payerName : "–");
+            payment.setPaidAt(LocalDateTime.now());
+            payment.setStatus(
+                    Boolean.TRUE.equals(closeAfter) && remaining.compareTo(BigDecimal.ZERO) <= 0
+                    ? Status.PAID_IN_FULL
+                    : Status.PARTIALLY_PAID
+            );
+            paymentAccountRepository.save(payment);
 
-        if (account.getSplitTotal() != null && account.getSplitRemaining() != null && account.getSplitRemaining() > 0) {
-            account.setSplitRemaining(account.getSplitRemaining() - 1);
+            // si hay split activo, descontar 1 porción
+            if (account.getSplitTotal() != null && account.getSplitRemaining() != null && account.getSplitRemaining() > 0) {
+                account.setSplitRemaining(account.getSplitRemaining() - 1);
+            }
         }
 
         // 5) Si closeAfter y cubrimos el total, cerramos la cuenta
@@ -365,7 +368,7 @@ public class AccountService {
                 && it.getProduct().getId().equals(prodId)
                 && !it.isPaid()
         );
-        
+
         // ajusto cantidad
         mainItem.setQuantity(newQty);
         Account saved = accountRepository.save(account);

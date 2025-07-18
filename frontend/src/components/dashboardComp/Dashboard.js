@@ -241,7 +241,14 @@ const Dashboard = () => {
   const handleAcceptSale = () => {
     console.log("👉 handleAcceptSale fired", { selectedAccountId });
     if (selectedAccountId) {
-      openPaymentModal();
+      // Si la cuenta no tiene nada pendiente, mostramos mensaje y salimos
+    const remaining = currentTotal - (paidMoney || 0);
+    if (remaining <= 0) {
+      setShowAllPaidModal(true);
+      return;
+    }
+    // Si sí queda algo por pagar, abrimos el modal
+    openPaymentModal();
     } else {
       handlePayment();
     }
