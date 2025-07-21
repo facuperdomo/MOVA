@@ -10,11 +10,11 @@ export default function AddMesaModal({ open, onClose, onCreate, newName, setNewN
     <div className="add-mesa-overlay" onClick={onClose}>
       <div className="add-mesa-container" onClick={e => e.stopPropagation()}>
         <button className="add-mesa-close" onClick={onClose}>✕</button>
-        <h2>Agregar Mesa</h2>
+        <h2>Agregar Cuenta</h2>
         <div className="add-mesa-form">
           <input
             type="text"
-            placeholder="Ej: Mesa 1"
+            placeholder="Ej: Cuenta 1"
             value={newName}
             onChange={e => setNewName(e.target.value)}
           />

@@ -27,6 +27,7 @@ export default function PaymentOptionsModal({
     paidMoney,       // cuánto se pagó ya (en pesos)
     onSplitUpdate,   // callback para cuando cambien “people”
     onPrint,
+    pushNotification,
 }) {
     const [step, setStep] = useState("choose");      // choose | full | split | products
     const [selectedItems, setSelectedItems] = useState([]); // índices de flatItems elegidos
@@ -46,6 +47,8 @@ export default function PaymentOptionsModal({
     const [successMessage, setSuccessMessage] = useState("");
 
     const [unitItems, setUnitItems] = useState([]);
+
+    const [processing, setProcessing] = useState(false);
 
     useEffect(() => {
         if (step === "products") {
@@ -128,10 +131,24 @@ export default function PaymentOptionsModal({
         }
     }, [flatItems, step]);
 
+    // Marca todos los unit-items como pagados sin generar pago/recibo
+    const markAllPaid = async () => {
+      try {
+        await customFetch(
+          `${API_URL}/api/accounts/${accountId}/unit-items/mark-all-paid`,
+          { method: "PUT" }
+        );
+      } catch (err) {
+        console.error("Error marcando todos los ítems como pagados:", err);
+      }
+    };
+
     // ——————————————————————————————
     // 5bis) Pago “full” (total) (sin cerrar)
     // ——————————————————————————————
     const handleFullPay = async (method) => {
+        if (processing) return;
+        setProcessing(true);
         // Si no hay nada que pagar, salimos sin crear pago de “0”
         if (amountToPay <= 0) {
             // Opcionalmente puedes cerrar aquí:
@@ -147,46 +164,52 @@ export default function PaymentOptionsModal({
             .map(u => u.itemId);
 
         let orderDTO = { items: [], totalAmount: 0 }; // fallback mínimo
-        if (unpaidItemIds.length > 0) {
-            orderDTO = await customFetch(
-                `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        itemIds: unpaidItemIds,
-                        payerName: payerName || "–",
-                        paymentMethod: method
-                    }),
-                }
-            );
-        } else {
-            console.log("✅ Todos los ítems ya estaban pagados");
+        try {
+            if (unpaidItemIds.length > 0) {
+                orderDTO = await customFetch(
+                    `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            itemIds: unpaidItemIds,
+                            payerName: payerName || "–",
+                            paymentMethod: method
+                        }),
+                    }
+                );
+            } else {
+                console.log("✅ Todos los ítems ya estaban pagados");
+            }
+
+            const fullPayload = {
+                ...orderDTO,
+                // items: vienen de la prop `items` o de `flatItems`
+                items: items.map(i => ({
+                    productId: i.productId ?? i.id,
+                    name: i.productName,       // aquí sí le pones el nombre
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice ?? i.price,
+                    ingredientIds: i.ingredients?.map(x => x.id) || []
+                }))
+            };
+            pushNotification('Pago Registrado', 'success');
+            console.log("✅ Respuesta del backend al pagar:", fullPayload);
+            // 2) Imprimimos el cierre de cuenta (FULL_CLOSURE mantiene tu ticket de cierre)
+            await onPrint({ type: 'FULL_CLOSURE', payload: fullPayload });
+
+            // 3) Ejecutamos callback “pago sin cerrar”
+            onPaidWithoutClose();
+
+            // 4) Marcamos TODOS los unit-items como pagados
+            await markAllPaid();
+
+            setShowCloseConfirm(true);
+        } catch {
+            pushNotification('Error al cerrar mesa', 'error');
+        } finally {
+            setProcessing(false);
         }
-
-        const fullPayload = {
-            ...orderDTO,
-            // items: vienen de la prop `items` o de `flatItems`
-            items: items.map(i => ({
-                productId: i.productId ?? i.id,
-                name: i.productName,       // aquí sí le pones el nombre
-                quantity: i.quantity,
-                unitPrice: i.unitPrice ?? i.price,
-                ingredientIds: i.ingredients?.map(x => x.id) || []
-            }))
-        };
-        console.log("✅ Respuesta del backend al pagar:", fullPayload);
-        // 2) Imprimimos el cierre de cuenta (FULL_CLOSURE mantiene tu ticket de cierre)
-        await onPrint({ type: 'FULL_CLOSURE', payload: fullPayload });
-
-        // 3) Ejecutamos callback “pago sin cerrar”
-        onPaidWithoutClose();
-
-        setShowCloseConfirm(true);
-
-        // 4) Mostramos modal de éxito
-        setSuccessMessage("Pago total realizado con éxito");
-        setShowSuccess(true);
     };
 
     const handlePartialPay = async (method) => {
@@ -226,31 +249,7 @@ export default function PaymentOptionsModal({
 
         // 3) Si ya no queda nadie → marcamos todos los ítems como pagados
         if (remaining === 0) {
-            // 3.1) Traigo la lista de “unit-items” para obtener los IDs
-            const unitList = await customFetch(
-                `${API_URL}/api/accounts/${accountId}/unit-items`
-            );
-            const unpaidIds = unitList
-                .filter(u => !u.paid)
-                .map(u => u.itemId);
-
-            // 3.2) Si hay ítems sin pagar, llamo al mismo endpoint de “pagar ítems”
-            if (unpaidIds.length > 0) {
-                await customFetch(
-                    `${API_URL}/api/accounts/${accountId}/payments/items/receipt`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            itemIds: unpaidIds,
-                            payerName: payerName || "–",
-                            paymentMethod: method,
-                        }),
-                    }
-                );
-            }
-
-            // 3.3) Ya no quedan porciones → muestro el confirm de “cerrar cuenta”
+            await markAllPaid();
             setShowCloseConfirm(true);
         }
 
@@ -266,8 +265,7 @@ export default function PaymentOptionsModal({
         );
 
         // 5) Mensaje de éxito
-        setSuccessMessage("Pago parcial realizado con éxito");
-        setShowSuccess(true);
+        pushNotification('Pago Realizado', 'success');
     };
 
     const getSplitStatus = async () => {
@@ -327,10 +325,6 @@ export default function PaymentOptionsModal({
         if (remainingUnpaid === 0) {
             setShowCloseConfirm(true);
         }
-
-        // 6) Muestro modal de éxito
-        setSuccessMessage("Pago de productos realizado con éxito");
-        setShowSuccess(true);
     };
 
     const handlePeopleChange = async (n) => {
@@ -365,6 +359,7 @@ export default function PaymentOptionsModal({
     // 6) Handler genérico para “Pagar”
     // ——————————————————————————————
     const handlePay = async (method) => {
+        if (processing) return;
         if (step === "full") {
             // Antes: abríamos el modal de cierre.
             // Ahora: hacemos el pago total inmediato
@@ -373,12 +368,16 @@ export default function PaymentOptionsModal({
         }
 
         if (step === "products") {
+            setProcessing(true);
             await handleProductsPay(method);
+            setProcessing(false);
             return;
         }
 
         if (step === "split") {
+            setProcessing(true);
             await handlePartialPay(method);
+            setProcessing(false);
             return;
         }
     };
@@ -433,17 +432,6 @@ export default function PaymentOptionsModal({
     //    Registramos el pago y no cerramos la cuenta.
     // —————————————————————————————————————————————————————————————————————
     const cancelCloseAccount = async () => {
-        try {
-            await customFetch(`${API_URL}/api/accounts/${accountId}/payments/split`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ amount: amountToPay, payerName: payerName || "–" }),
-            });
-        } catch (err) {
-            console.error("Error registrando pago sin cerrar cuenta:", err);
-            alert("Ocurrió un error al registrar el pago.");
-        }
-        onPaidWithoutClose();
         onClose();
     };
 
@@ -480,6 +468,7 @@ export default function PaymentOptionsModal({
                 onClose();
             }
         }}>
+
             {showSuccess && (
                 <SuccessModal
                     message={successMessage}
@@ -544,15 +533,26 @@ export default function PaymentOptionsModal({
                                     <button disabled>No hay saldo pendiente</button>
                                 ) : (
                                     <>
-                                        <button onClick={() => handlePay("CASH")}>Efectivo</button>
+                                        <button
+                                            onClick={() => handlePay("CASH")}
+                                        >
+                                            {processing ? 'Procesando…' : 'Efectivo'}
+                                        </button>
                                         {!showQR ? (
-                                            <button onClick={() => { setPayMethod("QR"); setShowQR(true); }}>
+                                            <button
+                                                onClick={() => { setPayMethod("QR"); setShowQR(true); }}
+                                                disabled={processing || amountToPay <= 0}
+                                            >
                                                 QR
                                             </button>
                                         ) : (
                                             <PaymentQR
                                                 amount={amountToPay}
-                                                onPaymentSuccess={() => handleFullPay(payMethod)}
+                                                onPaymentSuccess={() => {
+                                                    handleFullPay(payMethod);
+                                                    setShowQR(false);      // oculta el QR
+                                                    setStep("choose");     // revuelve al menu inicial
+                                                }}
                                             />
                                         )}
                                     </>
@@ -603,20 +603,23 @@ export default function PaymentOptionsModal({
                                             <button
                                                 onClick={() => handlePartialPay("CASH")}
                                                 disabled={people <= 0}
-                                                title={people <= 0 ? "Debe haber al menos 1 persona" : undefined}
-                                            >
-                                                Efectivo
-                                            </button>
+                                            >Efectivo</button>
                                             <button
                                                 onClick={() => { setPayMethod("QR"); setShowQR(true); }}
                                                 disabled={people <= 0}
-                                                title={people <= 0 ? "Debe haber al menos 1 persona" : undefined}
-                                            >
-                                                QR
-                                            </button>
+                                            >QR</button>
                                         </>
                                     ) : (
-                                        <PaymentQR amount={share} />
+                                        <PaymentQR
+                                            amount={share}
+                                            onPaymentSuccess={() => {
+                                                // primero registra el pago parcial
+                                                handlePartialPay(payMethod);
+                                                // luego resetea la vista
+                                                setShowQR(false);
+                                                setStep("choose");
+                                            }}
+                                        />
                                     )
                                 )}
                             </>
@@ -664,7 +667,11 @@ export default function PaymentOptionsModal({
                                 {showQR ? (
                                     <PaymentQR
                                         amount={amountToPay}
-                                        onPaymentSuccess={() => handleProductsPay(payMethod)}
+                                        onPaymentSuccess={() => {
+                                            handleProductsPay(payMethod);
+                                            setShowQR(false);      // oculta el QR
+                                            setStep("choose");     // revuelve al menu inicial
+                                        }}
                                     />
                                 ) : (
                                     <>

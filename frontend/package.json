@@ -17,6 +17,7 @@
     "react-scripts": "5.0.1",
     "recharts": "^2.15.3",
     "sockjs-client": "^1.6.1",
+    "uuid": "^11.1.0",
     "xlsx": "^0.18.5"
   },
   "scripts": {

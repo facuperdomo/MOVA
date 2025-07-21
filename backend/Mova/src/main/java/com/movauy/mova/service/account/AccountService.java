@@ -764,4 +764,21 @@ public class AccountService {
         Collections.sort(newIds);
         return existingIds.equals(newIds);
     }
+
+    /**
+     * Marca como pagados todos los AccountItem (unit-items) de la cuenta.
+     */
+    @Transactional
+    public void markAllUnitItemsPaid(Long accountId) {
+        // 1) Obtener todas las líneas de la cuenta
+        List<AccountItem> items = accountItemRepository.findByAccountId(accountId);
+
+        // 2) Para cada línea no pagada, activar paid=true
+        items.stream()
+                .filter(it -> !it.isPaid())
+                .forEach(it -> it.setPaid(true));
+
+        // 3) Guardar cambios en lote
+        accountItemRepository.saveAll(items);
+    }
 }

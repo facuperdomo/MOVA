@@ -16,6 +16,8 @@ export default function LoginUser() {
   const [showForceModal, setShowForceModal] = useState(false);
   const [pendingBranchId, setPendingBranchId] = useState(null);
 
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
   const showError = message => {
@@ -92,6 +94,7 @@ export default function LoginUser() {
     setPendingBranchId(branchId);
 
     try {
+      setLoading(true);
       await doLogin(false, branchId);
     } catch (error) {
       const status = error.status || error.data?.status;
@@ -105,6 +108,9 @@ export default function LoginUser() {
       } else {
         showError(serverMsg);
       }
+    } finally {
+      setLoading(false);
+      setIsPressed(false);
     }
   };
 
@@ -112,10 +118,13 @@ export default function LoginUser() {
     setShowForceModal(false);
     if (!pendingBranchId) return;
     try {
+      setLoading(true);
       await doLogin(true, pendingBranchId);
     } catch (error) {
       const serverMsg = error.data?.message || error.message;
       showError(serverMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,6 +140,7 @@ export default function LoginUser() {
           value={username}
           onChange={e => setUsername(e.target.value)}
           placeholder='Usuario de la Empresa'
+          disabled={loading}
         />
         <input
           className='password'
@@ -139,6 +149,7 @@ export default function LoginUser() {
           value={password}
           onChange={e => setPassword(e.target.value)}
           placeholder='Contraseña'
+          disabled={loading}
         />
         <input
           className={`loginButton ${isPressed ? 'pressed' : ''}`}
@@ -147,7 +158,8 @@ export default function LoginUser() {
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onClick={loginAction}
-          value='Ingresar'
+          value={loading ? 'Ingresando…' : 'Ingresar'}
+          disabled={loading}
         />
       </form>
 
@@ -169,6 +181,7 @@ export default function LoginUser() {
                 type="button"
                 className="cancel-btn"
                 onClick={() => setShowForceModal(false)}
+                disabled={loading}
               >
                 Cancelar
               </button>
@@ -176,8 +189,9 @@ export default function LoginUser() {
                 type="button"
                 className="force-btn"
                 onClick={handleForceConfirm}
+                disabled={loading}
               >
-                Cerrar sesión remota y entrar
+                {loading ? 'Procesando…' : 'Cerrar sesión remota y entrar'}
               </button>
             </div>
           </div>

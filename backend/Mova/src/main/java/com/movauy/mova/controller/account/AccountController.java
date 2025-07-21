@@ -213,4 +213,13 @@ public class AccountController {
         return ResponseEntity.ok(flat);
     }
 
+    /**
+     * Marca todos los unit-items de la cuenta como pagados (paid=true) sin
+     * generar pago ni recibo.
+     */
+    @PutMapping("/{accountId}/unit-items/mark-all-paid")
+    public ResponseEntity<Void> markAllUnitItemsPaid(@PathVariable Long accountId) {
+        accountService.markAllUnitItemsPaid(accountId);
+        return ResponseEntity.ok().build();
+    }
 }

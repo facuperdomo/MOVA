@@ -21,6 +21,8 @@ import PaymentOptionsModal from "../account/PaymentOptionsModal";
 import AccountsListModal from "../account/AccountsListModal";
 import AccountPaymentsModal from "../account/AccountPaymentsModal";
 import SelectDeviceModal from "../common/SelectDeviceModal";
+import Notification from "../../utils/Notification";
+import { v4 as uuid } from 'uuid';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -99,8 +101,24 @@ const Dashboard = () => {
 
   const [userId, setUserId] = useState(null);
 
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const [notifications, setNotifications] = useState([]);
+
+  const pushNotification = (message, type = 'success') => {
+    const id = uuid();
+    setNotifications(ns => [...ns, { id, message, type }]);
+  };
+
   const cartRef = useRef(cart);
   const totalRef = useRef(total);
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = setTimeout(() => setSuccessMessage(''), 5000);
+    return () => clearTimeout(timer);
+  }, [successMessage]);
 
   useEffect(() => {
     const branchId = localStorage.getItem("branchId");
@@ -242,13 +260,13 @@ const Dashboard = () => {
     console.log("👉 handleAcceptSale fired", { selectedAccountId });
     if (selectedAccountId) {
       // Si la cuenta no tiene nada pendiente, mostramos mensaje y salimos
-    const remaining = currentTotal - (paidMoney || 0);
-    if (remaining <= 0) {
-      setShowAllPaidModal(true);
-      return;
-    }
-    // Si sí queda algo por pagar, abrimos el modal
-    openPaymentModal();
+      const remaining = currentTotal - (paidMoney || 0);
+      if (remaining <= 0) {
+        setShowAllPaidModal(true);
+        return;
+      }
+      // Si sí queda algo por pagar, abrimos el modal
+      openPaymentModal();
     } else {
       handlePayment();
     }
@@ -704,35 +722,38 @@ const Dashboard = () => {
 
   // Registrar venta con pago en efectivo
   const handleCashPayment = async () => {
-    const saleData = {
-      totalAmount: total,
-      paymentMethod: "CASH",
-      dateTime: new Date().toISOString(),
-      items: cart.map((item) => ({
-        productId: item.id,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        ingredientIds: item.ingredients.map(i => i.id)
-      })),
-    };
+    setProcessingPayment(true);
 
-    if (offline) {
-      storeOfflineSale(saleData);
-      setShowPopup(false);
-      setCart([]);
-      setTotal(0);
-      updatePendingSalesCount();
-      setOfflineMessage("Estás sin conexión. La venta se guardó localmente y se sincronizará al reconectarte.");
-      return;
-    }
 
     try {
+      const saleData = {
+        totalAmount: total,
+        paymentMethod: "CASH",
+        dateTime: new Date().toISOString(),
+        items: cart.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          ingredientIds: item.ingredients.map(i => i.id)
+        })),
+      };
+
+      if (offline) {
+        storeOfflineSale(saleData);
+        setShowPopup(false);
+        setCart([]);
+        setTotal(0);
+        updatePendingSalesCount();
+        setOfflineMessage("Estás sin conexión. La venta se guardó localmente y se sincronizará al reconectarte.");
+        return;
+      }
+
       const savedSale = await customFetch(`${API_URL}/api/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(saleData),
       });
-
+      pushNotification('Venta exitosa', 'success');
       // 1) Limpiar UI tras guardado
       setLastSale(savedSale);
       setCart([]);
@@ -755,10 +776,15 @@ const Dashboard = () => {
       } finally {
         setIsPrinting(false);
       }
+
     } catch (error) {
+      pushNotification('Venta no realizada', 'error');
       console.error("Error al guardar la venta:", error);
       setErrorMessage("Ocurrió un error al procesar la venta. Inténtelo de nuevo.");
       setShowErrorModal(true);
+    } finally {
+      // 5) desbloqueamos siempre
+      setProcessingPayment(false);
     }
   };
 
@@ -778,13 +804,12 @@ const Dashboard = () => {
       await customFetch(`${API_URL}/api/statistics/cancel-sale/${saleToUndo.id}`, {
         method: "PUT",
       });
+      pushNotification('Venta deshecha', 'success');
       setLastSale(null);
       setSaleToUndo(null);
       setShowUndoPopup(false);
     } catch (error) {
-      console.error("Error al deshacer la venta:", error);
-      setErrorMessage("No se pudo deshacer la última venta.");
-      setShowErrorModal(true);
+      pushNotification('No se pudo deshacer la venta', 'error');
     }
   };
 
@@ -913,10 +938,11 @@ const Dashboard = () => {
     }, 0);
 
   /**
-* Se llama cuando el usuario paga TODO y elige "Sí, cerrar cuenta".
-* Aquí el backend ya habrá cerrado la cuenta, por lo que solo limpiamos estados y recargamos cuentas.
-*/
+  * Se llama cuando el usuario paga TODO y elige "Sí, cerrar cuenta".
+  * Aquí el backend ya habrá cerrado la cuenta, por lo que solo limpiamos estados y recargamos cuentas.
+  */
   const handlePaidAndClose = async () => {
+    pushNotification('Cuenta cerrada', 'success');
     try {
       // 1) Limpiamos la cuenta seleccionada:
       setSelectedAccountId(null);
@@ -1025,6 +1051,7 @@ const Dashboard = () => {
       setPrintError(false);
       try {
         await printOrder(receipt);
+        pushNotification('Cuenta cerrada', 'success');
         // 🟢 sólo si imprime OK, limpio la UI:
         setShowClosePrintModal(false);
         setSelectedAccountId(null);
@@ -1068,6 +1095,7 @@ const Dashboard = () => {
           }),
         }
       );
+      pushNotification('Cuenta cerrada', 'success');
     } catch (err) {
       // Si ya estaba cerrada, no mostramos error
       if (!err.message.includes("ya está cerrada")) {
@@ -1156,6 +1184,22 @@ const Dashboard = () => {
 
   return (
     <div className="app-container">
+      <div className="notifications-container">
+        {notifications.map((n, i) => (
+          <Notification
+            key={n.id}
+            message={n.message}
+            type={n.type}
+            onClose={() =>
+              setNotifications(current =>
+                current.filter(x => x.id !== n.id)
+              )
+            }
+            // desplazamos cada una 4rem más abajo
+            style={{ top: `${1 + i * 4}rem` }}
+          />
+        ))}
+      </div>
       {enablePrinting && showDeviceModal && (
         <SelectDeviceModal
           devices={devices}
@@ -1427,8 +1471,8 @@ const Dashboard = () => {
               <>
                 <h2>Selecciona el Método de Pago</h2>
                 <div className="popup-buttons">
-                  <button className="popup-btn" onClick={handleCashPayment}>
-                    💸 Pagar con Efectivo
+                  <button className="popup-btn" onClick={handleCashPayment} disabled={processingPayment || offline}>
+                    {processingPayment ? 'Procesando…' : '💸 Pagar con Efectivo'}
                   </button>
                   <button
                     className="popup-btn popup-btn-qr"
@@ -1467,7 +1511,7 @@ const Dashboard = () => {
         <div className="popup-overlay">
           <div className="popup-content">
             <X className="popup-close" size={32} onClick={() => setShowUndoPopup(false)} />
-            <h2>¿Seguro que quieres cancelar esta venta?</h2>
+            <h3>¿Seguro que quieres cancelar esta venta?</h3>
             <p>Monto: ${saleToUndo?.totalAmount}</p>
             <p>Fecha: {new Date(saleToUndo?.dateTime).toLocaleString()}</p>
             <div className="popup-buttons">
@@ -1696,8 +1740,12 @@ const Dashboard = () => {
           onClose={() => setShowPaymentModal(false)}
           cashBoxCode={cashBoxCode}
           // ——— Nuestras dos props nuevas ———
-          onPaidAndClose={handlePaidAndClose}
-          onPaidWithoutClose={handlePaidWithoutClose}
+          onPaidAndClose={async () => {
+            await handlePaidAndClose();
+          }}
+          onPaidWithoutClose={async () => {
+            await handlePaidWithoutClose();
+          }}
           // ————————————————————————————
           splitTotal={splitTotal}
           splitRemaining={splitRemaining}
@@ -1710,6 +1758,7 @@ const Dashboard = () => {
             setItemPayments(itemPayments || []);
           }}
           onPrint={handlePrint}
+          pushNotification={pushNotification}
         />
       )}
       {showPaymentsModal && paymentsAccountId && (
