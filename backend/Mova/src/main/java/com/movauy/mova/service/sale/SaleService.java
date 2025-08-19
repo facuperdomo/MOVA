@@ -19,6 +19,7 @@ import com.movauy.mova.repository.sale.SaleItemIngredientRepository;
 import com.movauy.mova.repository.sale.SaleRepository;
 import com.movauy.mova.service.finance.CashBoxService;
 import com.movauy.mova.service.finance.CashRegisterService;
+import com.movauy.mova.service.product.ProductCategoryService;
 import com.movauy.mova.service.user.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -43,6 +44,7 @@ public class SaleService {
     private final CashRegisterRepository cashRegisterRepository;
     private final SaleItemIngredientRepository saleItemIngredientRepository;
     private final AuthService authService;
+    private final ProductCategoryService productCategoryService;
     private final SimpMessagingTemplate messagingTemplate;
     private final CashBoxService cashBoxService;
     private final CashRegisterService cashRegisterService;
@@ -99,7 +101,7 @@ public class SaleService {
             items.add(it);
         }
         sale.setItems(items);
-        log.debug("   {} ítems agregados. toKitchen={}", items.size(), toKitchen);
+        log.info("▶️ registerSale: {} ítems procesados, toKitchen={}", items.size(), toKitchen);
 
         // 5) Estado de cocina
         if (toKitchen) {
@@ -111,7 +113,7 @@ public class SaleService {
 
         // 6) Guardar la venta
         Sale saved = saleRepository.save(sale);
-        log.debug("   Venta persistida con ID={}", saved.getId());
+        log.info("▶️ registerSale: venta persistida con id={}", saved.getId());
 
         // 7) Guardar ingredientes de items
         saveItemIngredients(saved, saleDTO.getItems());
@@ -119,8 +121,34 @@ public class SaleService {
 
         // 8) Notificar cocina si hace falta
         if (toKitchen) {
-            messagingTemplate.convertAndSend("/topic/kitchen-orders", toResponseDTO(saved));
-            log.debug("   Notificación enviada a /topic/kitchen-orders");
+            // a) construimos el DTO completo
+            SaleResponseDTO dto = toResponseDTO(saved);
+            log.info("▶️ registerSale: DTO completo para WS → {}", dto);
+
+            // b) filtramos sólo los ítems de cocina
+            List<SaleItemResponseDTO> kitchenItems = dto.getItems().stream()
+                    .filter(it -> {
+                        // aquí usamos el categoryId que añadimos al DTO
+                        Long catId = it.getCategoryId();
+                        return productCategoryService.getById(catId)
+                                .isEnableKitchenCommands();
+                    })
+                    .collect(Collectors.toList());
+
+            // c) reasignamos sólo los ítems que van a cocina
+            dto.setItems(kitchenItems);
+
+            // d) si quedó al menos 1 ítem, lo enviamos
+            if (!kitchenItems.isEmpty()) {
+                log.info("▶️ registerSale: enviando a /topic/kitchen-orders sólo {} ítems → {}", kitchenItems.size(), dto);
+                messagingTemplate.convertAndSend(
+                        "/topic/kitchen-orders",
+                        dto
+                );
+                log.info("✅ registerSale: notificación enviada a /topic/kitchen-orders");
+            } else {
+                log.debug("   No hay ítems de cocina: no se envía WS");
+            }
         }
 
         return toResponseDTO(saved);
@@ -143,7 +171,8 @@ public class SaleService {
                             si.getProduct().getName(),
                             si.getQuantity(),
                             si.getUnitPrice(),
-                            ingIds
+                            ingIds,
+                            si.getProduct().getCategory().getId()
                     );
                 }).collect(Collectors.toList());
 
@@ -209,4 +238,5 @@ public class SaleService {
                 .orElseThrow(() -> new RuntimeException("Venta no encontrada: " + saleId));
         return toResponseDTO(sale);
     }
+    
 }

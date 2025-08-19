@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
@@ -58,9 +59,30 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     );
 
     List<Sale> findByBranch_IdAndCashBox_IdInAndDateTimeBetween(
-        Long branchId,
-        List<Long> cashBoxIds,
-        LocalDateTime start,
-        LocalDateTime end
+            Long branchId,
+            List<Long> cashBoxIds,
+            LocalDateTime start,
+            LocalDateTime end
+    );
+
+    @Query("""
+        select new map(
+          s.id           as id,
+          s.dateTime     as date,
+          s.totalAmount  as total,
+          s.estado       as estado,
+          s.cashBox.code as boxCode
+        )
+        from Sale s
+        where s.branch.id = :branchId
+          and s.cashBox.id in :boxIds
+          and s.dateTime between :from and :to
+        order by s.dateTime asc
+    """)
+    List<Map<String, Object>> aggregateSales(
+            @Param("branchId") Long branchId,
+            @Param("boxIds") List<Long> boxIds,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
     );
 }
