@@ -10,4 +10,5 @@ public class AccountItemDTO {
     private int quantity;
     private List<Long> ingredientIds;
     private boolean paid;
+    private boolean kitchenSent;
 }

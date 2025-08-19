@@ -680,3 +680,51 @@
   z-index: 10000;
   pointer-events: none; /* deja pasar clicks al contenido de abajo */
 }
+
+.send-kitchen-btn {
+  background: #d35400;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+.send-kitchen-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.kitchen-badge {
+  display: inline-block;
+  margin-right: .35rem;
+  font-size: 0.95rem;   /* chiquito para no ocupar */
+  line-height: 1;
+  vertical-align: text-top;
+  opacity: 0.9;
+}
+.kitchen-badge.pending { opacity: 0.7; } /* leve diferencia visual */
+
+.active-register-banner {
+  background: #eef3ff;
+  border: 1px solid #cfdcff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 8px 0 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.clear-register-btn {
+  border: 1px solid #889;
+  background: white;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.sales-table tr.selected-row {
+  background: #fff7d6;
+}

@@ -51,6 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +69,7 @@ public class AccountService {
     private final AuthService authService;
     private final IngredientRepository ingredientRepository;
     private static final Logger log = LoggerFactory.getLogger(AccountService.class);
+    private final SimpMessagingTemplate messagingTemplate;
 
     public Account createAccount(AccountCreateDTO dto) {
         Branch branch = branchRepository.findById(dto.getBranchId())
@@ -96,38 +98,45 @@ public class AccountService {
     public Account addItemToAccount(Long accountId, AccountItemDTO dto) {
         Account account = accountRepository
                 .findByIdWithItemsAndIngredients(accountId)
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
 
         Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Producto no encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Producto no encontrado"));
 
-        Set<Ingredient> ingredients = new HashSet<>(
-                ingredientRepository.findAllById(dto.getIngredientIds())
-        );
+        List<Long> ingIds = new ArrayList<>(dto.getIngredientIds());
+        Collections.sort(ingIds);
 
-        // Crea N filas, cada una qty=1 y paid=false
-        for (int i = 0; i < dto.getQuantity(); i++) {
-            AccountItem it = new AccountItem();
-            it.setAccount(account);
-            it.setProduct(product);
-            it.setQuantity(1);
-            it.setUnitPrice(product.getPrice());
-            it.setPaid(false);
-            it.setIngredients(ingredients);
-            accountItemRepository.save(it);
+        // Buscar línea existente NO pagada y NO enviada con mismo producto+ingredientes
+        AccountItem existing = account.getItems().stream()
+                .filter(ai -> ai.getProduct().getId().equals(dto.getProductId()))
+                .filter(ai -> !ai.isPaid())
+                .filter(ai -> !Boolean.TRUE.equals(ai.isKitchenSent()))
+                .filter(ai -> sameIngredientSet(ai, ingIds))
+                .findFirst()
+                .orElse(null);
+
+        if (existing != null) {
+            existing.setQuantity(existing.getQuantity() + Math.max(1, dto.getQuantity()));
+            return accountRepository.save(account);
         }
 
-        // Reinicia split si aplica
+        // Si no hay, crear UNA línea con quantity = dto.quantity
+        Set<Ingredient> ingredients = new HashSet<>(ingredientRepository.findAllById(dto.getIngredientIds()));
+
+        AccountItem it = new AccountItem();
+        it.setAccount(account);
+        it.setProduct(product);
+        it.setQuantity(Math.max(1, dto.getQuantity()));
+        it.setUnitPrice(product.getPrice());
+        it.setPaid(false);
+        it.setIngredients(ingredients);
+        accountItemRepository.save(it);
+
         if (account.getSplitTotal() != null) {
             initOrUpdateSplit(accountId, account.getSplitTotal());
         }
-
-        return accountRepository
-                .findByIdWithItemsAndIngredients(accountId)
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
+        return accountRepository.findByIdWithItemsAndIngredients(accountId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cuenta no encontrada"));
     }
 
     public Account getById(Long id) {
@@ -354,22 +363,25 @@ public class AccountService {
     @Transactional
     public Account updateItemQuantity(Long accountId, Long itemId, int newQty) {
         Account account = getById(accountId);
-
         AccountItem mainItem = account.getItems().stream()
                 .filter(it -> it.getId().equals(itemId))
                 .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "Item de cuenta no encontrado: " + itemId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item de cuenta no encontrado: " + itemId));
 
-        // elimino las otras líneas del mismo producto
-        Long prodId = mainItem.getProduct().getId();
+        // Ingredientes de la línea principal
+        List<Long> mainIngIds = mainItem.getIngredients().stream()
+                .map(Ingredient::getId)
+                .sorted().toList();
+
+        // Elimina SOLO líneas iguales (mismo producto + mismos ingredientes), no pagadas ni enviadas
         account.getItems().removeIf(it
                 -> !it.getId().equals(itemId)
-                && it.getProduct().getId().equals(prodId)
+                && it.getProduct().getId().equals(mainItem.getProduct().getId())
                 && !it.isPaid()
+                && !Boolean.TRUE.equals(it.isKitchenSent())
+                && it.getIngredients().stream().map(Ingredient::getId).sorted().toList().equals(mainIngIds)
         );
 
-        // ajusto cantidad
         mainItem.setQuantity(newQty);
         Account saved = accountRepository.save(account);
 
@@ -377,7 +389,6 @@ public class AccountService {
             initOrUpdateSplit(accountId, saved.getSplitTotal());
             saved = accountRepository.findById(accountId).get();
         }
-
         return saved;
     }
 
@@ -419,7 +430,7 @@ public class AccountService {
         log.debug("    currentTotal={}  paidMoney={}", currentTotal, paidMoney);
 
         // 4) Distribuyo el paidMoney línea a línea (para el detalle por ítem)
-        List<AccountItem> items = acct.getItems();
+        Set<AccountItem> items = acct.getItems();
         BigDecimal leftover = paidMoney;
         Map<Long, Integer> paidQtyMap = items.stream()
                 .collect(Collectors.toMap(
@@ -760,9 +771,7 @@ public class AccountService {
                 .map(Ingredient::getId)
                 .sorted()
                 .toList();
-        List<Long> newIds = new ArrayList<>(incomingIds);
-        Collections.sort(newIds);
-        return existingIds.equals(newIds);
+        return existingIds.equals(new ArrayList<>(incomingIds));
     }
 
     /**

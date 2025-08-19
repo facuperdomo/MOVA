@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import SockJS from "sockjs-client";
 import { Client } from "@stomp/stompjs";
-import { StompSubscription } from '@stomp/stompjs';
 import "./dashboardStyle.css";
 import { ArrowLeft, Trash2, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
@@ -15,7 +14,6 @@ import {
   printItemsReceipt,
   printFrontOrder
 } from "../../utils/print";
-import PaymentStatusNotifier from '../paymentqr/PaymentStatusNotifier';
 import AddMesaModal from "../addMesaModal/AddMesaModal";
 import PaymentOptionsModal from "../account/PaymentOptionsModal";
 import AccountsListModal from "../account/AccountsListModal";
@@ -106,6 +104,8 @@ const Dashboard = () => {
 
   const [notifications, setNotifications] = useState([]);
 
+  const [branchPlan, setBranchPlan] = useState('');
+
   const pushNotification = (message, type = 'success') => {
     const id = uuid();
     setNotifications(ns => [...ns, { id, message, type }]);
@@ -160,6 +160,8 @@ const Dashboard = () => {
         console.log("flag enablePrinting:", branch.enablePrinting);
         setEnableIngredients(branch.enableIngredients);
         setEnablePrinting(branch.enablePrinting);
+        setBranchPlan(branch.planName);
+        console.log("Nombre de plan:", branch.planName);
       } catch (err) {
         console.error("Error al cargar configuración de sucursal:", err);
       }
@@ -257,6 +259,8 @@ const Dashboard = () => {
   }, [selectedAccountId, products]);
 
   const handleAcceptSale = () => {
+    console.log("👉 [DEBUG] handleAcceptSale, selectedAccountId =", selectedAccountId,
+      "newKitchenItems.length =", newKitchenItems.length);
     console.log("👉 handleAcceptSale fired", { selectedAccountId });
     if (selectedAccountId) {
       // Si la cuenta no tiene nada pendiente, mostramos mensaje y salimos
@@ -269,6 +273,23 @@ const Dashboard = () => {
       openPaymentModal();
     } else {
       handlePayment();
+    }
+  };
+
+  const handleSendToKitchen = async () => {
+    if (!selectedAccountId || pendingKitchenUnits === 0) return; // usa unidades
+    try {
+      setProcessingPayment(true);
+      await customFetch(`${API_URL}/api/accounts/${selectedAccountId}/send-to-kitchen`, { method: "POST" });
+      pushNotification(`🧑‍🍳 ${pendingKitchenUnits} ítems enviados`, 'success'); // 👈 unidades
+
+      // refresca desde el backend
+      await loadAccountItems(selectedAccountId);
+    } catch (err) {
+      console.error("Error enviando a cocina:", err);
+      pushNotification('Error enviando a cocina', 'error');
+    } finally {
+      setProcessingPayment(false);
     }
   };
 
@@ -285,57 +306,41 @@ const Dashboard = () => {
 
   const loadAccountItems = async (accountId) => {
     try {
-      // 1️⃣ Mira qué trae el fetch en bruto
       const account = await customFetch(`${API_URL}/api/accounts/${accountId}`);
-      console.log('🔍 raw account response:', account);
-
-      // 2️⃣ Inspecciona los items antes de normalizar
-      console.log('🔍 raw account.items:', account.items);
-
+      // normalizamos cada línea SIN agrupar
       const normalized = account.items.map(line => {
-        // 2.1️⃣ Qué ingredientIds vinieron
-        console.log(`  • item ${line.id} ingredientIds:`, line.ingredientIds);
-
         const prod = products.find(p => p.id === line.productId) || { name: '', ingredients: [], price: 0 };
-        console.log(`    · producto lookup:`, prod);
 
         const hasIds = Array.isArray(line.ingredientIds);
-        const keptIds = hasIds
-          ? line.ingredientIds          // si viene [], keptIds=[] → quitar todos
-          : prod.ingredients.map(i => i.id); // sólo cuando es undefined uso todos
-        console.log(`    · keptIds after fallback:`, keptIds);
+        const keptIds = hasIds ? line.ingredientIds : (prod.ingredients || []).map(i => i.id);
 
         const removedNames = hasIds
-          ? prod.ingredients.filter(i => !keptIds.includes(i.id)).map(i => i.name)
+          ? (prod.ingredients || []).filter(i => !keptIds.includes(i.id)).map(i => i.name)
           : [];
+
         const displayName = removedNames.length
           ? `${prod.name} – sin ${removedNames.join(', ')}`
           : prod.name;
 
-        const item = {
+        return {
           id: line.id,
           productId: line.productId,
           productName: prod.name,
           displayName,
           price: prod.price || 0,
           quantity: line.quantity,
+          // para UI seguimos trabajando con objetos, pero vienen de los IDs
           ingredients: keptIds.map(id => {
-            const ing = prod.ingredients.find(x => x.id === id);
+            const ing = (prod.ingredients || []).find(x => x.id === id);
             return { id, name: ing?.name ?? '' };
           }),
-          paid: line.paid
+          paid: !!line.paid,
+          kitchenSent: !!line.kitchenSent,      // 👈 CONSERVA FLAG DEL BACK
+          categoryId: prod.categoryId
         };
-        console.log(`    · normalized item:`, item);
-        return item;
       });
 
-      // 3️⃣ Antes de agrupar, comprueba tu array normalizado
-      console.log('🔍 normalized array:', normalized);
-
-      const grouped = groupItems(normalized);
-      console.log('🔍 grouped array:', grouped);
-
-      setAccountItems(grouped);
+      setAccountItems(normalized);               // 👈 NO AGRUPAR AQUÍ
     } catch (err) {
       console.error("[ERROR] loadAccountItems:", err);
     }
@@ -734,7 +739,7 @@ const Dashboard = () => {
           productId: item.id,
           quantity: item.quantity,
           unitPrice: item.price,
-          ingredientIds: item.ingredients.map(i => i.id)
+          ingredientIds: item.ingredients?.map(i => i.id) ?? []
         })),
       };
 
@@ -748,11 +753,14 @@ const Dashboard = () => {
         return;
       }
 
+      console.log("▶️ [Dashboard] Enviando venta al back, payload:", saleData);
       const savedSale = await customFetch(`${API_URL}/api/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(saleData),
       });
+
+      console.log("✅ [Dashboard] Respuesta POST /api/sales:", savedSale);
       pushNotification('Venta exitosa', 'success');
       // 1) Limpiar UI tras guardado
       setLastSale(savedSale);
@@ -917,11 +925,8 @@ const Dashboard = () => {
     const map = {};
     items.forEach(item => {
       const prodId = item.productId != null ? item.productId : item.id;
-      const ingredientsKey = (item.ingredients || [])
-        .map(i => i.id).sort().join(",");
-      // ahora también metemos item.paid en la clave:
-      const key = `${prodId}-${ingredientsKey}-${item.paid}-${item.displayName || ''}`;
-
+      const ingredientsKey = (item.ingredients || []).map(i => i.id).sort().join(",");
+      const key = `${prodId}-${ingredientsKey}-${item.paid}-${item.kitchenSent}-${item.displayName || ''}`;
       if (map[key]) {
         map[key].quantity += item.quantity;
       } else {
@@ -1182,6 +1187,53 @@ const Dashboard = () => {
     }
   };
 
+  // Normaliza a string y luego baja a minúsculas
+  const normalizedPlan = typeof branchPlan === 'string'
+    ? branchPlan.toLowerCase()
+    : '';
+
+  // Comprueba si está en la lista permitida
+  const canUseAccounts = ['intermedio', 'avanzado'].includes(normalizedPlan);
+
+  // ① Lookup rápido de categorías por id
+  const categoryMap = React.useMemo(
+    () => Object.fromEntries(categories.map(c => [c.id, c])),
+    [categories]
+  );
+
+  // ② Ítems pendientes de enviar a cocina
+  const newKitchenItems = React.useMemo(
+    () => accountItems.filter(item =>
+      // categoría con envío a cocina
+      categoryMap[item.categoryId]?.enableKitchenCommands
+      // no se ha enviado aún
+      && !item.kitchenSent
+    ),
+    [accountItems, categoryMap]
+  );
+
+  // Unidades pendientes (suma de quantity) de ítems que van a cocina y aún no enviados
+  const pendingKitchenUnits = React.useMemo(
+    () =>
+      accountItems.reduce((sum, it) => {
+        const goesToKitchen = categoryMap[it.categoryId]?.enableKitchenCommands;
+        return (goesToKitchen && !it.kitchenSent)
+          ? sum + (Number(it.quantity) || 0)
+          : sum;
+      }, 0),
+    [accountItems, categoryMap]
+  );
+
+  React.useEffect(() => {
+    console.log("🚨 [DEBUG] selectedAccountId =", selectedAccountId);
+    console.log("🚨 [DEBUG] accountItems =", accountItems);
+  }, [selectedAccountId, accountItems]);
+
+  // ——— DEBUG: ¿qué ítems de cocina nuevos estoy calculando? ———
+  React.useEffect(() => {
+    console.log("🚨 [DEBUG] newKitchenItems =", newKitchenItems);
+  }, [newKitchenItems]);
+
   return (
     <div className="app-container">
       <div className="notifications-container">
@@ -1302,11 +1354,21 @@ const Dashboard = () => {
               return (
                 <div key={key} className="cart-item">
                   <div className="cart-item-text">
-                    <span className="product-name">{name}</span>
+                    {selectedAccountId && (
+                      <span
+                        className={`kitchen-badge ${item.kitchenSent ? 'sent' : 'pending'}`}
+                        title={item.kitchenSent ? 'Enviado a cocina' : 'Pendiente de enviar a cocina'}
+                        aria-label={item.kitchenSent ? 'Enviado a cocina' : 'Pendiente de enviar a cocina'}
+                      >
+                        {item.kitchenSent ? '🍳' : '⏳'}
+                      </span>
+                    )}
 
+                    <span className="product-name">{name}</span>
                     <span className="product-quantity"> x{item.quantity}</span>
                     {item.paid && <span className="paid-badge">(Pagado)</span>}
                   </div>
+
                   <button
                     className="delete-button"
                     onClick={() => {
@@ -1315,9 +1377,8 @@ const Dashboard = () => {
                       } else {
                         removeFromCart(idx);
                       }
-
                     }}
-                    disabled={item.paid /* no borres si ya está pagado */}
+                    disabled={item.paid}
                     title={item.paid ? "Este ítem ya fue pagado y no puede eliminarse" : ""}
                   >
                     <Trash2 size={18} />
@@ -1330,13 +1391,23 @@ const Dashboard = () => {
             <span className="total-amount">
               Total: ${selectedAccountId ? accountTotal.toFixed(2) : total.toFixed(2)}
             </span>
-            <button
-              className="accept-sale"
-              onClick={handleAcceptSale}
-              disabled={!isCashRegisterOpen}
-            >
-              Aceptar Venta
-            </button>
+            {selectedAccountId && pendingKitchenUnits > 0 ? (
+              <button
+                className="send-kitchen-btn"
+                onClick={handleSendToKitchen}
+                disabled={!isCashRegisterOpen || processingPayment}
+              >
+                📩 Enviar a cocina ({pendingKitchenUnits})
+              </button>
+            ) : (
+              <button
+                className="accept-sale"
+                onClick={handleAcceptSale}
+                disabled={!isCashRegisterOpen}
+              >
+                Aceptar Venta
+              </button>
+            )}
             {!isCashRegisterOpen && (
               <p className="cash-register-closed">
                 ⚠️ La caja está cerrada. No se pueden realizar ventas.
@@ -1441,14 +1512,16 @@ const Dashboard = () => {
 
       {!isAdmin && (
         <div className="logout-button-container">
-          <button className="account-button" onClick={() => {
-            if (branchId) {
-              loadAccounts(branchId);
-              setShowAccountsModal(true);
-            }
-          }}>
-            🧾
-          </button>
+          {canUseAccounts && (
+            <button className="account-button" onClick={() => {
+              if (branchId) {
+                loadAccounts(branchId);
+                setShowAccountsModal(true);
+              }
+            }}>
+              🧾
+            </button>
+          )}
           <div className="logout-button" onClick={handleLogout}>
             🚪
           </div>
@@ -1589,8 +1662,7 @@ const Dashboard = () => {
 
                 if (selectedAccountId) {
                   try {
-                    // 1) insertamos en el back
-                    const created = await customFetch(
+                    await customFetch(
                       `${API_URL}/api/accounts/${selectedAccountId}/items`,
                       {
                         method: "POST",
@@ -1602,19 +1674,8 @@ const Dashboard = () => {
                         }),
                       }
                     );
-                    // 2) construimos en local nuestro nuevo ítem, con displayName
-                    const newItem = {
-                      id: created.id,                     // id que devolvió el back
-                      productId: customizingProduct.id,
-                      productName: customizingProduct.name,
-                      displayName,                        // el nombre “– sin X”
-                      price: customizingProduct.price,
-                      quantity: 1,
-                      ingredients: kept.map(i => ({ id: i.id, name: i.name })),
-                      paid: false
-                    };
-                    // 3) lo añadimos a la lista local (sin recargar toda)
-                    setAccountItems(prev => [...prev, newItem]);
+                    // ✅ recarga desde el back para tener los ids correctos
+                    await loadAccountItems(selectedAccountId);
                   } catch (err) {
                     console.error("Error agregando a cuenta:", err);
                     setErrorMessage("No se pudo agregar el producto a la cuenta.");

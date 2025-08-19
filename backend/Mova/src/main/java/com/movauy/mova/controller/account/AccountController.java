@@ -5,16 +5,21 @@ import com.movauy.mova.dto.AccountCreateDTO;
 import com.movauy.mova.dto.AccountItemDTO;
 import com.movauy.mova.dto.AccountItemPaymentDTO;
 import com.movauy.mova.dto.AccountResponseDTO;
+import com.movauy.mova.dto.KitchenOrderDTO;
 import com.movauy.mova.dto.OrderDTO;
 import com.movauy.mova.dto.PayItemsRequestDTO;
 import com.movauy.mova.dto.PaymentRequestDTO;
 import com.movauy.mova.dto.SplitStatusDTO;
 import com.movauy.mova.dto.UnitItemDTO;
+import com.movauy.mova.dto.UpdateKitchenStatusDTO;
 import com.movauy.mova.model.account.Account;
 import com.movauy.mova.model.account.AccountItem;
 import com.movauy.mova.model.ingredient.Ingredient;
+import com.movauy.mova.model.kitchen.KitchenOrder;
 import com.movauy.mova.repository.account.AccountRepository;
 import com.movauy.mova.service.account.AccountService;
+import com.movauy.mova.service.kitchen.KitchenOrderService;
+import com.movauy.mova.service.sale.SaleService;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +38,8 @@ public class AccountController {
 
     private final AccountService accountService;
     private final AccountRepository accountRepository;
+    private final SaleService saleService;
+    private final KitchenOrderService kitchenOrderService;
 
     @PostMapping
     public ResponseEntity<AccountResponseDTO> createAccount(@RequestBody AccountCreateDTO dto) {
@@ -185,7 +192,8 @@ public class AccountController {
                             item.getProduct().getId(),
                             item.getQuantity(),
                             ingrIds,
-                            item.isPaid()
+                            item.isPaid(),
+                            Boolean.TRUE.equals(item.isKitchenSent())
                     );
                 })
                 .toList();
@@ -222,4 +230,25 @@ public class AccountController {
         accountService.markAllUnitItemsPaid(accountId);
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/{accountId}/send-to-kitchen")
+    public ResponseEntity<KitchenOrderDTO> sendToKitchen(
+            @PathVariable Long accountId,
+            @RequestHeader("Authorization") String token) {
+
+        kitchenOrderService.createFromAccount(accountId, token);
+        KitchenOrderDTO snapshot = kitchenOrderService.buildAggregatedDtoForAccount(accountId);
+        return ResponseEntity.ok(snapshot);
+    }
+
+    @PutMapping("/{accountId}/kitchen-status")
+    public ResponseEntity<KitchenOrderDTO> updateKitchenStatusForAccount(
+            @PathVariable Long accountId,
+            @RequestBody UpdateKitchenStatusDTO body) {
+
+        kitchenOrderService.updateStatusForAccount(accountId, body.getKitchenStatus());
+        KitchenOrderDTO snapshot = kitchenOrderService.buildAggregatedDtoForAccount(accountId);
+        return ResponseEntity.ok(snapshot);
+    }
+
 }

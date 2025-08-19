@@ -17,7 +17,11 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     /**
      * Trae la cuenta, todas sus líneas y cada línea con sus ingredients.
      */
-    @EntityGraph(attributePaths = {"items", "items.ingredients"})
-    @Query("select a from Account a where a.id = :id")
+    @Query("""
+  select distinct a from Account a
+  left join fetch a.items i
+  left join fetch i.ingredients ing
+  where a.id = :id
+""")
     Optional<Account> findByIdWithItemsAndIngredients(@Param("id") Long id);
 }

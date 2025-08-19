@@ -30,8 +30,8 @@ public class AccountResponseDTO {
                             item.getIngredients().stream()
                                     .map(Ingredient::getId)
                                     .collect(Collectors.toList()),
-                            item.isPaid()
-                            
+                            item.isPaid(),
+                            Boolean.TRUE.equals(item.isKitchenSent())
                     );
                 })
                 .toList();

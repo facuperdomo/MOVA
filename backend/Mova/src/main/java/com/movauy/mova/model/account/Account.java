@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.math.BigDecimal;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,7 +35,8 @@ public class Account {
 
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
-    private List<AccountItem> items = new ArrayList<>();
+    @OrderBy("id ASC")
+    private Set<AccountItem> items = new LinkedHashSet<>();
 
     /**
      * Total de porciones en las que se va a dividir la cuenta, si se elige

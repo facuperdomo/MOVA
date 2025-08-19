@@ -3,14 +3,18 @@ package com.movauy.mova.controller.publiccontrollers;
 import com.movauy.mova.Jwt.JwtAuthenticationFilter;
 import com.movauy.mova.Jwt.JwtService;
 import com.movauy.mova.dto.AuthResponse;
+import com.movauy.mova.dto.KitchenOrderDTO;
 import com.movauy.mova.dto.LoginRequest;
 import com.movauy.mova.dto.RegisterRequest;
+import com.movauy.mova.dto.UpdateKitchenStatusDTO;
 import com.movauy.mova.dto.UserBasicDTO;
 import com.movauy.mova.model.branch.Branch;
+import com.movauy.mova.model.kitchen.KitchenOrder;
 import com.movauy.mova.model.user.User;
 import com.movauy.mova.model.user.Role;
 import com.movauy.mova.repository.branch.BranchRepository;
 import com.movauy.mova.repository.user.UserRepository;
+import com.movauy.mova.service.kitchen.KitchenOrderService;
 import com.movauy.mova.service.user.AuthService;
 import com.movauy.mova.service.user.DuplicateUsernameException;
 import com.movauy.mova.service.user.UserTransactionalService;
@@ -31,6 +35,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -51,7 +56,8 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private final BranchRepository branchRepository;
     private final UserTransactionalService userTransactionalService;
-
+    private final KitchenOrderService kitchenOrderService;
+    
     /**
      * Cierra sesión del usuario. - Extrae el usuario del token. - Borra el
      * `tokenVersion` para invalidar el token actual.
@@ -334,5 +340,24 @@ public class AuthController {
                     return dto;
                 })
                 .collect(Collectors.toList());
+    }
+
+    @PostMapping("/{accountId}/send-to-kitchen")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendToKitchen(
+            @PathVariable Long accountId,
+            @RequestHeader("Authorization") String token
+    ) {
+        kitchenOrderService.createFromAccount(accountId, token); // ⬅️ ahora persiste y publica
+    }
+
+    @PutMapping("/{id}/kitchen-status")
+    @PreAuthorize("hasRole('KITCHEN')")
+    public ResponseEntity<KitchenOrderDTO> updateKitchenStatusForAccount(
+            @PathVariable Long id,
+            @RequestBody UpdateKitchenStatusDTO body
+    ) {
+        KitchenOrder updated = kitchenOrderService.updateStatusForAccount(id, body.getKitchenStatus());
+        return ResponseEntity.ok(kitchenOrderService.toDTO(updated));
     }
 }

@@ -7,13 +7,18 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.movauy.mova.model.ingredient.Ingredient;
 import java.util.*;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "account_items")
 public class AccountItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     private int quantity;
@@ -27,11 +32,11 @@ public class AccountItem {
     @JoinColumn(name = "account_id")
     @JsonBackReference
     private Account account;
-    
+
     @Builder.Default
     @Column(nullable = false)
     private boolean paid = false;
-    
+
     @ManyToMany
     @JoinTable(
             name = "account_item_ingredients",
@@ -39,5 +44,7 @@ public class AccountItem {
             inverseJoinColumns = @JoinColumn(name = "ingredient_id")
     )
     private Set<Ingredient> ingredients = new HashSet<>();
-}
 
+    @Column(name = "kitchen_sent", nullable = false)
+    private boolean kitchenSent = false;
+}
