@@ -12,8 +12,8 @@ import java.util.Optional;
 public interface CashRegisterRepository extends JpaRepository<CashRegister, Long> {
 
     /**
-     * Histórico de movimientos (aperturas y cierres) de una caja, ordenado
-     * por fecha de apertura.
+     * Histórico de movimientos (aperturas y cierres) de una caja, ordenado por
+     * fecha de apertura.
      */
     List<CashRegister> findByCashBoxIdOrderByOpenDateAsc(Long boxId);
 
@@ -28,9 +28,9 @@ public interface CashRegisterRepository extends JpaRepository<CashRegister, Long
      * fechas de apertura.
      */
     List<CashRegister> findByCashBoxBranchIdAndOpenDateBetween(
-        Long branchId,
-        LocalDateTime start,
-        LocalDateTime end
+            Long branchId,
+            LocalDateTime start,
+            LocalDateTime end
     );
 
     /**
@@ -61,8 +61,27 @@ public interface CashRegisterRepository extends JpaRepository<CashRegister, Long
     Optional<CashRegister> findByCashBoxIdAndCloseDateIsNull(Long boxId);
 
     /**
-     * Último registro de apertura pendiente (sin cerrar), por si guardas
-     * varias aperturas consecutivas sin cierre.
+     * Último registro de apertura pendiente (sin cerrar), por si guardas varias
+     * aperturas consecutivas sin cierre.
      */
     Optional<CashRegister> findTopByCashBoxIdAndCloseDateIsNullOrderByOpenDateDesc(Long boxId);
+
+    Optional<CashRegister> findByIdAndBranch_Id(Long id, Long branchId);
+
+    @Query("""
+  SELECT cr
+    FROM CashRegister cr
+   WHERE cr.cashBox.branch.id = :branchId
+     AND (
+         (cr.openDate BETWEEN :start AND :end)
+      OR (cr.closeDate BETWEEN :start AND :end)
+      OR (cr.openDate <= :start AND (cr.closeDate IS NULL OR cr.closeDate >= :start))
+     )
+""")
+    List<CashRegister> findOverlappingByBranch(
+            @Param("branchId") Long branchId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
 }

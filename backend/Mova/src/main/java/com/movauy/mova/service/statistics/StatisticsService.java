@@ -106,6 +106,7 @@ public class StatisticsService {
                 .collect(Collectors.toList());
     }
 
+    // StatisticsService.java
     public List<Map<String, Object>> getCashBoxHistory(
             String filter,
             String startDateStr,
@@ -115,7 +116,6 @@ public class StatisticsService {
     ) {
         Long branchId = authService.getUserBasicFromToken(token).getBranchId();
 
-        // 1) Rango de fechas
         LocalDateTime start, end;
         if (startDateStr != null && !startDateStr.isEmpty()
                 && endDateStr != null && !endDateStr.isEmpty()) {
@@ -126,57 +126,33 @@ public class StatisticsService {
             end = LocalDateTime.now();
         }
 
-        // 2) Movimientos en ese rango
-        List<CashRegister> movs = cashRegisterRepository
-                .findByCashBoxBranchIdAndOpenDateBetween(branchId, start, end);
+        // Trae TODOS los movimientos que tocan el rango
+        List<CashRegister> movs = cashRegisterRepository.findOverlappingByBranch(branchId, start, end);
 
+        // Filtro por cajas seleccionadas (si aplica)
         if (boxIds != null && !boxIds.isEmpty()) {
             movs = movs.stream()
                     .filter(cr -> boxIds.contains(cr.getCashBox().getId()))
-                    .collect(Collectors.toList());
+                    .toList();
         }
 
-        // 3) Agrupar por caja
+        // Un item por movimiento (NADA de agrupar por caja)
         return movs.stream()
-                .collect(Collectors.groupingBy(cr -> cr.getCashBox().getId()))
-                .entrySet().stream()
-                .map(e -> {
-                    List<CashRegister> seq = e.getValue().stream()
-                            .sorted(Comparator.comparing(CashRegister::getOpenDate))
-                            .toList();
-
-                    CashRegister apertura = seq.get(0);
-                    Optional<CashRegister> cierreOpt = seq.stream()
-                            .filter(cr -> cr.getCloseDate() != null)
-                            .findFirst();
-
+                .sorted(Comparator.comparing(CashRegister::getOpenDate).reversed())
+                .map(cr -> {
                     Map<String, Object> m = new HashMap<>();
-                    m.put("boxId", e.getKey());
-                    m.put("openedAt", apertura.getOpenDate().format(DATE_FORMAT));
-                    m.put("initialAmount", apertura.getInitialAmount());
-                    m.put("code", apertura.getCode());
-
-                    if (cierreOpt.isPresent()) {
-                        CashRegister cierre = cierreOpt.get();
-                        m.put("closedAt", cierre.getCloseDate().format(DATE_FORMAT));
-                        m.put("closingAmount", cierre.getClosingAmount());
-                        m.put("totalSales", cierre.getTotalSales());
-                        m.put("isOpen", false);
-                    } else {
-                        m.put("closedAt", NO_DATA);
-                        m.put("closingAmount", NO_DATA);
-                        m.put("totalSales", NO_DATA);
-                        m.put("isOpen", true);
-                    }
-
+                    m.put("id", cr.getId());                        // ← importante para el key del front
+                    m.put("boxId", cr.getCashBox().getId());
+                    m.put("code", cr.getCode());
+                    m.put("openedAt", cr.getOpenDate().format(DATE_FORMAT)); // el front usa openedAt
+                    m.put("closedAt", cr.getCloseDate() != null
+                            ? cr.getCloseDate().format(DATE_FORMAT) : NO_DATA);
+                    m.put("initialAmount", cr.getInitialAmount());
+                    m.put("closingAmount", cr.getClosingAmount());
+                    m.put("totalSales", cr.getTotalSales());
+                    m.put("isOpen", cr.getCloseDate() == null);
                     return m;
                 })
-                // Opcional: ordenar por apertura más reciente primero
-                .sorted(Comparator.comparing(
-                        (Map<String, Object> mm)
-                        -> LocalDateTime.parse((String) mm.get("openedAt"), DATE_FORMAT))
-                        .reversed()
-                )
                 .toList();
     }
 
@@ -379,9 +355,34 @@ public class StatisticsService {
             String filter,
             String startDateStr,
             String endDateStr,
-            List<Long> boxIds
+            List<Long> boxIds,
+            Long cashRegisterId
     ) {
-        // 1) Fechas
+        // Si viene una apertura de caja, usar su período y su caja
+        if (cashRegisterId != null) {
+            var cr = cashRegisterRepository
+                    .findByIdAndBranch_Id(cashRegisterId, branchId) // o findByIdAndCashBox_Branch_Id(...)
+                    .orElseThrow(() -> new NoSuchElementException(
+                    "Período de caja no encontrado o no pertenece a la sucursal"));
+
+            var from = cr.getOpenDate();                                     // 👈 nombres reales de tu entidad
+            var to = (cr.getCloseDate() != null) ? cr.getCloseDate() : LocalDateTime.now();
+            Long onlyBoxId = cr.getCashBox().getId();
+
+            List<Object[]> rows = saleItemRepository.findTopSellingProductsByBranchAndBoxIds(
+                    from, to, branchId, List.of(onlyBoxId));
+
+            return rows.stream()
+                    .map(r -> {
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("name", (String) r[0]);
+                        m.put("quantity", ((Number) r[1]).intValue());
+                        return m;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        // === Lógica existente cuando NO hay cashRegisterId ===
         LocalDateTime startDate, endDate;
         if (startDateStr != null && endDateStr != null) {
             startDate = LocalDateTime.parse(startDateStr + "T00:00:00");
@@ -391,7 +392,6 @@ public class StatisticsService {
             endDate = LocalDateTime.now();
         }
 
-        // 2) Consultar con o sin boxIds
         List<Object[]> rows;
         if (boxIds != null && !boxIds.isEmpty()) {
             rows = saleItemRepository.findTopSellingProductsByBranchAndBoxIds(
@@ -401,7 +401,6 @@ public class StatisticsService {
                     startDate, endDate, branchId);
         }
 
-        // 3) Mapear a List<Map<String,Object>>
         return rows.stream()
                 .map(r -> {
                     Map<String, Object> m = new HashMap<>();
@@ -421,8 +420,24 @@ public class StatisticsService {
             String filter,
             String startDateStr,
             String endDateStr,
-            List<Long> boxIds
+            List<Long> boxIds,
+            Long cashRegisterId
     ) {
+        if (cashRegisterId != null) {
+            var cr = cashRegisterRepository
+                    .findByIdAndBranch_Id(cashRegisterId, branchId)
+                    .orElseThrow(() -> new NoSuchElementException(
+                    "Período de caja no encontrado o no pertenece a la sucursal"));
+
+            var from = cr.getOpenDate();
+            var to = (cr.getCloseDate() != null) ? cr.getCloseDate() : LocalDateTime.now(); // abierta => hasta ahora
+
+            // Forzamos la caja del período para no mezclar ventas de otras cajas
+            Long onlyBoxId = cr.getCashBox().getId();
+
+            return saleRepository.aggregateSales(branchId, List.of(onlyBoxId), from, to);
+        }
+
         // 1) parsear rango
         LocalDateTime start, end;
         if (startDateStr != null && endDateStr != null) {

@@ -123,9 +123,10 @@ public class StatisticsController {
             @RequestParam(required = false) String filter,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) List<Long> boxIds // <--- nuevo
+            @RequestParam(required = false) List<Long> boxIds,
+            @RequestParam(required = false) Long cashRegisterId // 👈 NUEVO
     ) {
-        return statisticsService.getTopSellingProductsByBranch(branchId, filter, startDate, endDate, boxIds);
+        return statisticsService.getTopSellingProductsByBranch(branchId, filter, startDate, endDate, boxIds, cashRegisterId);
     }
 
     @GetMapping("/sales/{id}")
@@ -148,11 +149,10 @@ public class StatisticsController {
             @RequestParam(required = false) String filter,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) List<Long> boxIds
+            @RequestParam(required = false) List<Long> boxIds,
+            @RequestParam(required = false) Long cashRegisterId // 👈 NUEVO
     ) {
-        // opcional: validar que el branchId coincide con el del token o SUPERADMIN...
-        List<Map<String, Object>> sales = statisticsService
-                .getSalesByBranch(branchId, filter, startDate, endDate, boxIds);
+        var sales = statisticsService.getSalesByBranch(branchId, filter, startDate, endDate, boxIds, cashRegisterId);
         return ResponseEntity.ok(sales);
     }
 

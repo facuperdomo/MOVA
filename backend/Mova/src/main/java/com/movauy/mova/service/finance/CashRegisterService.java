@@ -1,4 +1,3 @@
-// src/main/java/com/movauy/mova/service/finance/CashRegisterService.java
 package com.movauy.mova.service.finance;
 
 import com.movauy.mova.model.finance.CashBox;
@@ -12,8 +11,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,46 +31,44 @@ public class CashRegisterService {
     private final CashBoxService cashBoxService;
     private final SaleRepository saleRepository;
 
-    /**
-     * Histórico de movimientos de una caja.
-     */
+    // === Constantes y utilitario usados en esta clase ===
+    private static final String NO_DATA = "Sin datos";
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm");
+
+    private LocalDateTime getStartDate(String filter) {
+        LocalDateTime now = LocalDateTime.now();
+        return switch (filter) {
+            case "day"   -> now.truncatedTo(ChronoUnit.DAYS);
+            case "week"  -> now.minusWeeks(1).truncatedTo(ChronoUnit.DAYS);
+            case "month" -> now.minusMonths(1).truncatedTo(ChronoUnit.DAYS);
+            case "year"  -> now.minusYears(1).truncatedTo(ChronoUnit.DAYS);
+            default      -> now.minusMonths(1).truncatedTo(ChronoUnit.DAYS);
+        };
+    }
+    // ====================================================
+
     public List<CashRegister> getHistory(Long boxId) {
         return repo.findByCashBoxIdOrderByOpenDateAsc(boxId);
     }
 
-    /**
-     * Lista todas las cajas abiertas en la sucursal que además estén asignadas
-     * al usuario del token.
-     */
     public List<CashBox> listCashRegisters(String token, Boolean openOnly) {
         Long userId = authService.getUserBasicFromToken(token).getId();
         Long branchId = authService.getUserBasicFromToken(token).getBranchId();
 
-        // Ahora usamos el flag isOpen en lugar de closedAt IS NULL
         List<CashBox> cajas = boxRepo.findByBranchIdAndIsOpenTrue(branchId);
 
-        // Filtramos sólo las cajas en las que el usuario esté asignado
         return cajas.stream()
-                .filter(c -> c.getAssignedUsers()
-                .stream()
-                .anyMatch(u -> u.getId().equals(userId)))
+                .filter(c -> c.getAssignedUsers().stream().anyMatch(u -> u.getId().equals(userId)))
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Registra la apertura de caja: - crea un CashRegister con openDate y monto
-     * inicial - marca la caja como abierta
-     */
     @Transactional
     public CashRegister registerOpening(String token, Long boxId, double initialAmount) {
-        // 1) Validar y cargar caja
         CashBox box = boxRepo.findById(boxId)
                 .orElseThrow(() -> new IllegalArgumentException("CashBox no encontrada: " + boxId));
 
-        // 2) Obtener usuario que abre
         User user = authService.getUserEntityFromToken(token);
 
-        // 3) Crear registro de apertura
         CashRegister cr = CashRegister.builder()
                 .cashBox(box)
                 .branch(box.getBranch())
@@ -77,53 +80,82 @@ public class CashRegisterService {
                 .user(user)
                 .build();
 
-        // 4) Guardar
         CashRegister saved = repo.save(cr);
 
-        // 5) Marcar la caja como abierta
         box.setIsOpen(true);
         boxRepo.save(box);
 
         return saved;
     }
 
-    /**
-     * Registra el cierre de caja: - recupera el registro de apertura (sin
-     * closeDate) - calcula totalSales a partir de la suma de todos los amounts
-     * - rellena closeDate, totalSales y closingAmount - marca la caja como
-     * cerrada
-     */
     @Transactional
     public CashRegister registerClosing(String token, Long boxId, double closingAmount) {
-        // 1) Traer la caja abierta
         CashBox box = cashBoxService.getOpenCashBoxById(token, boxId);
 
-        // 2) Traer el registro de apertura pendiente
         CashRegister opening = repo
                 .findTopByCashBoxIdAndCloseDateIsNullOrderByOpenDateDesc(boxId)
-                .orElseThrow(() -> new IllegalStateException(
-                "No existe registro de apertura para caja " + boxId));
+                .orElseThrow(() -> new IllegalStateException("No existe registro de apertura para caja " + boxId));
 
-        // 3) Rango exacto entre apertura y cierre
         LocalDateTime open = opening.getOpenDate();
         LocalDateTime close = LocalDateTime.now();
 
-        // 4) Sumar todas las ventas hechas en ese intervalo
         Double sum = saleRepository.sumSalesByBoxBetween(boxId, open, close);
         double totalSales = (sum != null) ? sum : 0.0;
-        System.out.println(">>> totalSales para caja "+boxId+" entre "+open+" y "+close+" = "+totalSales);
-        
-        // 5) Rellenar campos de cierre
+
         opening.setCloseDate(close);
         opening.setTotalSales(totalSales);
         opening.setClosingAmount(closingAmount);
 
-        // 6) Guardar y marcar caja como cerrada
         CashRegister saved = repo.save(opening);
         box.setIsOpen(false);
         boxRepo.save(box);
 
         return saved;
     }
-    
+
+    public List<Map<String, Object>> getCashBoxHistory(
+            String filter,
+            String startDateStr,
+            String endDateStr,
+            String token,
+            List<Long> boxIds
+    ) {
+        Long branchId = authService.getUserBasicFromToken(token).getBranchId();
+
+        LocalDateTime start, end;
+        if (startDateStr != null && !startDateStr.isEmpty()
+                && endDateStr != null && !endDateStr.isEmpty()) {
+            start = LocalDate.parse(startDateStr).atStartOfDay();
+            end   = LocalDate.parse(endDateStr).atTime(23, 59, 59);
+        } else {
+            start = getStartDate(filter);
+            end   = LocalDateTime.now();
+        }
+
+        List<CashRegister> movs = repo.findOverlappingByBranch(branchId, start, end);
+
+        if (boxIds != null && !boxIds.isEmpty()) {
+            movs = movs.stream()
+                    .filter(cr -> boxIds.contains(cr.getCashBox().getId()))
+                    .toList();
+        }
+
+        return movs.stream()
+                .sorted(Comparator.comparing(CashRegister::getOpenDate).reversed())
+                .map(cr -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", cr.getId());
+                    m.put("boxId", cr.getCashBox().getId());
+                    m.put("code", cr.getCode());
+                    // ⬇️ campos alineados con el front (openDate / closeDate)
+                    m.put("openDate",  cr.getOpenDate().format(DATE_FORMAT));
+                    m.put("closeDate", cr.getCloseDate() != null ? cr.getCloseDate().format(DATE_FORMAT) : NO_DATA);
+                    m.put("initialAmount", cr.getInitialAmount());
+                    m.put("closingAmount", cr.getClosingAmount());
+                    m.put("totalSales", cr.getTotalSales());
+                    m.put("isOpen", cr.getCloseDate() == null);
+                    return m;
+                })
+                .toList();
+    }
 }

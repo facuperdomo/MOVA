@@ -34,12 +34,19 @@ const Statistics = () => {
   const [boxes, setBoxes] = useState([]);
   const [selectedBoxes, setSelectedBoxes] = useState([]);
   const [branchId, setBranchId] = useState(null);
+  const [branchPlan, setBranchPlan] = useState('');
+  const [enablePrinting, setEnablePrinting] = useState(false);
+  const [selectedCashRegisterId, setSelectedCashRegisterId] = useState(null);
+  const [selectedCashRegisterInfo, setSelectedCashRegisterInfo] = useState(null);
 
   useEffect(() => {
     const fetchMyProfile = async () => {
       try {
         const me = await customFetch(`${API_URL}/auth/me`);
         setBranchId(me.branchId);
+        const branch = await customFetch(`${API_URL}/api/branch/me`);
+        setBranchPlan(branch.planName || '');
+        setEnablePrinting(branch.enablePrinting);
       } catch (e) {
         console.error("No pude obtener el branchId:", e);
       }
@@ -103,7 +110,47 @@ const Statistics = () => {
     loadBoxes();
   }, []);
 
-  const buildParams = () => {
+  useEffect(() => {
+    if (!branchId) return;
+    if (selectedCashRegisterId) {
+      // al seleccionar un registro, refrescamos ventas y top productos
+      fetchSalesData();
+      fetchTopProducts();
+    }
+  }, [selectedCashRegisterId]);
+
+  const handleSelectCashRegister = (reg) => {
+    setSelectedCashRegisterId(reg.id);
+    setSelectedCashRegisterInfo({
+      code: reg.code,
+      openedAt: getOpenedAt(reg),
+      closedAt: getClosedAt(reg),
+    });
+    setSelectedOption("sales"); // opcional
+  };
+
+  const clearSelectedCashRegister = () => {
+    setSelectedCashRegisterId(null);
+    setSelectedCashRegisterInfo(null);
+
+    // ➜ fijar el rango al día actual y anular el filtro “day/week/month/year”
+    const t = todayISO();
+    setCustomStart(t);
+    setCustomEnd(t);
+    setSelectedFilter(null);
+    // No llamamos a los fetch manualmente: el useEffect de (customStart, customEnd)
+    // se dispara solo y recarga ventas/top-products/historial con el día actual.
+  };
+
+  const todayISO = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`; // YYYY-MM-DD
+  };
+
+  const buildParams = ({ includeCRId = true } = {}) => {
     const params = new URLSearchParams();
     if (customStart && customEnd) {
       params.append("startDate", customStart);
@@ -111,9 +158,11 @@ const Statistics = () => {
     } else if (selectedFilter) {
       params.append("filter", selectedFilter);
     }
-    // solo si deseleccionó alguna caja
-    if (boxes.length > 0) {
-      params.append("boxIds", selectedBoxes.join(","));
+    if (boxes.length > 0 && selectedBoxes.length > 0) {
+      selectedBoxes.forEach(id => params.append("boxIds", id));
+    }
+    if (includeCRId && selectedCashRegisterId) {
+      params.append("cashRegisterId", selectedCashRegisterId);
     }
     return params.toString();
   };
@@ -131,7 +180,7 @@ const Statistics = () => {
     }
 
     try {
-      const qs = buildParams();
+      const qs = buildParams({ includeCRId: true });
       const url = `${API_URL}/api/statistics/by-branch/${branchId}/sales${qs ? `?${qs}` : ""}`;
       const response = await customFetch(url);
 
@@ -161,8 +210,7 @@ const Statistics = () => {
     }
 
     try {
-      const qs = buildParams();
-      // ! aquí también cambiamos la URL
+      const qs = buildParams({ includeCRId: true });
       const url = `${API_URL}/api/statistics/by-branch/${branchId}/top-products${qs ? `?${qs}` : ""}`;
       const response = await customFetch(url);
 
@@ -184,7 +232,7 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const qs = buildParams();
+      const qs = buildParams({ includeCRId: false });
       const url = `${API_URL}/api/statistics/cash-box-history${qs ? `?${qs}` : ""}`;
 
       const response = await customFetch(url);
@@ -312,6 +360,14 @@ const Statistics = () => {
     return acc;
   }, {});
 
+  const normalizedPlan = typeof branchPlan === 'string'
+    ? branchPlan.toLowerCase()
+    : '';
+  const canExport = ['avanzado', 'avanzado seven'].includes(normalizedPlan);
+
+  const getOpenedAt = (r) => r?.openedAt ?? r?.openDate ?? "Sin datos";
+  const getClosedAt = (r) => r?.closedAt ?? r?.closeDate ?? "Sin datos";
+
   return (
     <div className="statistics-page">
       <nav className="sidebar">
@@ -386,14 +442,33 @@ const Statistics = () => {
           )}
         </div>
 
+        {selectedCashRegisterId && (
+          <div className="active-register-banner">
+            <span>
+              Filtrando por registro de caja <strong>{selectedCashRegisterInfo?.code}</strong> —{" "}
+              {selectedCashRegisterInfo?.openedAt} →{" "}
+              {selectedCashRegisterInfo?.closedAt === "Sin datos" ? "Abierta" : selectedCashRegisterInfo?.closedAt}
+            </span>
+            <button className="clear-register-btn" onClick={clearSelectedCashRegister}>
+              Quitar filtro ✕
+            </button>
+          </div>
+        )}
+
         {error && <div className="error-message">{error}</div>}
 
-        <button
-          className="floating-export-btn"
-          onClick={() => exportStatisticsToExcel({ sales: salesData, topProducts, history: cashRegisterHistory })}
-        >
-          <Download size={20} /> Exportar
-        </button>
+        {canExport && (
+          <button
+            className="floating-export-btn"
+            onClick={() => exportStatisticsToExcel({
+              sales: salesData,
+              topProducts,
+              history: cashRegisterHistory
+            })}
+          >
+            <Download size={20} /> Exportar
+          </button>
+        )}
 
         {selectedOption === "sales" && (
           <>
@@ -423,7 +498,6 @@ const Statistics = () => {
                         <button className="cancel-button" onClick={() => handleCancelSale(sale)}>❌ Cancelar</button>
                       )}
                       <button className="info-button" onClick={() => handleViewDetail(sale)}>📄 Info</button>
-
                     </td>
                   </tr>
                 ))}
@@ -448,13 +522,14 @@ const Statistics = () => {
             {cashRegisterHistory.length === 0 && !loading && (
               <div className="empty-message">No hay historial de caja en este período.</div>
             )}
+
             <div className="chart-container">
               <Bar
                 data={{
-                  labels: cashRegisterHistory.map(r => formatDate(r.openedAt)),
+                  labels: cashRegisterHistory.map(r => getOpenedAt(r)),
                   datasets: [{
                     label: "Ventas Totales",
-                    data: cashRegisterHistory.map(r => r.totalSales || 0),
+                    data: cashRegisterHistory.map(r => Number(r.totalSales) || 0),
                     backgroundColor: "rgba(255, 99, 132, 0.5)",
                     borderColor: "rgba(255, 99, 132, 1)",
                     borderWidth: 1,
@@ -462,22 +537,33 @@ const Statistics = () => {
                 }}
               />
             </div>
+
             <table className="sales-table">
               <thead>
                 <tr>
+                  <th>Caja</th>
                   <th>Apertura</th>
                   <th>Cierre</th>
                   <th>Total Ventas</th>
                 </tr>
               </thead>
               <tbody>
-                {cashRegisterHistory.map(reg => (
-                  <tr key={reg.id}>
-                    <td>{formatDate(reg.openedAt)}</td>
-                    <td>{reg.closedAt ? formatDate(reg.closedAt) : "Abierta"}</td>
-                    <td>${reg.totalSales}</td>
-                  </tr>
-                ))}
+                {cashRegisterHistory.map(reg => {
+                  const isSelected = reg.id === selectedCashRegisterId;
+                  return (
+                    <tr
+                      key={`${reg.id}`}
+                      className={isSelected ? "selected-row" : ""}
+                      onClick={() => handleSelectCashRegister(reg)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td>{reg.code}</td>
+                      <td>{getOpenedAt(reg)}</td>
+                      <td>{getClosedAt(reg) === "Sin datos" ? "Abierta" : getClosedAt(reg)}</td>
+                      <td>${(reg.totalSales ?? 0).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </>
@@ -536,12 +622,14 @@ const Statistics = () => {
                 </button>
               )}
 
-              <button
-                className="popup-btn"
-                onClick={() => printOrder(saleDetail)}
-              >
-                🖨️ Imprimir
-              </button>
+              {enablePrinting && (
+                <button
+                  className="popup-btn"
+                  onClick={() => printOrder(saleDetail)}
+                >
+                  🖨️ Imprimir
+                </button>
+              )}
             </div>
           </div>
         )}
